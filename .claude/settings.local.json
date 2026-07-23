@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(npm ls *)",
+      "Bash(npx tsc *)",
+      "Bash(npx typescript *)",
+      "PowerShell(Get-ChildItem Env: | Where-Object { $_.Name -match \"TOOLSET|VCTargets|VisualStudio|VS1|GYP\" })",
+      "PowerShell(cd \"D:\\\\Travail\\\\Projet autres\\\\Akta\"; Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue; Remove-Item -Force package-lock.json -ErrorAction SilentlyContinue; $env:PYTHON = \"C:\\\\Users\\\\alana.000\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python.exe\"; npm install)",
+      "Bash(cd \"D:\\\\\\\\Travail\\\\\\\\Projet autres\\\\\\\\Akta\")"
+    ]
+  }
+}

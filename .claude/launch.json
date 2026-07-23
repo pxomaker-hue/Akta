@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Akta (Full Dev)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "Akta Main Process",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:main"],
+      "port": null
+    },
+    {
+      "name": "Akta Renderer (Vite)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:renderer"],
+      "port": 3000
+    }
+  ]
+}
