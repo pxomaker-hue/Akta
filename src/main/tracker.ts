@@ -2,7 +2,8 @@ import activeWin from 'active-win'
 import robotjs from 'robotjs'
 import { getDatabase, createWorkSession, endWorkSession, updateWorkSessionBillable, getWorkSessions, setActivitiesBillableInRange, createSessionPause, endSessionPause, updateSessionCategoryOverrides, updateSessionProject, getSetting, isAppExcludedFromInactivityDetection } from './database'
 import { checkBlocking, isBlockingActive } from './blocker'
-import { findMatchingCategory } from './categorizer'
+import { findMatchingCategory, findMatchingProject } from './categorizer'
+import { getActiveWindowInfo } from './window-detector'
 import { recordSwitch, maybeNudgeDistraction, notifyDeepWorkMilestone, notifyDistractionDuringSession } from './coach'
 import type { Activity } from '../shared/types'
 
@@ -61,6 +62,10 @@ let lastInputTime = Date.now()
 // relançait lastInputTime en boucle et empêchait tout vrai statut inactif de se maintenir.
 let lastKnownForegroundApp: string | null = null
 
+// Tracking des changements de titre de fenêtre pour recatégorisation intelligente
+let lastTitleChangeTime = Date.now()
+let currentTitleCategory: number | null = null
+
 // Mouse tracking for real inactivity detection
 let lastMousePosition = { x: 0, y: 0 }
 let mouseTrackingEnabled = true
@@ -107,6 +112,10 @@ export function getSessionCategoryOverrides(): Record<number, CategoryOverride> 
 // Rattache la session en cours à un projet (et éventuellement une phase de ce projet), depuis le
 // sélecteur de la pill de suivi — sans attendre la fin de la session comme le fait l'historique
 export function setSessionProject(projectId: number | null, phaseId: number | null) {
+  // Stop auto-detection if user manually assigns a project
+  if (currentWorkSessionId && projectId !== null) {
+    stopWorkSessionDetection(currentWorkSessionId)
+  }
   currentProjectId = projectId
   currentPhaseId = phaseId
   if (currentWorkSessionId !== null) {
@@ -263,6 +272,44 @@ async function pollWindowActivity() {
       // Même application : on continue d'accumuler le temps réellement passé dessus
       currentOpenActivity.accumulatedSeconds += (now - currentOpenActivity.lastActiveAt) / 1000
       currentOpenActivity.lastActiveAt = now
+
+      // Vérifier si le titre a changé (onglet différent dans un navigateur)
+      console.log(`[TitleChangeCheck] Old title: "${currentOpenActivity.windowTitle}", New title: "${newWindow.title}", Same? ${currentOpenActivity.windowTitle === newWindow.title}`)
+      if (currentOpenActivity.windowTitle !== newWindow.title) {
+        console.log(`[TitleChangeCheck] Title changed! Checking categorization...`)
+        const newCategory = findMatchingCategory(newWindow.app, newWindow.title)
+        const newCategoryId = newCategory?.id ?? null
+        console.log(`[TitleChangeCheck] Old category ID: ${currentTitleCategory}, New category ID: ${newCategoryId}, Same? ${newCategoryId === currentTitleCategory}`)
+
+        // Si la catégorie changerait
+        if (newCategoryId !== currentTitleCategory) {
+          const timeSinceLastTitleChange = now - lastTitleChangeTime
+          console.log(
+            `[TitleChange] Catégorie changerait de ${currentTitleCategory} à ${newCategoryId} (durée: ${timeSinceLastTitleChange}ms)`
+          )
+
+          if (timeSinceLastTitleChange < 20000) {
+            // Moins de 20 secondes : recatégoriser l'activité en cours
+            console.log(`[TitleChange] < 20s, recatégorisant l'activité`)
+            if (newCategory) {
+              currentOpenActivity.isDistraction = newCategory.isDistraction
+              const db = getDatabase()
+              const stmt = db.prepare('UPDATE activities SET category_id = ? WHERE id = ?')
+              stmt.run(newCategory.id, currentOpenActivity.id)
+            }
+          } else {
+            // 20+ secondes : créer une nouvelle activité
+            console.log(`[TitleChange] >= 20s, créant une nouvelle activité`)
+            backgroundCurrentActivity(now)
+            const newActivity = openNewActivity(newWindow.app, newWindow.title, now)
+            currentOpenActivity = newActivity
+          }
+
+          lastTitleChangeTime = now
+          currentTitleCategory = newCategoryId
+        }
+      }
+
       currentOpenActivity.windowTitle = newWindow.title
       persistActivityProgress(currentOpenActivity)
     }
@@ -280,7 +327,7 @@ async function pollWindowActivity() {
     }
 
     currentWindow = newWindow
-    checkBlocking(newWindow.app)
+    checkBlocking(newWindow.app, newWindow.title)
     checkDeepWorkStreak()
     sweepExpiredBackgroundedActivities(now)
   } catch (error) {
@@ -407,6 +454,10 @@ function openNewActivity(appName: string, windowTitle: string, startTime: number
   const db = getDatabase()
   const match = findMatchingCategory(appName, windowTitle)
 
+  // Initialiser le tracking du changement de titre pour recatégorisation intelligente
+  lastTitleChangeTime = startTime
+  currentTitleCategory = match?.id ?? null
+
   // Suivi du streak de deep work (même catégorie maintenue dans la durée)
   if (match && match.id === currentStreakCategoryId) {
     // streak continue, on ne réinitialise pas le départ
@@ -528,6 +579,9 @@ export function setSessionBillable(billable: boolean) {
 }
 
 // Démarre une nouvelle session de suivi (repart de zéro)
+// Map to track project detection per work session
+const workSessionDetectionMap = new Map<number, { interval: NodeJS.Timeout; detected: boolean }>()
+
 export function startSession() {
   sessionState = 'running'
   currentSessionStartTime = Date.now()
@@ -542,6 +596,9 @@ export function startSession() {
   currentProjectId = null
   currentPhaseId = null
   currentWorkSessionId = createWorkSession(currentSessionStartTime)
+
+  // Start continuous project detection for work sessions
+  startWorkSessionDetection(currentWorkSessionId)
 }
 
 // Met la session en pause : le chrono de la session est figé, mais le suivi général des activités
@@ -567,9 +624,69 @@ export function resumeSession() {
   exitPause(now)
 }
 
+// Start continuous project detection for work sessions
+function startWorkSessionDetection(workSessionId: number) {
+  // Only start detection if no project is already assigned
+  if (currentProjectId) {
+    console.log(`[WorkSessionDetection] Session ${workSessionId}: Project already assigned, skipping detection`)
+    return
+  }
+
+  const interval = setInterval(async () => {
+    try {
+      const state = workSessionDetectionMap.get(workSessionId)
+      // Stop if already detected or session was removed
+      if (!state || state.detected || currentProjectId) return
+
+      const windowInfo = await getActiveWindowInfo()
+      if (windowInfo) {
+        console.log(`[WorkSessionDetection] Session ${workSessionId}: Scanning - App: "${windowInfo.appName}", Window: "${windowInfo.windowTitle}"`)
+        const match = findMatchingProject(windowInfo.appName, windowInfo.windowTitle)
+        if (match && match.projectId) {
+          // Update work session with detected project and phase
+          const db = getDatabase()
+          db.prepare('UPDATE work_sessions SET project_id = ?, phase_id = ? WHERE id = ?').run(
+            match.projectId,
+            match.phaseId || null,
+            workSessionId
+          )
+          // Update tracking state
+          currentProjectId = match.projectId
+          currentPhaseId = match.phaseId || null
+          // Mark as detected (lock assignment)
+          const currentState = workSessionDetectionMap.get(workSessionId)
+          if (currentState) {
+            currentState.detected = true
+          }
+          console.log(`[WorkSessionDetection] Session ${workSessionId}: ✓ LOCKED - Project ${match.projectId}${match.phaseId ? `, Phase ${match.phaseId}` : ' (no phase)'}`)
+        }
+      }
+    } catch (detectError) {
+      console.warn(`[WorkSessionDetection] Warning in session ${workSessionId}:`, detectError)
+    }
+  }, 5000) // Check every 5 seconds
+
+  workSessionDetectionMap.set(workSessionId, { interval, detected: false })
+  console.log(`[WorkSessionDetection] Started detection for session ${workSessionId}`)
+}
+
+// Stop work session detection when manually assigning project (user override)
+export function stopWorkSessionDetection(workSessionId: number) {
+  const state = workSessionDetectionMap.get(workSessionId)
+  if (state) {
+    clearInterval(state.interval)
+    workSessionDetectionMap.delete(workSessionId)
+    console.log(`[WorkSessionDetection] Stopped detection for session ${workSessionId}`)
+  }
+}
+
 // Arrête complètement la session en cours (le prochain démarrage repartira à zéro).
 // Ne coupe pas le suivi général des activités : celui-ci continue en arrière-plan comme toujours.
 export function stopSession() {
+  // Stop work session detection before finalizing
+  if (currentWorkSessionId) {
+    stopWorkSessionDetection(currentWorkSessionId)
+  }
   finalizeCurrentWorkSession()
   sessionState = 'stopped'
   currentSessionStartTime = null

@@ -60,6 +60,7 @@ export interface ProjectPhase {
   project_id: number
   name: string
   color: string
+  keywords?: string | null
   status: 'active' | 'archived'
   created_at: number
 }
@@ -74,6 +75,7 @@ export interface Project {
   id: number
   name: string
   color: string
+  keywords?: string | null
   client_id: number | null
   hourly_rate: number | null
   status: 'active' | 'archived'

@@ -31,23 +31,17 @@ interface Milestone {
 }
 
 function FocusChallenges() {
-  const [tab, setTab] = useState<'challenges' | 'milestones' | 'leaderboard'>('challenges')
+  const [tab, setTab] = useState<'challenges' | 'milestones'>('challenges')
   const [challenges, setChallenges] = useState<ChallengeWithProgress[]>([])
   const [milestones, setMilestones] = useState<Milestone[]>([])
-  const [leaderboard, setLeaderboard] = useState<any[]>([])
   const [streak, setStreak] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [leaderboardDuration, setLeaderboardDuration] = useState<'weekly' | 'monthly' | 'all_time'>('weekly')
 
   useEffect(() => {
     loadChallengeData()
     const interval = setInterval(loadChallengeData, 60 * 1000)
     return () => clearInterval(interval)
   }, [])
-
-  useEffect(() => {
-    loadLeaderboard()
-  }, [leaderboardDuration])
 
   async function loadChallengeData() {
     try {
@@ -63,15 +57,6 @@ function FocusChallenges() {
       console.error('Error loading challenge data:', error)
     } finally {
       setLoading(false)
-    }
-  }
-
-  async function loadLeaderboard() {
-    try {
-      const data = await window.electron.ipc.invoke('get-leaderboard', leaderboardDuration)
-      setLeaderboard(data)
-    } catch (error) {
-      console.error('Error loading leaderboard:', error)
     }
   }
 
@@ -106,10 +91,9 @@ function FocusChallenges() {
           tabs={[
             { id: 'challenges' as const, label: 'Défis Actifs', icon: <Icon name="target" size={14} /> },
             { id: 'milestones' as const, label: 'Jalons', icon: <Icon name="star" size={14} /> },
-            { id: 'leaderboard' as const, label: 'Classement', icon: <Icon name="trophy" size={14} /> },
           ]}
-          activeId={tab}
-          onChange={setTab}
+          activeId={tab as 'challenges' | 'milestones'}
+          onChange={(id) => setTab(id as 'challenges' | 'milestones')}
         />
       </div>
 
@@ -168,75 +152,40 @@ function FocusChallenges() {
           {milestones.length === 0 ? (
             <p className="text-center text-gray-500 dark:text-gray-400 py-4 text-sm">Aucun jalon</p>
           ) : (
-            milestones.map((milestone) => (
-              <div key={milestone.id} className="p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 flex-1">
-                    <span className="text-lg">{milestone.unlocked_at ? '🏆' : '🔒'}</span>
-                    <div className="flex-1">
-                      <p className={`font-medium text-sm ${milestone.unlocked_at ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'}`}>
-                        {milestone.name}
-                      </p>
-                      <div className="w-32 bg-gray-200 dark:bg-slate-700 rounded-full h-1.5 mt-1">
-                        <div
-                          className="h-1.5 rounded-full bg-indigo-500 transition-all"
-                          style={{ width: `${Math.min((milestone.progress / milestone.threshold) * 100, 100)}%` }}
-                        />
+            milestones.map((milestone) => {
+              const progressPercent = Math.min((milestone.progress / milestone.threshold) * 100, 100)
+              const tooltipText = `${milestone.name}\n${milestone.progress} / ${milestone.threshold} ${milestone.type === 'time' ? 'heures' : 'sessions'}\n${Math.round(progressPercent)}% complété${milestone.unlocked_at ? '\n✓ Débloqué!' : ''}`
+
+              return (
+                <div
+                  key={milestone.id}
+                  className="p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-help"
+                  title={tooltipText}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 flex-1">
+                      <span className="text-lg">{milestone.unlocked_at ? '🏆' : '🔒'}</span>
+                      <div className="flex-1">
+                        <p className={`font-medium text-sm ${milestone.unlocked_at ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'}`}>
+                          {milestone.name}
+                        </p>
+                        <div className="w-32 bg-gray-200 dark:bg-slate-700 rounded-full h-1.5 mt-1">
+                          <div
+                            className={`h-1.5 rounded-full transition-all ${
+                              milestone.unlocked_at ? 'bg-emerald-500' : 'bg-indigo-500'
+                            }`}
+                            style={{ width: `${progressPercent}%` }}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-                    {milestone.progress} / {milestone.threshold}
-                  </span>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {/* Leaderboard Tab */}
-      {tab === 'leaderboard' && (
-        <div className="space-y-3">
-          <div className="flex gap-2 mb-4">
-            {(['weekly', 'monthly', 'all_time'] as const).map((duration) => (
-              <button
-                key={duration}
-                onClick={() => setLeaderboardDuration(duration)}
-                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${
-                  leaderboardDuration === duration
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-200 dark:bg-slate-700 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-slate-600'
-                }`}
-              >
-                {duration === 'weekly' ? '7j' : duration === 'monthly' ? '30j' : 'Tout'}
-              </button>
-            ))}
-          </div>
-
-          {leaderboard.length === 0 ? (
-            <p className="text-center text-gray-500 dark:text-gray-400 py-4 text-sm">Aucune donnée</p>
-          ) : (
-            leaderboard.map((entry, idx) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/20 dark:to-purple-950/20 border border-indigo-200 dark:border-indigo-800"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl font-bold">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}</span>
-                  <div>
-                    <p className="font-semibold text-gray-900 dark:text-white">{entry.name}</p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                      {entry.sessions} sessions • {entry.hours}h deep work • {entry.streak}j streak
-                    </p>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                      {milestone.progress} / {milestone.threshold}
+                    </span>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{entry.points}</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">points</p>
-                </div>
-              </div>
-            ))
+              )
+            })
           )}
         </div>
       )}

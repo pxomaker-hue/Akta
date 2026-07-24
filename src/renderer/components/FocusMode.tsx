@@ -73,6 +73,7 @@ function FocusMode({ onBack }: FocusModeProps) {
 
   const [blockedApps, setBlockedApps] = useState<string[]>([])
   const [newBlockedApp, setNewBlockedApp] = useState('')
+  const [createWorkSession, setCreateWorkSession] = useState(false)
   const [current, setCurrent] = useState<FocusSession | null>(null)
   const [timeLeft, setTimeLeft] = useState(duration * 60)
   const [justCompleted, setJustCompleted] = useState(false)
@@ -308,7 +309,7 @@ function FocusMode({ onBack }: FocusModeProps) {
         sessionDurationSec = sessionDurationSec * 60
       }
 
-      const session = await window.electron.ipc.invoke('start-focus-session', sessionDurationSec, blockedApps)
+      const session = await window.electron.ipc.invoke('start-focus-session', sessionDurationSec, blockedApps, createWorkSession)
 
       // Set the session immediately without extra IPC call
       if (session) {
@@ -558,6 +559,28 @@ function FocusMode({ onBack }: FocusModeProps) {
             )}
           </div>
         )}
+
+        {/* Option : créer une session de travail */}
+        <div className="mb-6 flex items-center justify-between p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800">
+          <div className="flex items-center gap-2">
+            <Icon name="briefcase" size={16} className="text-indigo-600 dark:text-indigo-400" />
+            <label className="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
+              Créer une session de travail
+            </label>
+          </div>
+          <button
+            onClick={() => setCreateWorkSession(!createWorkSession)}
+            className={`relative w-11 h-6 rounded-full transition-colors ${
+              createWorkSession ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-slate-700'
+            }`}
+          >
+            <div
+              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                createWorkSession ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
 
         {/* Apps bloquées */}
         <div className="mb-8">

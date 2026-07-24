@@ -236,7 +236,19 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis dataKey="name" stroke="#9ca3af" style={{ fontSize: '12px' }} />
               <YAxis stroke="#9ca3af" style={{ fontSize: '12px' }} />
-              <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '0.5rem' }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '8px 12px'
+                }}
+                formatter={(value: number) => [
+                  <span key="value" style={{ color: '#fff', fontWeight: '500' }}>{value}h</span>
+                ]}
+                labelStyle={{ color: '#fff', fontWeight: 'bold', marginBottom: '4px' }}
+                wrapperStyle={{ color: '#fff' }}
+              />
               <Bar dataKey="hours" radius={[8, 8, 0, 0]}>
                 {barChartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
@@ -256,7 +268,17 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value) => `${value}h`} />
+              <Tooltip
+                formatter={(value) => `${value}h`}
+                contentStyle={{
+                  backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '8px 12px'
+                }}
+                labelStyle={{ color: '#fff', fontWeight: 'bold' }}
+                wrapperStyle={{ color: '#fff' }}
+              />
             </PieChart>
           </ResponsiveContainer>
         </Card>

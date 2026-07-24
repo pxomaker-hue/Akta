@@ -40,6 +40,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
 
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
+  const [editKeywords, setEditKeywords] = useState('')
   const [editClientId, setEditClientId] = useState('')
   const [editRate, setEditRate] = useState('')
   const [editGoal, setEditGoal] = useState('')
@@ -57,9 +58,11 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
   const [loadingPhases, setLoadingPhases] = useState(false)
   const [newPhaseName, setNewPhaseName] = useState('')
   const [newPhaseColor, setNewPhaseColor] = useState('#6366f1')
+  const [newPhaseKeywords, setNewPhaseKeywords] = useState('')
   const [editingPhaseId, setEditingPhaseId] = useState<number | null>(null)
   const [editPhaseName, setEditPhaseName] = useState('')
   const [editPhaseColor, setEditPhaseColor] = useState('#6366f1')
+  const [editPhaseKeywords, setEditPhaseKeywords] = useState('')
 
   useEffect(() => {
     loadProjects()
@@ -118,6 +121,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
   function startEditing(project: Project) {
     setEditingId(project.id)
     setEditName(project.name)
+    setEditKeywords(project.keywords || '')
     setEditClientId(project.client_id ? String(project.client_id) : '')
     setEditRate(project.hourly_rate !== null && project.hourly_rate !== undefined ? String(project.hourly_rate) : '')
     setEditGoal(project.hour_goal !== null && project.hour_goal !== undefined ? String(project.hour_goal) : '')
@@ -140,7 +144,8 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
         editGoal ? Number(editGoal) : null,
         editBudgetHours ? Number(editBudgetHours) : null,
         editBudgetAmount ? Number(editBudgetAmount) : null,
-        editDeadline ? new Date(editDeadline).getTime() : null
+        editDeadline ? new Date(editDeadline).getTime() : null,
+        editKeywords || null
       )
       setEditingId(null)
       await loadProjects()
@@ -217,8 +222,9 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
   async function createPhase(projectId: number) {
     if (!newPhaseName.trim()) return
     try {
-      await window.electron.ipc.invoke('create-project-phase', projectId, newPhaseName.trim(), newPhaseColor)
+      await window.electron.ipc.invoke('create-project-phase', projectId, newPhaseName.trim(), newPhaseColor, newPhaseKeywords || null)
       setNewPhaseName('')
+      setNewPhaseKeywords('')
       setNewPhaseColor('#6366f1')
       await loadPhases(projectId)
     } catch (error) {
@@ -230,11 +236,12 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
     setEditingPhaseId(phase.id)
     setEditPhaseName(phase.name)
     setEditPhaseColor(phase.color)
+    setEditPhaseKeywords(phase.keywords || '')
   }
 
   async function savePhase(phase: PhaseWithBilling, projectId: number) {
     try {
-      await window.electron.ipc.invoke('update-project-phase', phase.id, editPhaseName.trim() || phase.name, editPhaseColor, phase.status)
+      await window.electron.ipc.invoke('update-project-phase', phase.id, editPhaseName.trim() || phase.name, editPhaseColor, phase.status, editPhaseKeywords || null)
       setEditingPhaseId(null)
       await loadPhases(projectId)
     } catch (error) {
@@ -439,6 +446,14 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                       type="text"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
+                      className="w-full px-2 py-1.5 text-sm rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
+                    />
+                    <input
+                      type="text"
+                      value={editKeywords}
+                      onChange={(e) => setEditKeywords(e.target.value)}
+                      placeholder="Mots-clefs (ex: Valros, APD)"
+                      title="Mots-clefs pour l'auto-détection par nom de fenêtre"
                       className="w-full px-2 py-1.5 text-sm rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                     />
                     <div className="flex gap-2">
@@ -679,14 +694,23 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                             {phases.length === 0 && <p className="text-xs text-gray-500 dark:text-gray-400 py-1">Aucune phase pour ce projet.</p>}
                             {phases.map((phase) =>
                               editingPhaseId === phase.id ? (
-                                <div key={phase.id} className="flex items-center gap-1.5">
+                                <div key={phase.id} className="space-y-1.5">
                                   <input
                                     type="text"
                                     value={editPhaseName}
                                     onChange={(e) => setEditPhaseName(e.target.value)}
-                                    className="flex-1 min-w-0 px-2 py-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
+                                    className="w-full px-2 py-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                                   />
-                                  <div className="flex gap-1 flex-shrink-0">
+                                  <input
+                                    type="text"
+                                    value={editPhaseKeywords}
+                                    onChange={(e) => setEditPhaseKeywords(e.target.value)}
+                                    placeholder="Mots-clefs (ex: Esquisse, Étude)"
+                                    title="Mots-clefs pour l'auto-détection par nom de fenêtre"
+                                    className="w-full px-2 py-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
+                                  />
+                                  <div className="flex items-center gap-1.5">
+                                    <div className="flex gap-1 flex-shrink-0">
                                     {colors.map((color) => (
                                       <button
                                         key={color}
@@ -710,6 +734,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                   >
                                     <Icon name="x" size={13} />
                                   </button>
+                                  </div>
                                 </div>
                               ) : (
                                 <div key={phase.id} className="flex items-center justify-between text-xs gap-2">
@@ -732,16 +757,27 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                 </div>
                               )
                             )}
-                            <div className="flex items-center gap-1.5 pt-1">
+                            <div className="space-y-1 pt-1">
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  type="text"
+                                  value={newPhaseName}
+                                  onChange={(e) => setNewPhaseName(e.target.value)}
+                                  onKeyDown={(e) => e.key === 'Enter' && createPhase(project.id)}
+                                  placeholder="Nouvelle phase (ex : Esquisse)"
+                                  className="flex-1 min-w-0 px-2 py-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
+                                />
+                              </div>
                               <input
                                 type="text"
-                                value={newPhaseName}
-                                onChange={(e) => setNewPhaseName(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && createPhase(project.id)}
-                                placeholder="Nouvelle phase (ex : Esquisse)"
-                                className="flex-1 min-w-0 px-2 py-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
+                                value={newPhaseKeywords}
+                                onChange={(e) => setNewPhaseKeywords(e.target.value)}
+                                placeholder="Mots-clefs (ex: Esquisse, Étude)"
+                                title="Mots-clefs pour l'auto-détection par nom de fenêtre"
+                                className="w-full px-2 py-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                               />
-                              <div className="flex gap-1 flex-shrink-0">
+                              <div className="flex items-center gap-1.5">
+                                <div className="flex gap-1 flex-shrink-0">
                                 {colors.map((color) => (
                                   <button
                                     key={color}
@@ -758,6 +794,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                               >
                                 Ajouter
                               </button>
+                              </div>
                             </div>
                           </>
                         )}

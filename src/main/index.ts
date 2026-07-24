@@ -6,8 +6,7 @@ import { startTracker, stopTracker, getRecentActivities, getCurrentActivityId, g
 import { startFocusSession, endFocusSession, getFocusSessions, getCurrentFocusSession, deleteFocusSession, checkAutoCompleteFocusSession } from './focus-mode'
 import { analyzeFocusQuality, getProductivityPattern, getCoachingRecommendations, getOptimalCycleDuration } from './coach'
 import { setMainWindow, activateBlocking, deactivateBlocking } from './blocker'
-import { findMatchingCategory, findMatchingProject } from './categorizer'
-import { getActiveWindowInfo } from './window-detector'
+import { findMatchingCategory } from './categorizer'
 import { initializeChallenges, getActiveChallenges, getChallengeProgress, getCurrentStreak, getMilestones, unlockMilestone, getLeaderboard } from './challenges'
 import { getProductivityScore, getOptimalTimes, getMonthComparison, getWeekTrends } from './analytics'
 import { getSyncFilePath, setSyncFilePath, pickExistingSyncFile, pickNewSyncFile, createNewSyncFile, runSync } from './sync'
@@ -29,6 +28,32 @@ const ICON_PATH = path.join(__dirname, '../../../assets/icon.png')
 // Sans ceci, Windows affiche "Electron" comme expéditeur des notifications au lieu du nom de l'app
 if (process.platform === 'win32') {
   app.setAppUserModelId('com.akta.app')
+}
+
+// Helper to build match rules: app-only keywords get just app_name, others get both window_title + app_name
+const APP_ONLY_KEYWORDS = new Set([
+  'chrome', 'firefox', 'edge', 'safari', 'brave', 'opera',
+  'slack', 'discord', 'teams', 'zoom', 'outlook', 'gmail',
+  'vscode', 'visual studio', 'terminal', 'powershell', 'cmd',
+  'word', 'excel', 'powerpoint', 'notion',
+  'figma', 'photoshop', 'illustrator', 'sketch', 'canva',
+])
+
+function buildMatchRules(keywords: string[]) {
+  return keywords
+    .filter((k) => k.trim())
+    .flatMap((keyword) => {
+      const trimmed = keyword.trim()
+      const isAppOnly = APP_ONLY_KEYWORDS.has(trimmed.toLowerCase())
+      if (isAppOnly) {
+        return [{ type: 'app_name', keyword: trimmed }]
+      } else {
+        return [
+          { type: 'window_title', keyword: trimmed },
+          { type: 'app_name', keyword: trimmed },
+        ]
+      }
+    })
 }
 
 // Empêche deux instances de tourner en même temps sur la même machine (deux trackers en
@@ -471,7 +496,7 @@ function setupIpcHandlers() {
         VALUES (?, ?, ?, ?, ?, ?)
       `)
 
-        const matchRules = keywords.filter((k) => k.trim()).map((keyword) => ({ type: 'app_name', keyword: keyword.trim() }))
+        const matchRules = buildMatchRules(keywords)
         const result = stmt.run(name, color, billable ? 1 : 0, JSON.stringify(matchRules), isDistraction ? 1 : 0, Date.now())
         return Number(result.lastInsertRowid)
       } catch (error) {
@@ -485,7 +510,7 @@ function setupIpcHandlers() {
   ipcMain.handle('update-category-keywords', async (event, categoryId: number, keywords: string[]) => {
     try {
       const db = getDatabase()
-      const matchRules = keywords.filter((k) => k.trim()).map((keyword) => ({ type: 'app_name', keyword: keyword.trim() }))
+      const matchRules = buildMatchRules(keywords)
       const stmt = db.prepare('UPDATE categories SET match_rules = ?, updated_at = ? WHERE id = ?')
       stmt.run(JSON.stringify(matchRules), Date.now(), categoryId)
       return true
@@ -887,10 +912,11 @@ function setupIpcHandlers() {
       hourGoal: number | null,
       budgetHours: number | null = null,
       budgetAmount: number | null = null,
-      deadline: number | null = null
+      deadline: number | null = null,
+      keywords: string | null = null
     ) => {
       try {
-        updateProject(projectId, name, color, clientId, hourlyRate, status, hourGoal, budgetHours, budgetAmount, deadline)
+        updateProject(projectId, name, color, clientId, hourlyRate, status, hourGoal, budgetHours, budgetAmount, deadline, keywords)
         return true
       } catch (error) {
         console.error('Error updating project:', error)
@@ -946,9 +972,9 @@ function setupIpcHandlers() {
   })
 
   // Phases de projet (ex : Esquisse, PC, DCE, Chantier) — permettent de ventiler le temps d'un projet
-  ipcMain.handle('create-project-phase', async (event, projectId: number, name: string, color: string = '#6366f1') => {
+  ipcMain.handle('create-project-phase', async (event, projectId: number, name: string, color: string = '#6366f1', keywords: string | null = null) => {
     try {
-      return createProjectPhase(projectId, name, color)
+      return createProjectPhase(projectId, name, color, keywords)
     } catch (error) {
       console.error('Error creating project phase:', error)
       throw error
@@ -965,9 +991,9 @@ function setupIpcHandlers() {
     }
   })
 
-  ipcMain.handle('update-project-phase', async (event, phaseId: number, name: string, color: string, status: string) => {
+  ipcMain.handle('update-project-phase', async (event, phaseId: number, name: string, color: string, status: string, keywords: string | null = null) => {
     try {
-      updateProjectPhase(phaseId, name, color, status)
+      updateProjectPhase(phaseId, name, color, status, keywords)
       return true
     } catch (error) {
       console.error('Error updating project phase:', error)
@@ -1015,31 +1041,38 @@ function setupIpcHandlers() {
   })
 
   // Focus Mode handlers
-  ipcMain.handle('start-focus-session', async (event, duration: number, blockedApps: string[]) => {
+  // Map to track which Focus Sessions created their own Work Sessions
+  const focusSessionWorkSessionMap = new Map<number, boolean>()
+
+  ipcMain.handle('start-focus-session', async (event, duration: number, blockedApps: string[], createWorkSession: boolean = false) => {
     try {
-      // Auto-detect project and phase from active window
-      let projectId: number | undefined
-      let phaseId: number | undefined
-      try {
-        const windowInfo = await getActiveWindowInfo()
-        if (windowInfo) {
-          const match = findMatchingProject(windowInfo.appName, windowInfo.windowTitle)
-          if (match) {
-            projectId = match.projectId
-            phaseId = match.phaseId
-          }
-        }
-      } catch (detectError) {
-        console.warn('Warning: could not detect project from active window:', detectError)
+      // Check if a work session is already active
+      const currentStatus = getTrackingStatus()
+      const hasActiveWorkSession = currentStatus.sessionState === 'running' || currentStatus.sessionState === 'paused'
+
+      // Track if we created a work session
+      let didCreateWorkSession = false
+
+      // If user wants to create a work session and none is active, start one
+      if (createWorkSession && !hasActiveWorkSession) {
+        console.log('[FocusMode] Creating work session for focus mode')
+        startSession()
+        didCreateWorkSession = true
       }
 
-      const session = startFocusSession(duration, blockedApps, projectId, phaseId)
+      const session = startFocusSession(duration, blockedApps)
+
+      // Remember that this focus session created a work session
+      if (didCreateWorkSession) {
+        focusSessionWorkSessionMap.set(session.id, true)
+      }
+
       try {
         activateBlocking(blockedApps)
       } catch (blockError) {
         console.warn('Warning: could not activate app blocking:', blockError)
-        // Don't fail the whole operation if blocking fails
       }
+
       // Notify all windows that a session was started
       if (mainWindow) {
         mainWindow.webContents.send('focus-session-started', session)
@@ -1053,8 +1086,29 @@ function setupIpcHandlers() {
 
   ipcMain.handle('end-focus-session', async (event, sessionId: number) => {
     try {
+      // Check if this focus session created a work session
+      const didCreateWorkSession = focusSessionWorkSessionMap.get(sessionId)
+
+      // If we created a work session, end it too
+      if (didCreateWorkSession) {
+        console.log('[FocusMode] Ending work session that was created by focus mode')
+        stopSession()
+      }
+
+      // Clean up the map
+      focusSessionWorkSessionMap.delete(sessionId)
+
       const result = endFocusSession(sessionId)
       deactivateBlocking()
+
+      // Send notification for completed session
+      if (result.completed) {
+        const { notifySessionCompleted, getCurrentStreak } = await import('./coach')
+        const streakDays = getCurrentStreak()
+        const mode = await store.get('focus_coaching_mode', 'tdah')
+        notifySessionCompleted(result.duration, streakDays, mode)
+      }
+
       return result
     } catch (error) {
       console.error('Error ending focus session:', error)

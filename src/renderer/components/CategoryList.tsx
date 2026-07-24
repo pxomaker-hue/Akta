@@ -34,7 +34,7 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
     setDraftName(category.name)
     setDraftColor(category.color)
     setDraftBillable(category.billable_default)
-    setDraftKeywords(category.match_rules.map((r) => r.keyword))
+    setDraftKeywords([...new Set(category.match_rules.map((r) => r.keyword))])
     setNewKeyword('')
   }
 
@@ -296,12 +296,12 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
 
                 {category.match_rules.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-2">
-                    {category.match_rules.map((rule) => (
+                    {[...new Set(category.match_rules.map((rule) => rule.keyword))].map((keyword) => (
                       <span
-                        key={rule.keyword}
+                        key={keyword}
                         className="text-xs bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full"
                       >
-                        {rule.keyword}
+                        {keyword}
                       </span>
                     ))}
                   </div>

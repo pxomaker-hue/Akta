@@ -26,9 +26,20 @@ export function isBlockingActive() {
   return isActive
 }
 
-function matchesBlockedApp(appName: string): boolean {
-  const lower = appName.toLowerCase()
-  return blockedApps.some((blocked) => lower.includes(blocked) || blocked.includes(lower))
+function matchesBlockedApp(appName: string, windowTitle: string = ''): boolean {
+  const appLower = appName.toLowerCase()
+  const titleLower = windowTitle.toLowerCase()
+
+  // Priority 1: Check windowTitle first (like project detection)
+  if (titleLower) {
+    const titleMatch = blockedApps.some((blocked) => titleLower.includes(blocked) || blocked.includes(titleLower))
+    if (titleMatch) {
+      return true
+    }
+  }
+
+  // Priority 2: Fallback to appName
+  return blockedApps.some((blocked) => appLower.includes(blocked) || blocked.includes(appLower))
 }
 
 // Minimise la fenêtre actuellement au premier plan via l'API Win32
@@ -46,13 +57,14 @@ function minimizeForegroundWindow() {
   })
 }
 
-export function checkBlocking(appName: string) {
+export function checkBlocking(appName: string, windowTitle: string = '') {
   if (!isActive) return
-  if (!matchesBlockedApp(appName)) {
+  if (!matchesBlockedApp(appName, windowTitle)) {
     lastNotifiedApp = null
     return
   }
 
+  console.log(`[FocusBlocking] Blocked app: "${appName}" (title: "${windowTitle}")`)
   minimizeForegroundWindow()
 
   if (mainWindow) {

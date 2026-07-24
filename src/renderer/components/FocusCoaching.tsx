@@ -40,7 +40,7 @@ function FocusCoaching() {
 
   useEffect(() => {
     loadCoaching()
-    const interval = setInterval(loadCoaching, 5 * 60 * 1000)
+    const interval = setInterval(loadCoaching, 2 * 60 * 1000) // Mise à jour toutes les 2 min
     return () => clearInterval(interval)
   }, [mode])
 
@@ -98,12 +98,29 @@ function FocusCoaching() {
     low: '🟢',
   }
 
+  const modeStyles = {
+    tdah: {
+      headerBg: 'from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30',
+      accentColor: '#a855f7',
+      borderColor: '#d8b4fe',
+      darkBorderColor: '#7e22ce',
+    },
+    standard: {
+      headerBg: 'from-blue-50 to-slate-50 dark:from-blue-950/30 dark:to-slate-950/30',
+      accentColor: '#3b82f6',
+      borderColor: '#93c5fd',
+      darkBorderColor: '#1e40af',
+    },
+  }
+
+  const currentMode = modeStyles[mode]
+
   return (
     <Card>
       <CardHeader
         title="Focus Coaching"
         icon={<Icon name="activity" size={16} />}
-        subtitle={mode === 'tdah' ? '🧠 Mode TDAH' : '⏱️ Mode Standard'}
+        subtitle={mode === 'tdah' ? '🧠 Mode TDAH (Optimisé courtes cycles)' : '⏱️ Mode Standard (Pomodoro classique)'}
       />
 
       <div className="space-y-4">
@@ -119,9 +136,18 @@ function FocusCoaching() {
                 {analysis.deepWorkScore}
               </div>
             </div>
-            <div className="text-right text-xs text-gray-500 dark:text-slate-500">
-              <div>{analysis.completionRate.toFixed(0)}% complétées</div>
-              <div>{analysis.streakDays} jours 🔥</div>
+            <div className="text-right">
+              <div className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+                {analysis.streakDays > 0 ? '🔥' : '⭐'} {analysis.streakDays} jours
+              </div>
+              <div className="text-xs text-gray-500 dark:text-slate-400">
+                {analysis.completionRate.toFixed(0)}% complétées
+              </div>
+              {analysis.sessionsToday > 0 && (
+                <div className="text-xs font-medium text-indigo-600 dark:text-indigo-400 mt-1">
+                  {analysis.sessionsToday} session{analysis.sessionsToday > 1 ? 's' : ''} aujourd'hui
+                </div>
+              )}
             </div>
           </div>
 
@@ -194,7 +220,7 @@ function FocusCoaching() {
             <div className="text-xs font-semibold text-gray-600 dark:text-slate-400 mb-3 uppercase tracking-wide">
               💡 Recommandations
             </div>
-            <div className="space-y-2.5">
+            <div className={`space-y-2.5 ${recommendations.length > 3 ? 'max-h-64 overflow-y-auto' : ''}`}>
               {recommendations.slice(0, 3).map((rec, idx) => (
                 <div
                   key={idx}
@@ -231,6 +257,11 @@ function FocusCoaching() {
                   )}
                 </div>
               ))}
+              {recommendations.length > 3 && (
+                <div className="text-xs text-gray-500 dark:text-slate-400 pt-2 text-center italic">
+                  +{recommendations.length - 3} autres recommandations
+                </div>
+              )}
             </div>
           </div>
         )}

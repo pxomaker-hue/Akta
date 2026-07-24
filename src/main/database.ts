@@ -173,6 +173,12 @@ function createTables() {
     // colonne déjà présente
   }
 
+  try {
+    db.exec(`ALTER TABLE project_phases ADD COLUMN keywords TEXT`)
+  } catch {
+    // colonne déjà présente
+  }
+
   // Table sessions de travail (start/pause/stop) — entités persistées, comptabilisables et facturables
   db.exec(`
     CREATE TABLE IF NOT EXISTS work_sessions (
@@ -370,6 +376,7 @@ function createTables() {
 
   seedDefaultCategories()
   seedDefaultSettings()
+  migrateCategoriesToDualRules()
 }
 
 interface DefaultCategory {
@@ -429,9 +436,31 @@ function seedDefaultCategories() {
 
   for (const category of DEFAULT_CATEGORIES) {
     if (existsStmt.get(category.name)) continue
-    const matchRules = category.keywords.map((keyword) => ({ type: 'app_name', keyword }))
+    const matchRules = buildDefaultCategoryRules(category.keywords)
     insertStmt.run(category.name, category.color, category.billable ? 1 : 0, JSON.stringify(matchRules), Date.now())
   }
+}
+
+function buildDefaultCategoryRules(keywords: string[]) {
+  const APP_ONLY = new Set([
+    'chrome', 'firefox', 'edge', 'safari', 'brave', 'opera',
+    'slack', 'discord', 'teams', 'zoom', 'outlook', 'gmail',
+    'vscode', 'visual studio', 'terminal', 'powershell', 'cmd',
+    'word', 'excel', 'powerpoint', 'notion',
+    'figma', 'photoshop', 'illustrator', 'sketch', 'canva',
+  ])
+
+  return keywords.flatMap((keyword) => {
+    const isAppOnly = APP_ONLY.has(keyword.toLowerCase())
+    if (isAppOnly) {
+      return [{ type: 'app_name', keyword }]
+    } else {
+      return [
+        { type: 'window_title', keyword },
+        { type: 'app_name', keyword },
+      ]
+    }
+  })
 }
 
 function seedDefaultSettings() {
@@ -450,6 +479,43 @@ function seedDefaultSettings() {
   const insertStmt = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)')
   for (const [key, value] of Object.entries(defaults)) {
     insertStmt.run(key, value)
+  }
+}
+
+function migrateCategoriesToDualRules() {
+  if (!db) return
+
+  const categories = db.prepare('SELECT id, match_rules FROM categories').all() as any[]
+  const updateStmt = db.prepare('UPDATE categories SET match_rules = ? WHERE id = ?')
+
+  for (const category of categories) {
+    let rules: any[] = []
+    try {
+      rules = JSON.parse(category.match_rules || '[]')
+    } catch {
+      console.log(`[Migration] Invalid JSON for category ${category.id}, resetting rules`)
+      updateStmt.run(JSON.stringify([]), category.id)
+      continue
+    }
+
+    // Extract unique keywords from any format
+    const uniqueKeywords = new Set<string>()
+    for (const rule of rules) {
+      if (typeof rule === 'string') {
+        uniqueKeywords.add(rule.trim())
+      } else if (typeof rule === 'object' && rule.keyword) {
+        uniqueKeywords.add(rule.keyword.trim())
+      }
+    }
+
+    // Rebuild rules using the same logic as buildDefaultCategoryRules
+    const newRules = buildDefaultCategoryRules(Array.from(uniqueKeywords))
+
+    // Only update if there's a change
+    if (newRules.length !== rules.length || JSON.stringify(newRules) !== category.match_rules) {
+      updateStmt.run(JSON.stringify(newRules), category.id)
+      console.log(`[Migration] Cleaned category ${category.id}: ${uniqueKeywords.size} unique keywords → ${newRules.length} rules`)
+    }
   }
 }
 
@@ -647,13 +713,14 @@ export function updateProject(
   hourGoal: number | null,
   budgetHours: number | null = null,
   budgetAmount: number | null = null,
-  deadline: number | null = null
+  deadline: number | null = null,
+  keywords: string | null = null
 ): void {
   if (!db) return
   const stmt = db.prepare(
-    'UPDATE projects SET name = ?, color = ?, client_id = ?, hourly_rate = ?, status = ?, hour_goal = ?, budget_hours = ?, budget_amount = ?, deadline = ?, updated_at = ? WHERE id = ?'
+    'UPDATE projects SET name = ?, color = ?, client_id = ?, hourly_rate = ?, status = ?, hour_goal = ?, budget_hours = ?, budget_amount = ?, deadline = ?, keywords = ?, updated_at = ? WHERE id = ?'
   )
-  stmt.run(name, color, clientId, hourlyRate, status, hourGoal, budgetHours, budgetAmount, deadline, Date.now(), projectId)
+  stmt.run(name, color, clientId, hourlyRate, status, hourGoal, budgetHours, budgetAmount, deadline, keywords, Date.now(), projectId)
 }
 
 export function getProjects(): any[] {
@@ -691,11 +758,11 @@ export function deleteProject(projectId: number): void {
 
 // ---- Phases de projet ----
 
-export function createProjectPhase(projectId: number, name: string, color: string = '#6366f1'): number {
+export function createProjectPhase(projectId: number, name: string, color: string = '#6366f1', keywords: string | null = null): number {
   if (!db) throw new Error('Database not initialized')
   const now = Date.now()
-  const stmt = db.prepare('INSERT INTO project_phases (project_id, name, color, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
-  const result = stmt.run(projectId, name, color, 'active', now, now)
+  const stmt = db.prepare('INSERT INTO project_phases (project_id, name, color, status, keywords, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+  const result = stmt.run(projectId, name, color, 'active', keywords, now, now)
   return Number(result.lastInsertRowid)
 }
 
@@ -704,9 +771,9 @@ export function getProjectPhases(projectId: number): any[] {
   return db.prepare('SELECT * FROM project_phases WHERE project_id = ? ORDER BY status ASC, created_at ASC').all(projectId) as any[]
 }
 
-export function updateProjectPhase(phaseId: number, name: string, color: string, status: string): void {
+export function updateProjectPhase(phaseId: number, name: string, color: string, status: string, keywords: string | null = null): void {
   if (!db) return
-  db.prepare('UPDATE project_phases SET name = ?, color = ?, status = ?, updated_at = ? WHERE id = ?').run(name, color, status, Date.now(), phaseId)
+  db.prepare('UPDATE project_phases SET name = ?, color = ?, status = ?, keywords = ?, updated_at = ? WHERE id = ?').run(name, color, status, keywords, Date.now(), phaseId)
 }
 
 export function deleteProjectPhase(phaseId: number): void {

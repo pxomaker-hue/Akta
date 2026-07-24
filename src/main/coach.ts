@@ -169,6 +169,9 @@ export interface FocusAnalysis {
   totalDeepWorkMinutes: number
   completionRate: number // % de sessions terminées
   averageSessionDuration: number // in seconds
+  sessionsToday: number // nombre de sessions aujourd'hui
+  billableMinutesToday: number // minutes facturables aujourd'hui
+  personalMinutesToday: number // minutes personnelles aujourd'hui
 }
 
 export interface ProductivityPattern {
@@ -239,6 +242,29 @@ export function analyzeFocusQuality(sessions: any[]): FocusAnalysis {
     else break
   }
 
+  // Sessions today
+  const todayStart = new Date(now)
+  todayStart.setHours(0, 0, 0, 0)
+  const todayEnd = new Date(todayStart)
+  todayEnd.setDate(todayEnd.getDate() + 1)
+  const sessionsToday = recentSessions.filter((s) => s.start_time >= todayStart.getTime() && s.start_time < todayEnd.getTime()).length
+
+  // Billable/Personal minutes today
+  const db = getDatabase()
+  const activitiesToday = db
+    .prepare(
+      `SELECT billable, duration_seconds FROM activities
+       WHERE start_time >= ? AND start_time < ?`
+    )
+    .all(todayStart.getTime(), todayEnd.getTime()) as any[]
+
+  const billableMinutesToday = Math.round(
+    activitiesToday.filter((a) => a.billable).reduce((sum: number, a: any) => sum + a.duration_seconds, 0) / 60
+  )
+  const personalMinutesToday = Math.round(
+    activitiesToday.filter((a) => !a.billable).reduce((sum: number, a: any) => sum + a.duration_seconds, 0) / 60
+  )
+
   return {
     deepWorkScore: Math.round(deepWorkScore),
     focusQuality,
@@ -246,6 +272,9 @@ export function analyzeFocusQuality(sessions: any[]): FocusAnalysis {
     totalDeepWorkMinutes: Math.round(deepWorkMinutes),
     completionRate: Math.round(completionRate),
     averageSessionDuration: Math.round(avgDuration),
+    sessionsToday,
+    billableMinutesToday,
+    personalMinutesToday,
   }
 }
 
@@ -324,29 +353,71 @@ export function getCoachingRecommendations(analysis: FocusAnalysis, pattern: Pro
     })
   }
 
-  // Recommendation 3: Streak
-  if (analysis.streakDays === 0) {
+  // Recommendation 3: Sessions today (FIXED - now checks sessionsToday)
+  if (analysis.sessionsToday === 0) {
     recommendations.push({
       type: 'streak',
       priority: 'high',
-      message: 'Tu n\'as pas de session focus aujourd\'hui. Une petite session de 15 min pour démarrer ?',
+      message: 'Tu n\'as pas lancé de session focus aujourd\'hui. Une petite session de 15 min pour démarrer ?',
       action: 'start-session',
     })
   } else if (analysis.streakDays >= 3) {
     recommendations.push({
       type: 'streak',
       priority: 'medium',
-      message: `C\'est ${analysis.streakDays} jours d'affilée ! Continue la série.`,
+      message: `C\'est ${analysis.streakDays} jours d'affilée ! 🔥 Continue la série.`,
     })
   }
 
-  // Recommendation 4: Break strategy
-  if (analysis.averageSessionDuration > 45 * 60) {
+  // Recommendation 4: Work-Life Balance
+  const totalToday = analysis.billableMinutesToday + analysis.personalMinutesToday
+  if (totalToday > 0) {
+    const billablePercent = Math.round((analysis.billableMinutesToday / totalToday) * 100)
+    if (billablePercent > 80) {
+      recommendations.push({
+        type: 'break',
+        priority: 'high',
+        message: `Tu as ${billablePercent}% de travail pro aujourd'hui. N'oublie pas de décompresser un peu !`,
+      })
+    } else if (billablePercent > 60) {
+      recommendations.push({
+        type: 'break',
+        priority: 'medium',
+        message: `Bonne répartition ! ${billablePercent}% pro, ${100 - billablePercent}% perso. Bien dosé !`,
+      })
+    }
+  }
+
+  // Recommendation 5: Worst hours warning
+  if (pattern.worstHours.length > 0) {
+    const now = new Date()
+    const currentHour = now.getHours()
+    if (pattern.worstHours.includes(currentHour)) {
+      recommendations.push({
+        type: 'timing',
+        priority: 'medium',
+        message: `C'est historiquement une mauvaise heure pour toi. Reste vigilant ou prends une pause recharge.`,
+      })
+    }
+  }
+
+  // Recommendation 6: Session duration
+  if (analysis.averageSessionDuration > 45 * 60 && analysis.focusQuality !== 'excellent') {
     recommendations.push({
       type: 'break',
       priority: 'medium',
-      message: `Tes sessions durent ${Math.round(analysis.averageSessionDuration / 60)} min en moyenne. Prends des breaks toutes les 18-20 min pour tenir la cadence.`,
+      message: `Tes sessions durent ${Math.round(analysis.averageSessionDuration / 60)} min en moyenne. Les micro-cycles de 18 min pourraient mieux te convenir !`,
       action: 'break-strategy',
+    })
+  }
+
+  // Recommendation 7: Momentum builder
+  if (analysis.sessionsToday > 0 && analysis.sessionsToday <= 2) {
+    recommendations.push({
+      type: 'practice',
+      priority: 'low',
+      message: `Tu as ${analysis.sessionsToday} session${analysis.sessionsToday > 1 ? 's' : ''} aujourd'hui. Une de plus pour la victoire ? 💪`,
+      action: 'start-session',
     })
   }
 

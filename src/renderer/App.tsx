@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import type { Activity, Category, Client } from '../shared/types'
 import ActivityList from './components/ActivityList'
 import Dashboard from './components/Dashboard'
@@ -61,8 +62,8 @@ function App() {
   useEffect(() => {
     loadData(true)
 
-    // Reload activities every 10 seconds
-    const interval = setInterval(() => loadData(false), 10000)
+    // Reload activities every 5 seconds
+    const interval = setInterval(() => loadData(false), 5000)
     return () => clearInterval(interval)
   }, [])
 
@@ -259,18 +260,63 @@ function App() {
             </div>
             <div className="lg:col-span-1">
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('activities.summary.title')}</h2>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{t('activities.summary.total')}</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{activities.length}</p>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Résumé de vos activités</h2>
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{t('activities.summary.total')}</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{activities.length}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{t('activities.summary.categories')}</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{categories.length}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Professionnel</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{activities.filter((a) => a.billable).length}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Personnel</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{activities.filter((a) => !a.billable).length}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{t('activities.summary.categories')}</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{categories.length}</p>
-                  </div>
-                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{t('activities.summary.status')}</p>
+                  <div className="flex items-center justify-center">
+                    {activities.length > 0 && (
+                      <ResponsiveContainer width="100%" height={140}>
+                        <PieChart>
+                          <Pie
+                            data={[
+                              { name: 'Professionnel', value: activities.filter((a) => a.billable).length },
+                              { name: 'Personnel', value: activities.filter((a) => !a.billable).length }
+                            ]}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={35}
+                            outerRadius={55}
+                            paddingAngle={2}
+                            dataKey="value"
+                          >
+                            <Cell fill="#3b82f6" />
+                            <Cell fill="#8b5cf6" />
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: '#fff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              padding: '8px 12px',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                            }}
+                            formatter={(value: number, name: string, props: any) => [
+                              <span key="value" style={{ color: '#000', fontWeight: '500' }}>{value} activités</span>,
+                              <span key="name" style={{ color: '#666' }}>{props.payload.name}</span>
+                            ]}
+                            labelStyle={{ color: '#000' }}
+                            wrapperStyle={{ color: '#000' }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
                   </div>
                 </div>
               </div>
