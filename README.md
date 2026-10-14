@@ -91,4 +91,9 @@ Toutes les données restent sur ta machine. Aucune télémétrie : le seul accè
 
 ## Licence
 
-Akta est distribué sous licence [GNU GPL v3](LICENSE). Tu peux utiliser, modifier et redistribuer le code, à condition que toute version redistribuée reste elle aussi sous GPL v3 avec son code source disponible.
+Akta est distribué sous licence [PolyForm Shield 1.0.0](LICENSE) — © 2026 PxoMaker.
+
+- ✅ Tu peux **utiliser** Akta librement, y compris dans un cadre professionnel (facturation de clients, etc.), et lire ou modifier le code pour ton propre usage.
+- ❌ Tu ne peux pas **vendre** Akta ni proposer un produit ou service qui lui fait concurrence (même gratuit), ni en distribuer une version modifiée à ce titre.
+
+Akta est gratuit : télécharge-le uniquement depuis les [Releases officielles](https://github.com/pxomaker-hue/Akta/releases) et ne paie pour aucune copie. Le code est consultable, mais cette licence n'est pas une licence open source au sens de l'OSI.
