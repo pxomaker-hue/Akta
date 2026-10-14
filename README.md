@@ -1,174 +1,90 @@
-# Akta - Suivi d'Activité Personnel
+# Akta — Suivi d'activité personnel
 
-Application de suivi d'activité légère pour Windows. Enregistrez chaque application et fenêtre que vous utilisez, catégorisez-les, et analysez vos patterns de productivité. Construit avec Electron, React et SQLite (100% local).
+Application de bureau pour Windows qui suit automatiquement ton temps de travail : applications et fenêtres utilisées, sessions facturables, projets, mode Focus et coaching. Tout reste **en local** (SQLite), sans compte ni cloud.
+
+Construit avec Electron, React, TypeScript et SQLite. Interface disponible en **français, anglais et allemand**.
+
+## Installation
+
+Télécharge `Akta.Setup.<version>.exe` depuis la page [Releases](https://github.com/pxomaker-hue/Akta/releases) et lance-le (Windows 64 bits). L'application se met à jour automatiquement ensuite.
+
+## Fonctionnalités
+
+### Suivi automatique
+- Détection de la fenêtre active en arrière-plan, avec pause automatique en cas d'inactivité (délai réglable)
+- Exclusions d'inactivité par application ou mot-clé du titre (regarder une vidéo sans toucher la souris, par exemple)
+- Catégories avec règles de reconnaissance automatique (par application et par mot-clé du titre), tags libres, marquage facturable / personnel
+- Timeline de la journée, tableau de bord, rapports hebdomadaires et analyses de productivité
+
+### Sessions, projets et facturation
+- Sessions de travail démarrables, pausables et arrêtables (bouton, icône de la zone de notification ou raccourcis globaux `Alt+Shift+S` / `Alt+Shift+X`)
+- Clients, projets et **phases de projet** (ex. Esquisse, PC, DCE, Chantier), avec taux horaire
+- **Budget (heures ou €), échéance et archivage** pour chaque projet *et* chaque phase ; un projet archivé met aussi ses phases en sommeil
+- Notifications de dépassement de budget ou d'échéance, et prédictions de date d'atteinte du budget
+- Exports CSV et PDF (par projet ou mensuel) pour la facturation
+
+### Mode Focus et coaching
+- Sessions minutées en mode simple ou chaîné façon Pomodoro, avec blocage des applications distrayantes
+- Coaching en mode TDAH (micro-cycles, streaks, défis, jalons à débloquer) ou standard
+- Recommandations personnalisées et durée de cycle optimale calculée à partir de ton historique
+
+### Au quotidien
+- Widget d'aperçu dans la zone de notification (épinglable en widget flottant)
+- Thème clair / sombre / auto et couleur d'accent personnalisable
+- Lancement au démarrage de Windows, réduction en arrière-plan à la fermeture
+- Synchronisation optionnelle entre plusieurs ordinateurs via un fichier partagé (NAS, disque réseau…)
+- Sauvegarde et restauration complètes au format JSON
+
+## Développement
+
+### Prérequis
+Node.js, et les outils de compilation Windows nécessaires à `better-sqlite3` / `active-win`.
+
+### Lancer le projet
+
+```bash
+npm install
+npm run dev        # Electron + serveur Vite (http://localhost:3000)
+```
+
+### Compiler
+
+```bash
+npm run build      # compile le processus principal (tsc) et le renderer (Vite)
+npm run dist       # génère l'installeur Windows dans release/
+```
+
+Le dossier `release/` n'est pas versionné : les installeurs sont publiés via les [Releases GitHub](https://github.com/pxomaker-hue/Akta/releases).
 
 ## Architecture
 
-### Structure des dossiers
-
 ```
-akta/
-├── src/
-│   ├── main/              # Processus principal Electron (backend)
-│   │   ├── index.ts       # Initialisation Electron & IPC
-│   │   ├── preload.ts     # Pont de sécurité main ↔ renderer
-│   │   ├── database.ts    # SQLite schéma & initialisation
-│   │   └── tracker.ts     # Suivi activité & détection idle
-│   ├── renderer/          # Interface React (frontend)
-│   │   ├── main.tsx       # Point d'entrée React
-│   │   ├── App.tsx        # Composant principal
-│   │   ├── index.css      # Styles Tailwind
-│   │   └── components/    # Composants React réutilisables
-│   └── shared/
-│       └── types.ts       # Interfaces TypeScript partagées
-├── index.html             # Template HTML fenêtre Electron
-├── vite.config.ts         # Config bundler Vite
-├── tsconfig.json          # Config TypeScript (renderer)
-├── tsconfig.main.json     # Config TypeScript (main)
-├── package.json           # Dépendances & scripts
-├── tailwind.config.js     # Config Tailwind CSS
-└── postcss.config.js      # Config PostCSS
+src/
+├── main/                  # Processus principal Electron
+│   ├── index.ts           # Fenêtres, tray, raccourcis, handlers IPC
+│   ├── preload.ts         # Pont sécurisé main ↔ renderer
+│   ├── database.ts        # Schéma SQLite, migrations, import/export
+│   ├── tracker.ts         # Suivi de la fenêtre active, inactivité, sessions
+│   ├── categorizer.ts     # Reconnaissance automatique des catégories
+│   ├── focus-mode.ts      # Sessions Focus et blocage d'applications
+│   ├── coach.ts           # Coaching, recommandations, notifications
+│   ├── challenges.ts      # Défis et jalons
+│   ├── analytics.ts       # Scores et tendances de productivité
+│   ├── sync.ts            # Synchronisation par fichier partagé
+│   ├── pdf-export.ts      # Exports PDF
+│   ├── updater.ts         # Mises à jour automatiques
+│   └── i18n.ts            # Traductions du texte généré côté main (fr/en/de)
+├── renderer/              # Interface React
+│   ├── App.tsx
+│   ├── components/        # Écrans et composants (dont UI/ pour les éléments génériques)
+│   ├── hooks/             # useTranslation, useTheme, useAccentColor…
+│   └── locales/           # fr.json, en.json, de.json
+└── shared/types.ts        # Types partagés main ↔ renderer
 ```
 
-### Technologies Clés
+### Traductions
+Le texte de l'interface passe par `t('clé', 'texte par défaut')` (`src/renderer/hooks/useTranslation.ts`). Toute nouvelle clé doit être ajoutée aux trois fichiers de `src/renderer/locales/` — sans quoi le texte par défaut (français) s'affiche dans toutes les langues. Le texte généré par le processus principal (notifications, tray, coaching, exports) est traduit dans `src/main/i18n.ts`.
 
-- **Electron**: Framework app desktop
-- **TypeScript**: Typage statique partout
-- **React**: Composants UI & gestion d'état
-- **Tailwind CSS**: Styles utility-first
-- **SQLite (better-sqlite3)**: Stockage local
-- **active-win**: Détecte fenêtre active (Windows)
-- **Recharts**: Graphiques dashboard
+## Confidentialité
 
----
-
-## Démarrage
-
-### 1. Installer les dépendances
-
-```bash
-npm install --legacy-peer-deps
-```
-
-### 2. Lancer en développement
-
-```bash
-npm run dev
-```
-
-Démarre:
-- Processus main Electron (TypeScript watcher)
-- Serveur React Vite (http://localhost:3000)
-- Fenêtre Electron
-
-### 3. Build production
-
-```bash
-npm run build       # Compile TypeScript & bundle React
-npm run dist        # Crée installer Windows (.exe)
-```
-
----
-
-## Comment ça marche
-
-### Suivi d'Activité (Main Process)
-
-**Fichier:** `src/main/tracker.ts`
-
-1. **Boucle de polling** (toutes les 2 secondes)
-   - Détecte fenêtre active via `active-win`
-   - Compar avec fenêtre précédente
-   - Si change: termine activité et en démarre une nouvelle
-
-2. **Détection Idle**
-   - Si pas d'input (souris/clavier) pendant 3+ min: pause automatique
-   - Reprend quand il y a de l'activité
-
-3. **Écriture Base de Données**
-   - Chaque activité sauvegardée immédiatement en SQLite
-   - Colonnes: `app_name`, `window_title`, `start_time`, `end_time`, `duration_seconds`, `category_id`, `billable`
-
-### Communication IPC (Main ↔ Renderer)
-
-Le pont `preload.ts` expose sécurisément les canaux:
-
-- `get-activities`: Récupère activités depuis DB
-- `get-categories`: Récupère catégories
-- `create-category`: Crée catégorie
-- `update-activity-category`: Assigne catégorie à activité
-
-### Schéma Base de Données
-
-**Tables:**
-
-1. **activities** — Chaque changement de fenêtre
-   - Liens catégories via `category_id`
-   - Flags billable/personnel basé catégorie par défaut
-
-2. **categories** — Créées par l'utilisateur
-   - Exemple: "Travail", "Personnel", "Apprentissage"
-   - Couleur pour visualisation
-   - Flag `billable_default`
-   - `match_rules`: JSON mots-clés pour auto-catégorisation (futur)
-
-3. **focus_sessions** — Sessions Pomodoro
-   - Timer focus configurables
-   - Apps bloquées pendant session
-
----
-
-## Features - Phase 1 (Actuel)
-
-✅ **Suivi Activité**
-- Poll fenêtre active toutes 2 sec
-- Détecte idle (>3 min sans input)
-- Stocke en SQLite
-
-✅ **Catégorisation**
-- Créer catégories personnalisées
-- Assigner catégories manuellement
-- Flag billable par catégorie
-
-⏳ **Prochaines** (Phase 2)
-- Dashboard analytique
-- Graphiques temps/catégorie (bar + pie)
-- Timer Pomodoro avec blocage d'apps
-
----
-
-## Notes Développement
-
-### Debug
-
-- **Main Process**: Logs console; DevTools Electron (Ctrl+Shift+I)
-- **Renderer**: React DevTools dans Electron DevTools
-- **Database**: Fichier SQLite dans dossier `userData` d'Electron
-
-### Compilation TypeScript
-
-- **Renderer**: Compilé par Vite (à la volée en dev)
-- **Main**: Compilé par `tsc` avant app
-
-### Pourquoi `better-sqlite3`?
-
-- Rapide, bindings synchrones SQLite
-- Parfait pour apps locales sans réseau
-- Tous les données sur disque, pas de sync cloud
-
----
-
-## Objectifs Projet
-
-- 100% local, zéro télémétrie
-- Code simple et lisible (pour débutants)
-- Architecture extensible (futures features)
-
----
-
-## Limitations v0.1
-
-- Windows uniquement (uses `active-win`)
-- Assignation catégories manuelle (pas d'auto-matching encore)
-- Pas d'export données historiques
-
+Toutes les données restent sur ta machine. Aucune télémétrie : le seul accès réseau est la vérification des mises à jour.
