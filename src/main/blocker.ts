@@ -1,5 +1,6 @@
 import { BrowserWindow, Notification } from 'electron'
 import { execFile } from 'child_process'
+import { isFocusSessionOnBreak } from './focus-mode'
 
 let mainWindow: BrowserWindow | null = null
 let blockedApps: string[] = []
@@ -59,6 +60,7 @@ function minimizeForegroundWindow() {
 
 export function checkBlocking(appName: string, windowTitle: string = '') {
   if (!isActive) return
+  if (isFocusSessionOnBreak()) return // pas de blocage pendant les pauses d'une session chaînée
   if (!matchesBlockedApp(appName, windowTitle)) {
     lastNotifiedApp = null
     return

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Icon, confirmDialog } from './UI'
+import { useTranslation } from '../hooks/useTranslation'
 
 interface Tag {
   id: number
@@ -12,6 +13,7 @@ interface TagManagerProps {
 }
 
 function TagManager({ onTagsLoaded }: TagManagerProps) {
+  const { t } = useTranslation()
   const [tags, setTags] = useState<Tag[]>([])
   const [newTagName, setNewTagName] = useState('')
   const [newTagColor, setNewTagColor] = useState('#6366f1')
@@ -47,7 +49,7 @@ function TagManager({ onTagsLoaded }: TagManagerProps) {
   }
 
   async function deleteTag(tagId: number) {
-    if (!(await confirmDialog('Supprimer ce tag ?', { danger: true }))) return
+    if (!(await confirmDialog(t('tagManager.confirmDelete', 'Supprimer ce tag ?'), { danger: true }))) return
 
     try {
       await window.electron.ipc.invoke('delete-tag', tagId)
@@ -82,24 +84,24 @@ function TagManager({ onTagsLoaded }: TagManagerProps) {
       <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
           <Icon name="plus" size={18} className="accent-text" />
-          Créer un tag
+          {t('tagManager.createTitle', 'Créer un tag')}
         </h3>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nom</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('categoryList.name', 'Nom')}</label>
             <input
               type="text"
               value={newTagName}
               onChange={(e) => setNewTagName(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && createTag()}
-              placeholder="Entrer le nom du tag..."
+              placeholder={t('tagManager.namePlaceholder', 'Entrer le nom du tag...')}
               className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Couleur</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('categoryForm.colorLabel', 'Couleur')}</label>
             <div className="flex gap-2 flex-wrap">
               {colors.map((color) => (
                 <button
@@ -118,7 +120,7 @@ function TagManager({ onTagsLoaded }: TagManagerProps) {
             disabled={!newTagName.trim()}
             className="w-full px-4 py-2.5 rounded-lg accent-gradient-bg text-white text-sm font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            Créer le tag
+            {t('tagManager.createButton', 'Créer le tag')}
           </button>
         </div>
       </div>
@@ -127,11 +129,11 @@ function TagManager({ onTagsLoaded }: TagManagerProps) {
       <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
           <Icon name="tag" size={18} className="accent-text" />
-          Tags ({tags.length})
+          {t('tagManager.tagsCount', 'Tags')} ({tags.length})
         </h3>
 
         {tags.length === 0 ? (
-          <p className="text-center text-gray-500 dark:text-gray-400 py-8">Aucun tag créé</p>
+          <p className="text-center text-gray-500 dark:text-gray-400 py-8">{t('tagManager.noTag', 'Aucun tag créé')}</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {tags.map((tag) => (
@@ -145,7 +147,7 @@ function TagManager({ onTagsLoaded }: TagManagerProps) {
                 <button
                   onClick={() => deleteTag(tag.id)}
                   className="text-gray-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition-colors flex-shrink-0"
-                  title="Supprimer"
+                  title={t('tagManager.deleteTitle', 'Supprimer')}
                 >
                   <Icon name="x" size={12} />
                 </button>

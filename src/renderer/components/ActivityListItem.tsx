@@ -4,6 +4,7 @@ import { DESIGN } from '../../shared/design'
 import CategoryIcon from './CategoryIcon'
 import TagBadges from './TagBadges'
 import { Badge, Icon, Dropdown } from './UI'
+import { useTranslation, localeTag } from '../hooks/useTranslation'
 
 interface Tag {
   id: number
@@ -21,6 +22,7 @@ interface ActivityListItemProps {
 }
 
 function ActivityListItem({ activity, categories, tags = [], allTags = [], onCategoryChange, onTagsChange }: ActivityListItemProps) {
+  const { t, language } = useTranslation()
   const [isUpdating, setIsUpdating] = useState(false)
 
   const isSameCalendarDay = (msA: number, msB: number) => {
@@ -29,8 +31,8 @@ function ActivityListItem({ activity, categories, tags = [], allTags = [], onCat
     return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
   }
   const isToday = (ms: number) => isSameCalendarDay(ms, Date.now())
-  const formatTimeOnly = (ms: number) => new Date(ms).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-  const formatDateOnly = (ms: number) => new Date(ms).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+  const formatTimeOnly = (ms: number) => new Date(ms).toLocaleTimeString(localeTag(language), { hour: '2-digit', minute: '2-digit' })
+  const formatDateOnly = (ms: number) => new Date(ms).toLocaleDateString(localeTag(language), { day: '2-digit', month: '2-digit' })
 
   const formatDuration = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`
@@ -149,9 +151,9 @@ function ActivityListItem({ activity, categories, tags = [], allTags = [], onCat
             value={activity.category_id ? String(activity.category_id) : ''}
             onChange={(v) => handleCategoryChange(v ? Number(v) : null)}
             disabled={isUpdating}
-            placeholder="Catégoriser"
+            placeholder={t('activityListItem.categorize', 'Catégoriser')}
             options={[
-              { value: '', label: 'Catégoriser' },
+              { value: '', label: t('activityListItem.categorize', 'Catégoriser') },
               ...categories.map((category) => ({ value: String(category.id), label: category.name, color: category.color })),
             ]}
           />
@@ -160,11 +162,11 @@ function ActivityListItem({ activity, categories, tags = [], allTags = [], onCat
             <button
               onClick={handleToggleBillable}
               disabled={isUpdating}
-              title="Cliquer pour changer le statut facturable"
+              title={t('activityListItem.toggleBillableTitle', 'Cliquer pour changer le statut facturable')}
               className="disabled:opacity-50 w-full flex justify-center"
             >
               <Badge variant={activity.billable ? 'primary' : 'neutral'} icon={<Icon name="briefcase" size={12} />}>
-                {activity.billable ? 'Facturable' : 'Personnel'}
+                {activity.billable ? t('activityListItem.billable', 'Facturable') : t('activityListItem.personal', 'Personnel')}
               </Badge>
             </button>
           )}
@@ -172,11 +174,11 @@ function ActivityListItem({ activity, categories, tags = [], allTags = [], onCat
           <button
             onClick={handleDelete}
             disabled={isUpdating}
-            title="Supprimer cette activité"
+            title={t('activityListItem.deleteTitle', 'Supprimer cette activité')}
             className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
           >
             <Icon name="trash" size={13} />
-            Supprimer
+            {t('activityListItem.delete', 'Supprimer')}
           </button>
         </div>
       </div>

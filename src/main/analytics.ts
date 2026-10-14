@@ -1,18 +1,23 @@
 import { getDatabase } from './database'
+import { computeDeepWorkSessions } from '../shared/deepwork'
+import type { Activity } from '../shared/types'
 
 interface ProductivityMetrics {
   score: number
   dailyAverage: number
   focusTime: number
   distractionTime: number
+  uncategorizedTime: number
   deepWorkSessions: number
 }
 
 interface OptimalTime {
   hour: number
-  day: string
+  dayOfWeek: number
   activities: number
+  distinctDays: number
   totalDuration: number
+  avgDuration: number
 }
 
 interface MonthComparison {
@@ -44,44 +49,55 @@ export function getProductivityScore(limitDays: number = 7): ProductivityMetrics
   `)
   const activitiesData = activitiesStmt.get(startTime) as any
 
-  // Deep work sessions (> 30 min consecutive in same category)
-  const deepWorkStmt = db.prepare(`
-    SELECT COUNT(DISTINCT DATE(start_time / 1000, 'unixepoch')) as deep_work_sessions
-    FROM activities
-    WHERE start_time >= ? AND duration_seconds >= 1800 AND category_id IS NOT NULL
-  `)
-  const deepWorkData = deepWorkStmt.get(startTime) as any
-
-  // Focused time (activities with category)
+  // Focus = catégorisé ET pas une catégorie "distraction" (avoir une catégorie ne suffit pas —
+  // regarder des vidéos catégorisées "Divertissement" n'est pas du temps productif).
   const focusedStmt = db.prepare(`
     SELECT SUM(duration_seconds) as focused_time
     FROM activities
     WHERE start_time >= ? AND category_id IS NOT NULL
+      AND category_id NOT IN (SELECT id FROM categories WHERE is_distraction = 1)
   `)
   const focusedData = focusedStmt.get(startTime) as any
 
-  // Distraction time (without category)
+  // Distraction = catégorisé ET catégorie marquée "distraction" (pas "sans catégorie", qui est
+  // simplement du temps non classé, ni productif ni distrayant par défaut).
   const distractionStmt = db.prepare(`
     SELECT SUM(duration_seconds) as distraction_time
     FROM activities
-    WHERE start_time >= ? AND category_id IS NULL
+    WHERE start_time >= ? AND category_id IN (SELECT id FROM categories WHERE is_distraction = 1)
   `)
   const distractionData = distractionStmt.get(startTime) as any
+
+  const uncategorizedStmt = db.prepare(`
+    SELECT SUM(duration_seconds) as uncategorized_time
+    FROM activities
+    WHERE start_time >= ? AND category_id IS NULL
+  `)
+  const uncategorizedData = uncategorizedStmt.get(startTime) as any
 
   const totalDuration = activitiesData.total_duration || 0
   const focusedTime = focusedData.focused_time || 0
   const distractionTime = distractionData.distraction_time || 0
+  const uncategorizedTime = uncategorizedData.uncategorized_time || 0
 
   // Productivity score: (focused / total) * 100
   const score = totalDuration > 0 ? Math.round((focusedTime / totalDuration) * 100) : 0
   const dailyAverage = Math.round(totalDuration / limitDays / 3600)
+
+  // Même définition du deep work que Reports.tsx (blocs continus d'une même catégorie ≥ 15 min,
+  // tolérance 3 min) — auparavant ce chiffre comptait le nombre de JOURS distincts ayant eu une
+  // seule activité ≥ 30 min, ce qui n'a rien à voir avec une "session" et ne correspondait à aucune
+  // autre définition du deep work utilisée ailleurs dans l'app.
+  const rawActivities = db.prepare(`SELECT * FROM activities WHERE start_time >= ?`).all(startTime) as Activity[]
+  const deepWorkSessions = computeDeepWorkSessions(rawActivities).length
 
   return {
     score,
     dailyAverage,
     focusTime: Math.round(focusedTime / 3600),
     distractionTime: Math.round(distractionTime / 3600),
-    deepWorkSessions: deepWorkData.deep_work_sessions || 0,
+    uncategorizedTime: Math.round(uncategorizedTime / 3600),
+    deepWorkSessions,
   }
 }
 
@@ -93,30 +109,34 @@ export function getOptimalTimes(): OptimalTime[] {
   const stmt = db.prepare(`
     SELECT
       CAST(strftime('%H', start_time / 1000, 'unixepoch') AS INTEGER) as hour,
-      CASE strftime('%w', start_time / 1000, 'unixepoch')
-        WHEN '0' THEN 'Dimanche'
-        WHEN '1' THEN 'Lundi'
-        WHEN '2' THEN 'Mardi'
-        WHEN '3' THEN 'Mercredi'
-        WHEN '4' THEN 'Jeudi'
-        WHEN '5' THEN 'Vendredi'
-        WHEN '6' THEN 'Samedi'
-      END as day,
+      CAST(strftime('%w', start_time / 1000, 'unixepoch') AS INTEGER) as dayOfWeek,
       COUNT(*) as activities,
-      SUM(duration_seconds) as total_duration
+      COUNT(DISTINCT DATE(start_time / 1000, 'unixepoch')) as distinct_days,
+      SUM(duration_seconds) as total_duration,
+      AVG(duration_seconds) as avg_duration
     FROM activities
     WHERE start_time >= ?
-    GROUP BY hour, day
-    ORDER BY total_duration DESC
-    LIMIT 20
+    GROUP BY hour, dayOfWeek
+    ORDER BY avg_duration DESC
   `)
 
-  const results = stmt.all(startTime) as any[]
-  return results.map((r) => ({
+  const rows = stmt.all(startTime) as any[]
+
+  // Un classement par durée totale brute favorisait un unique bloc marathon isolé plutôt qu'un
+  // vrai motif récurrent. On privilégie les créneaux vus sur au moins 2 jours différents (signal
+  // de récurrence), avec repli sur l'ensemble si l'historique est encore trop court pour ça.
+  const recurring = rows.filter((r) => r.distinct_days >= 2)
+  const pool = recurring.length > 0 ? recurring : rows
+
+  // Le nom du jour n'est pas résolu ici (SQLite n'a pas la langue de l'utilisateur) : le renderer
+  // traduit dayOfWeek (0=dimanche..6=samedi, convention strftime('%w')) via son propre i18n.
+  return pool.slice(0, 20).map((r) => ({
     hour: r.hour,
-    day: r.day,
+    dayOfWeek: r.dayOfWeek,
     activities: r.activities,
+    distinctDays: r.distinct_days,
     totalDuration: r.total_duration,
+    avgDuration: Math.round(r.avg_duration),
   }))
 }
 
@@ -138,7 +158,7 @@ export function getMonthComparison(): MonthComparison[] {
       SELECT
         COUNT(*) as total_activities,
         SUM(duration_seconds) as total_duration,
-        SUM(CASE WHEN category_id IS NOT NULL THEN duration_seconds ELSE 0 END) as focused_time
+        SUM(CASE WHEN category_id IS NOT NULL AND category_id NOT IN (SELECT id FROM categories WHERE is_distraction = 1) THEN duration_seconds ELSE 0 END) as focused_time
       FROM activities
       WHERE start_time >= ? AND start_time < ?
     `)
@@ -181,7 +201,7 @@ export function getWeekTrends(): WeekTrend[] {
       SELECT
         COUNT(*) as activities,
         SUM(duration_seconds) as total_duration,
-        SUM(CASE WHEN category_id IS NOT NULL THEN duration_seconds ELSE 0 END) as focused_time
+        SUM(CASE WHEN category_id IS NOT NULL AND category_id NOT IN (SELECT id FROM categories WHERE is_distraction = 1) THEN duration_seconds ELSE 0 END) as focused_time
       FROM activities
       WHERE start_time >= ? AND start_time < ?
     `)

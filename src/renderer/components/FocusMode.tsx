@@ -4,7 +4,15 @@ import FocusHistory from './FocusHistory'
 import FocusCoaching from './FocusCoaching'
 import FocusChallenges from './FocusChallenges'
 import { Icon, Card } from './UI'
+import { useTranslation } from '../hooks/useTranslation'
 import type { FocusSession } from '../../shared/types'
+
+// Le système de traduction est un simple dictionnaire clé→texte (pas de moteur ICU), donc les
+// phrases avec variables utilisent un jeton {{...}} remplacé après coup — ça permet à chaque
+// langue de garder son propre ordre des mots plutôt que de figer une concaténation à la française.
+function tf(text: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
+}
 
 const QUICK_DURATIONS = [15, 25, 45, 90]
 
@@ -59,6 +67,8 @@ function notify(title: string, body: string) {
 }
 
 function FocusMode({ onBack }: FocusModeProps) {
+  const { t } = useTranslation()
+
   // Mode selection
   const [focusMode, setFocusMode] = useState<FocusMode>('simple')
 
@@ -91,7 +101,17 @@ function FocusMode({ onBack }: FocusModeProps) {
       setCurrent(session)
       if (session) {
         setBlockedApps(JSON.parse(session.blocked_apps))
-        setDuration(Math.round(session.planned_duration / 60))
+        // Restore mode and Pomodoro parameters
+        if (session.mode) {
+          setFocusMode(session.mode)
+        }
+        if (session.mode === 'chained') {
+          if (session.num_sessions) setNumSessions(session.num_sessions)
+          if (session.session_duration) setSessionDuration(session.session_duration)
+          if (session.pause_duration) setPauseDuration(session.pause_duration)
+        } else {
+          setDuration(Math.round(session.planned_duration / 60))
+        }
       }
     } catch (error) {
       console.error('Error loading current focus session:', error)
@@ -154,10 +174,10 @@ function FocusMode({ onBack }: FocusModeProps) {
       setJustCompleted(true)
       playCompletionChime()
       notify(
-        'Akta — Session terminée !',
+        t('focusMode.notif.completedTitle', 'Akta — Session terminée !'),
         focusMode === 'chained'
-          ? `Bravo, tu as bouclé tes ${numSessions} sessions de concentration !`
-          : 'Ta session de concentration est terminée, bien joué !'
+          ? tf(t('focusMode.notif.completedChainedBody', 'Bravo, tu as bouclé tes {{n}} sessions de concentration !'), { n: numSessions })
+          : t('focusMode.notif.completedSimpleBody', 'Ta session de concentration est terminée, bien joué !')
       )
       setTimeout(() => setJustCompleted(false), 4000)
       await loadHistory()
@@ -252,10 +272,17 @@ function FocusMode({ onBack }: FocusModeProps) {
       setPhaseBump(true)
       setTimeout(() => setPhaseBump(false), 400)
       notify(
-        pomodoroState.isBreak ? 'Akta — Pause !' : 'Akta — Au travail !',
+        pomodoroState.isBreak ? t('focusMode.notif.pauseTitle', 'Akta — Pause !') : t('focusMode.notif.workTitle', 'Akta — Au travail !'),
         pomodoroState.isBreak
-          ? `Session ${pomodoroState.sessionNum}/${numSessions} terminée. Petite pause de ${pauseDuration} min.`
-          : `Pause terminée, direction la session ${pomodoroState.sessionNum}/${numSessions} !`
+          ? tf(t('focusMode.notif.pauseBody', 'Session {{session}}/{{total}} terminée. Petite pause de {{minutes}} min.'), {
+              session: pomodoroState.sessionNum,
+              total: numSessions,
+              minutes: pauseDuration,
+            })
+          : tf(t('focusMode.notif.workBody', 'Pause terminée, direction la session {{session}}/{{total}} !'), {
+              session: pomodoroState.sessionNum,
+              total: numSessions,
+            })
       )
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -271,13 +298,13 @@ function FocusMode({ onBack }: FocusModeProps) {
 
   const mascotMood: MascotMood = justCompleted ? 'celebrate' : isActive ? (pomodoroState?.isBreak ? 'sleepy' : 'focused') : 'neutral'
   const mascotMessage = justCompleted
-    ? 'Session terminée !'
+    ? t('focusMode.mascot.completed', 'Session terminée !')
     : isActive && focusMode === 'chained' && pomodoroState
       ? pomodoroState.isBreak
-        ? `Pause bien méritée! ${pomodoroState.sessionNum}/${numSessions}`
-        : `Session ${pomodoroState.sessionNum}/${numSessions} - Reste concentré!`
+        ? tf(t('focusMode.mascot.pauseEarned', 'Pause bien méritée! {{session}}/{{total}}'), { session: pomodoroState.sessionNum, total: numSessions })
+        : tf(t('focusMode.mascot.inSession', 'Session {{session}}/{{total}} - Reste concentré!'), { session: pomodoroState.sessionNum, total: numSessions })
       : isActive
-        ? 'Reste concentré, tu gères'
+        ? t('focusMode.mascot.stayFocused', 'Reste concentré, tu gères')
         : undefined
 
   const formatTime = (seconds: number) => {
@@ -309,7 +336,16 @@ function FocusMode({ onBack }: FocusModeProps) {
         sessionDurationSec = sessionDurationSec * 60
       }
 
-      const session = await window.electron.ipc.invoke('start-focus-session', sessionDurationSec, blockedApps, createWorkSession)
+      const session = await window.electron.ipc.invoke(
+        'start-focus-session',
+        sessionDurationSec,
+        blockedApps,
+        createWorkSession,
+        focusMode,
+        numSessions,
+        sessionDuration,
+        pauseDuration
+      )
 
       // Set the session immediately without extra IPC call
       if (session) {
@@ -321,7 +357,7 @@ function FocusMode({ onBack }: FocusModeProps) {
       }
     } catch (error) {
       console.error('Error starting focus session:', error)
-      alert('Erreur au démarrage de la session. Réessaye ?')
+      alert(t('focusMode.startError', 'Erreur au démarrage de la session. Réessaye ?'))
     } finally {
       setBusy(false)
     }
@@ -349,15 +385,15 @@ function FocusMode({ onBack }: FocusModeProps) {
               className="flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200 transition-colors mb-2"
             >
               <span aria-hidden>←</span>
-              Retour au tableau de bord
+              {t('focusMode.back', 'Retour au tableau de bord')}
             </button>
           )}
           <h2 className="text-2xl font-bold flex items-center gap-2.5">
             <Icon name="target" size={22} className="accent-text flex-shrink-0" />
-            <span className="accent-gradient-text">Mode focus</span>
+            <span className="accent-gradient-text">{t('focusMode.title', 'Mode focus')}</span>
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-            Bloque les applis qui te distraient et reste concentré sur une durée définie.
+            {t('focusMode.subtitle', 'Bloque les applis qui te distraient et reste concentré sur une durée définie.')}
           </p>
         </div>
 
@@ -377,7 +413,7 @@ function FocusMode({ onBack }: FocusModeProps) {
                     pomodoroState.isBreak ? 'bg-white/30' : 'bg-white/25'
                   }`}
                 >
-                  {pomodoroState.isBreak ? '☕ PAUSE' : '🎯 FOCUS'} • Session {pomodoroState.sessionNum}/{numSessions}
+                  {pomodoroState.isBreak ? t('focusMode.pauseBadge', '☕ PAUSE') : t('focusMode.focusBadge', '🎯 FOCUS')} • {t('focusMode.sessionLabel', 'Session')} {pomodoroState.sessionNum}/{numSessions}
                 </span>
               </div>
             )}
@@ -388,10 +424,10 @@ function FocusMode({ onBack }: FocusModeProps) {
               {isActive
                 ? focusMode === 'chained'
                   ? pomodoroState?.isBreak
-                    ? `Détente • ${pauseDuration}m`
-                    : `Concentration • ${sessionDuration}m`
-                  : 'Temps restant'
-                : 'Prêt à démarrer'}
+                    ? `${t('focusMode.relax', 'Détente')} • ${pauseDuration}m`
+                    : `${t('focusMode.concentration', 'Concentration')} • ${sessionDuration}m`
+                  : t('focusMode.timeRemaining', 'Temps restant')
+                : t('focusMode.readyToStart', 'Prêt à démarrer')}
             </p>
           </div>
           <Mascot mood={mascotMood} size={96} background="white" />
@@ -404,15 +440,15 @@ function FocusMode({ onBack }: FocusModeProps) {
               <p key={completedSessions} className="text-lg font-bold accent-text animate-pop-in">
                 {completedSessions}/{numSessions}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">terminées</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('focusMode.completedStat', 'terminées')}</p>
             </div>
             <div className="bg-gray-50 dark:bg-slate-800/50 rounded-lg py-3">
               <p className="text-lg font-bold text-gray-800 dark:text-gray-100 font-mono tabular-nums">{formatTime(totalElapsedSec)}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">écoulé au total</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('focusMode.elapsedStat', 'écoulé au total')}</p>
             </div>
             <div className="bg-gray-50 dark:bg-slate-800/50 rounded-lg py-3">
               <p className="text-lg font-bold text-gray-800 dark:text-gray-100 font-mono tabular-nums">{formatTime(timeLeft)}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">restant au total</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('focusMode.remainingStat', 'restant au total')}</p>
             </div>
           </div>
         )}
@@ -433,9 +469,9 @@ function FocusMode({ onBack }: FocusModeProps) {
             >
               <div className="flex items-center gap-2 justify-center">
                 <Icon name="clock" size={16} />
-                <span>Simple</span>
+                <span>{t('focusMode.simpleLabel', 'Simple')}</span>
               </div>
-              <p className="text-xs opacity-75 mt-1">Un timer unique</p>
+              <p className="text-xs opacity-75 mt-1">{t('focusMode.simpleDesc', 'Un timer unique')}</p>
             </button>
             <button
               onClick={() => setFocusMode('chained')}
@@ -447,9 +483,9 @@ function FocusMode({ onBack }: FocusModeProps) {
             >
               <div className="flex items-center gap-2 justify-center">
                 <Icon name="refresh" size={16} />
-                <span>Chaîné</span>
+                <span>{t('focusMode.chainedLabel', 'Chaîné')}</span>
               </div>
-              <p className="text-xs opacity-75 mt-1">Sessions + pauses</p>
+              <p className="text-xs opacity-75 mt-1">{t('focusMode.chainedDesc', 'Sessions + pauses')}</p>
             </button>
           </div>
         )}
@@ -460,7 +496,7 @@ function FocusMode({ onBack }: FocusModeProps) {
           <div className="mb-6 min-h-[180px] flex flex-col justify-center">
             {focusMode === 'simple' ? (
               <div key="simple" className="animate-fade-in-scale">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Durée de la session</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('focusMode.sessionDurationLabel', 'Durée de la session')}</label>
                 <div className="flex gap-2">
                   {QUICK_DURATIONS.map((mins) => (
                     <button
@@ -482,7 +518,7 @@ function FocusMode({ onBack }: FocusModeProps) {
                 <div className="grid grid-cols-3 gap-4">
                   {/* Nombre de sessions */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sessions</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('focusMode.sessionsCountLabel', 'Sessions')}</label>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setNumSessions(Math.max(1, numSessions - 1))}
@@ -504,7 +540,7 @@ function FocusMode({ onBack }: FocusModeProps) {
 
                   {/* Durée session focus */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Focus (min)</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('focusMode.focusMinutesLabel', 'Focus (min)')}</label>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setSessionDuration(Math.max(5, sessionDuration - 5))}
@@ -526,7 +562,7 @@ function FocusMode({ onBack }: FocusModeProps) {
 
                   {/* Durée pause */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pause (min)</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('focusMode.pauseMinutesLabel', 'Pause (min)')}</label>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setPauseDuration(Math.max(1, pauseDuration - 1))}
@@ -550,9 +586,9 @@ function FocusMode({ onBack }: FocusModeProps) {
                 {/* Résumé */}
                 <div className="bg-gray-50 dark:bg-slate-800/50 rounded p-3 text-sm">
                   <p className="text-gray-600 dark:text-gray-400">
-                    <strong>{numSessions} sessions</strong> de {sessionDuration}m
-                    + <strong>{numSessions - 1} pauses</strong> de {pauseDuration}m
-                    = <strong className="text-accent">{numSessions * sessionDuration + (numSessions - 1) * pauseDuration}m total</strong>
+                    <strong>{numSessions} {t('focusMode.summary.sessionsWord', 'sessions')}</strong> {t('focusMode.summary.ofWord', 'de')} {sessionDuration}m
+                    + <strong>{numSessions - 1} {t('focusMode.summary.pausesWord', 'pauses')}</strong> {t('focusMode.summary.ofWord', 'de')} {pauseDuration}m
+                    = <strong className="text-accent">{numSessions * sessionDuration + (numSessions - 1) * pauseDuration}m {t('focusMode.summary.totalWord', 'total')}</strong>
                   </p>
                 </div>
               </div>
@@ -565,7 +601,7 @@ function FocusMode({ onBack }: FocusModeProps) {
           <div className="flex items-center gap-2">
             <Icon name="briefcase" size={16} className="text-indigo-600 dark:text-indigo-400" />
             <label className="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
-              Créer une session de travail
+              {t('focusMode.createWorkSession', 'Créer une session de travail')}
             </label>
           </div>
           <button
@@ -584,14 +620,14 @@ function FocusMode({ onBack }: FocusModeProps) {
 
         {/* Apps bloquées */}
         <div className="mb-8">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Apps à bloquer pendant la session</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">{t('focusMode.blockedAppsLabel', 'Apps à bloquer pendant la session')}</label>
           <div className="flex gap-2 mb-3">
             <input
               type="text"
               value={newBlockedApp}
               onChange={(e) => setNewBlockedApp(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddBlockedApp()}
-              placeholder="ex : Discord, Slack, Chrome"
+              placeholder={t('focusMode.blockedAppsPlaceholder', 'ex : Discord, Slack, Chrome')}
               disabled={isActive}
               className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] disabled:opacity-50"
             />
@@ -600,7 +636,7 @@ function FocusMode({ onBack }: FocusModeProps) {
               disabled={isActive || !newBlockedApp.trim()}
               className="px-4 py-2 text-sm bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg font-medium disabled:opacity-50 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors active:scale-95"
             >
-              Ajouter
+              {t('focusMode.add', 'Ajouter')}
             </button>
           </div>
 
@@ -634,7 +670,7 @@ function FocusMode({ onBack }: FocusModeProps) {
             className="w-full accent-gradient-bg hover:brightness-110 text-white font-bold py-4 px-6 rounded-xl transition-all duration-150 active:scale-[0.98] text-lg disabled:opacity-50 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
           >
             <Icon name="play" size={20} />
-            Démarrer la session focus
+            {t('focusMode.startButton', 'Démarrer la session focus')}
           </button>
         ) : (
           <button
@@ -643,13 +679,13 @@ function FocusMode({ onBack }: FocusModeProps) {
             className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-4 px-6 rounded-xl transition-all duration-150 active:scale-[0.98] text-lg disabled:opacity-50 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
           >
             <Icon name="stop-circle" size={20} />
-            Arrêter
+            {t('focusMode.stopButton', 'Arrêter')}
           </button>
         )}
 
         <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg">
           <p className="text-sm text-amber-900 dark:text-amber-200">
-            <strong>Note :</strong> pendant le mode focus, les apps bloquées sont automatiquement minimisées dès qu'elles passent au premier plan.
+            <strong>{t('focusMode.noteLabel', 'Note :')}</strong> {t('focusMode.noteText', "pendant le mode focus, les apps bloquées sont automatiquement minimisées dès qu'elles passent au premier plan.")}
           </p>
         </div>
       </Card>

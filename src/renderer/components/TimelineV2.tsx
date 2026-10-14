@@ -3,6 +3,11 @@ import type { Activity, Category, WorkSession } from '../../shared/types'
 import { computeDeepWorkSessions } from '../../shared/deepwork'
 import { DESIGN } from '../../shared/design'
 import { Icon } from './UI'
+import { useTranslation, localeTag, type Language } from '../hooks/useTranslation'
+
+function tf(text: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
+}
 
 interface TimelineV2Props {
   activities: Activity[]
@@ -24,10 +29,10 @@ const DAY_MS_MODULE = 24 * 60 * 60 * 1000
 
 // Partagé avec le Dashboard : les deux doivent utiliser exactement le même libellé pour que
 // l'encart de stats reste clairement identifiable comme portant sur le même jour que la Timeline.
-export function formatDayLabel(ms: number): string {
-  if (ms === getTodayStart()) return "Aujourd'hui"
-  if (ms === getTodayStart() - DAY_MS_MODULE) return 'Hier'
-  return new Date(ms).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+export function formatDayLabel(ms: number, t: (key: string, defaultValue?: string) => string, language: Language): string {
+  if (ms === getTodayStart()) return t('timeline.today', "Aujourd'hui")
+  if (ms === getTodayStart() - DAY_MS_MODULE) return t('timeline.yesterday', 'Hier')
+  return new Date(ms).toLocaleDateString(localeTag(language), { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -69,6 +74,7 @@ function computePresetView(hours: number): { start: number; hours: number } {
 }
 
 function TimelineV2({ activities, categories, onUpdate, dayStart, onDayChange }: TimelineV2Props) {
+  const { t, language } = useTranslation()
   const [hovered, setHovered] = useState<Activity | null>(null)
   const [hoveredSession, setHoveredSession] = useState<number | null>(null)
   const [updatingSession, setUpdatingSession] = useState<number | null>(null)
@@ -463,7 +469,7 @@ function TimelineV2({ activities, categories, onUpdate, dayStart, onDayChange }:
     animateTo(start, hours)
   }
 
-  const formatTime = (ms: number) => new Date(ms).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const formatTime = (ms: number) => new Date(ms).toLocaleTimeString(localeTag(language), { hour: '2-digit', minute: '2-digit' })
   const formatHourLabel = (h: number) => {
     const hh = Math.floor(h) % 24
     const mm = Math.round((h % 1) * 60)
@@ -482,23 +488,23 @@ function TimelineV2({ activities, categories, onUpdate, dayStart, onDayChange }:
         <div className="flex items-center gap-3">
           <h3 className="text-xl font-bold flex items-center gap-2">
             <Icon name="chart-line" size={20} className="accent-text" />
-            <span className="accent-gradient-text">Ton flow</span>
+            <span className="accent-gradient-text">{t('timeline.yourFlow', 'Ton flow')}</span>
           </h3>
           <div className="flex items-center gap-1">
             <button
               onClick={goToPreviousDay}
-              title="Jour précédent"
+              title={t('timeline.previousDay', 'Jour précédent')}
               className="p-1.5 rounded-full text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700 hover:text-gray-800 dark:hover:text-slate-200 transition-colors"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
-            <span className="text-sm font-medium text-gray-600 dark:text-slate-300 min-w-[7rem] text-center capitalize">{formatDayLabel(dayStart)}</span>
+            <span className="text-sm font-medium text-gray-600 dark:text-slate-300 min-w-[7rem] text-center capitalize">{formatDayLabel(dayStart, t, language)}</span>
             <button
               onClick={goToNextDay}
               disabled={isViewingToday}
-              title="Jour suivant"
+              title={t('timeline.nextDay', 'Jour suivant')}
               className="p-1.5 rounded-full text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700 hover:text-gray-800 dark:hover:text-slate-200 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
@@ -510,7 +516,7 @@ function TimelineV2({ activities, categories, onUpdate, dayStart, onDayChange }:
                 onClick={goToToday}
                 className="ml-1 text-xs px-2.5 py-1 rounded-full bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors font-medium"
               >
-                Aujourd'hui
+                {t('timeline.today', "Aujourd'hui")}
               </button>
             )}
           </div>
@@ -746,7 +752,7 @@ function TimelineV2({ activities, categories, onUpdate, dayStart, onDayChange }:
         </div>
 
         <p className="text-xs text-gray-400 dark:text-slate-500 mt-2 flex items-center gap-1">
-          Molette pour zoomer, glisser pour naviguer • Clique sur une session pour la marquer facturable
+          {t('timeline.hint', 'Molette pour zoomer, glisser pour naviguer • Clique sur une session pour la marquer facturable')}
           <Icon name="briefcase" size={12} className="inline" />
         </p>
 
@@ -763,11 +769,16 @@ function TimelineV2({ activities, categories, onUpdate, dayStart, onDayChange }:
                 <>
                   <span className={`w-2 h-2 rounded-full shrink-0 ${bar.isLive ? 'bg-emerald-400 animate-pulse' : 'bg-gray-400'}`} />
                   <span className="text-white font-medium">
-                    Session {bar.isLive ? 'en cours' : ''} de {formatDuration(durationSec)}
+                    {tf(
+                      bar.isLive
+                        ? t('timeline.sessionLiveOf', 'Session en cours de {{duration}}')
+                        : t('timeline.sessionOf', 'Session de {{duration}}'),
+                      { duration: formatDuration(durationSec) }
+                    )}
                   </span>
                   <span className={`ml-auto flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium ${bar.billable ? 'bg-emerald-500/20 text-emerald-300' : 'bg-gray-500/20 text-gray-300'}`}>
                     <Icon name="briefcase" size={11} />
-                    {bar.billable ? 'Facturable' : 'Non facturable'}
+                    {bar.billable ? t('timeline.billable', 'Facturable') : t('timeline.notBillable', 'Non facturable')}
                   </span>
                 </>
               )
@@ -784,10 +795,10 @@ function TimelineV2({ activities, categories, onUpdate, dayStart, onDayChange }:
               return (
                 <>
                   <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: band.color }} />
-                  <span className="text-white font-medium">Session de {formatDuration(band.duration)}</span>
+                  <span className="text-white font-medium">{tf(t('timeline.sessionOf', 'Session de {{duration}}'), { duration: formatDuration(band.duration) })}</span>
                   <span className={`ml-auto flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium ${band.billable ? 'bg-emerald-500/20 text-emerald-300' : 'bg-gray-500/20 text-gray-300'}`}>
                     <Icon name="briefcase" size={11} />
-                    {band.billable ? 'Facturable' : 'Non facturable'}
+                    {band.billable ? t('timeline.billable', 'Facturable') : t('timeline.notBillable', 'Non facturable')}
                   </span>
                 </>
               )

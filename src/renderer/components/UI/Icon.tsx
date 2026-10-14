@@ -35,6 +35,17 @@ export type IconName =
   | 'layers'
   | 'laptop'
   | 'flame'
+  | 'award'
+  | 'star'
+  | 'trending-up'
+  | 'activity'
+  | 'play'
+  | 'stop-circle'
+  | 'pin'
+  | 'pause'
+  | 'minimize'
+  | 'maximize'
+  | 'restore'
 
 interface IconProps extends SVGProps<SVGSVGElement> {
   name: IconName
@@ -79,6 +90,17 @@ const PATHS: Record<IconName, string> = {
   layers: 'm12 2 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 17l9 5 9-5',
   laptop: 'M4 5h16a1 1 0 0 1 1 1v9H3V6a1 1 0 0 1 1-1ZM1 19h22l-1.5-3h-19Z',
   flame: 'M8.5 14.5A2.5 2.5 0 0 0 11 17a2.5 2.5 0 0 0 2.5-2.5c0-1.4-1-2-1-3.5a3.5 3.5 0 0 0-1-2.5s-2 1.5-2 4c0 1-1 1.3-1 2ZM12 3a9 9 0 0 0-9 9c0 4.5 3.5 8 8 9-1.5-1.5-2-3-2-4.5C9 13 12 10 12 3Z',
+  award: 'M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12ZM8.21 13.89 7 23l5-3 5 3-1.21-9.12',
+  star: 'M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2Z',
+  'trending-up': 'M23 6l-9.5 9.5-5-5L1 18M17 6h6v6',
+  activity: 'M22 12h-4l-3 9L9 3l-3 9H2',
+  play: 'M5 3l14 9-14 9V3Z',
+  'stop-circle': 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z M9 9h6v6H9Z',
+  pin: 'M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1Z',
+  pause: 'M7 4h3v16H7ZM14 4h3v16h-3Z',
+  minimize: 'M5 12h14',
+  maximize: 'M4 4h16v16H4Z',
+  restore: 'M9 9h10v10H9Z M5 5h10v4M5 5v10h4',
 }
 
 function Icon({ name, size = 16, className = '', ...props }: IconProps) {

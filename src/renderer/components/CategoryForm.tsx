@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Icon } from './UI'
+import { useTranslation } from '../hooks/useTranslation'
 
 interface CategoryFormProps {
   onCategoryCreated: () => void
 }
 
 function CategoryForm({ onCategoryCreated }: CategoryFormProps) {
+  const { t } = useTranslation()
   const [name, setName] = useState('')
   const [color, setColor] = useState('#3b82f6')
   const [billable, setBillable] = useState(false)
@@ -41,7 +43,7 @@ function CategoryForm({ onCategoryCreated }: CategoryFormProps) {
     setError('')
 
     if (!name.trim()) {
-      setError('Le nom de la catégorie est requis')
+      setError(t('categoryForm.nameRequired', 'Le nom de la catégorie est requis'))
       return
     }
 
@@ -55,7 +57,7 @@ function CategoryForm({ onCategoryCreated }: CategoryFormProps) {
       setKeywords([])
       onCategoryCreated()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Échec de la création de la catégorie')
+      setError(err instanceof Error ? err.message : t('categoryForm.createFailed', 'Échec de la création de la catégorie'))
       console.error('Error creating category:', err)
     } finally {
       setIsLoading(false)
@@ -66,21 +68,21 @@ function CategoryForm({ onCategoryCreated }: CategoryFormProps) {
     <div className="bg-white dark:bg-slate-900 rounded-xl shadow p-6 border border-gray-200 dark:border-slate-700">
       <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
         <Icon name="plus" size={18} className="accent-text" />
-        Créer une nouvelle catégorie
+        {t('categoryForm.title', 'Créer une nouvelle catégorie')}
       </h3>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Name Input */}
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Nom de la catégorie
+            {t('categoryForm.nameLabel', 'Nom de la catégorie')}
           </label>
           <input
             type="text"
             id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="ex : Développement, Réunions, Apprentissage"
+            placeholder={t('categoryForm.namePlaceholder', 'ex : Développement, Réunions, Apprentissage')}
             className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             disabled={isLoading}
           />
@@ -89,7 +91,7 @@ function CategoryForm({ onCategoryCreated }: CategoryFormProps) {
         {/* Color Picker */}
         <div>
           <label htmlFor="color" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Couleur
+            {t('categoryForm.colorLabel', 'Couleur')}
           </label>
           <div className="flex gap-2 flex-wrap">
             {predefinedColors.map((c) => (
@@ -116,7 +118,7 @@ function CategoryForm({ onCategoryCreated }: CategoryFormProps) {
             disabled={isLoading}
           />
           <label htmlFor="billable" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-            Marquer les activités de cette catégorie comme facturables par défaut
+            {t('categoryForm.billableLabel', 'Marquer les activités de cette catégorie comme facturables par défaut')}
           </label>
         </div>
 
@@ -131,17 +133,17 @@ function CategoryForm({ onCategoryCreated }: CategoryFormProps) {
             disabled={isLoading}
           />
           <label htmlFor="isDistraction" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-            Distraction — jamais facturable, même durant une session facturable, avec rappel de focus
+            {t('categoryForm.distractionLabel', 'Distraction — jamais facturable, même durant une session facturable, avec rappel de focus')}
           </label>
         </div>
 
         {/* Auto-categorization Keywords */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Mots-clés (auto-catégorisation)
+            {t('categoryForm.keywordsLabel', 'Mots-clés (auto-catégorisation)')}
           </label>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-            Les activités dont le nom d'app ou le titre contient un de ces mots seront catégorisées automatiquement.
+            {t('categoryForm.keywordsHint', "Les activités dont le nom d'app ou le titre contient un de ces mots seront catégorisées automatiquement.")}
           </p>
           <div className="flex gap-2 mb-2">
             <input
@@ -154,7 +156,7 @@ function CategoryForm({ onCategoryCreated }: CategoryFormProps) {
                   handleAddKeyword()
                 }
               }}
-              placeholder="ex : vscode, figma, slack"
+              placeholder={t('categoryForm.keywordsPlaceholder', 'ex : vscode, figma, slack')}
               disabled={isLoading}
               className="flex-1 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
@@ -164,7 +166,7 @@ function CategoryForm({ onCategoryCreated }: CategoryFormProps) {
               disabled={isLoading || !newKeyword.trim()}
               className="px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 disabled:opacity-50 text-sm font-medium transition-colors"
             >
-              Ajouter
+              {t('categoryForm.add', 'Ajouter')}
             </button>
           </div>
           {keywords.length > 0 && (
@@ -202,7 +204,7 @@ function CategoryForm({ onCategoryCreated }: CategoryFormProps) {
           disabled={isLoading}
           className="w-full accent-gradient-bg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-all"
         >
-          {isLoading ? 'Création...' : 'Créer la catégorie'}
+          {isLoading ? t('categoryForm.creating', 'Création...') : t('categoryForm.createButton', 'Créer la catégorie')}
         </button>
       </form>
     </div>

@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Icon } from './UI'
+import { useTranslation } from '../hooks/useTranslation'
+
+function tf(text: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
+}
 
 type SyncResult =
   | { status: 'not-configured' }
@@ -8,6 +13,7 @@ type SyncResult =
   | { status: 'error'; message: string }
 
 function SyncButton() {
+  const { t } = useTranslation()
   const [configured, setConfigured] = useState(false)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<SyncResult | null>(null)
@@ -43,13 +49,18 @@ function SyncButton() {
     if (!result) return null
     switch (result.status) {
       case 'not-configured':
-        return "Aucun fichier de synchronisation configuré — vas dans Paramètres pour en choisir un."
+        return t('syncButton.notConfigured', 'Aucun fichier de synchronisation configuré — vas dans Paramètres pour en choisir un.')
       case 'exported':
-        return 'Données envoyées vers le fichier de synchronisation.'
+        return t('syncButton.exported', 'Données envoyées vers le fichier de synchronisation.')
       case 'imported':
-        return `${result.imported} élément${result.imported !== 1 ? 's' : ''} récupéré${result.imported !== 1 ? 's' : ''} depuis le fichier de synchronisation.`
+        return tf(
+          result.imported !== 1
+            ? t('syncButton.importedPlural', '{{count}} éléments récupérés depuis le fichier de synchronisation.')
+            : t('syncButton.importedSingular', '{{count}} élément récupéré depuis le fichier de synchronisation.'),
+          { count: result.imported }
+        )
       case 'error':
-        return `Erreur de synchronisation : ${result.message}`
+        return tf(t('syncButton.error', 'Erreur de synchronisation : {{message}}'), { message: result.message })
     }
   })()
 
@@ -58,7 +69,7 @@ function SyncButton() {
       <button
         onClick={handleSync}
         disabled={busy}
-        title={configured ? 'Synchroniser avec le fichier partagé' : 'Synchronisation non configurée (Paramètres)'}
+        title={configured ? t('syncButton.syncTitle', 'Synchroniser avec le fichier partagé') : t('syncButton.notConfiguredTitle', 'Synchronisation non configurée (Paramètres)')}
         className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors disabled:opacity-50 ${
           configured
             ? 'bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300'

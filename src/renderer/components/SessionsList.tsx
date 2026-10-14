@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import type { WorkSession, Project, ProjectPhase } from '../../shared/types'
 import { Card, CardHeader, Icon, Badge, Dropdown, confirmDialog } from './UI'
 import { getTodayStart } from './TimelineV2'
+import { useTranslation, localeTag } from '../hooks/useTranslation'
+
+function tf(text: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -20,6 +25,7 @@ interface SessionPause {
 }
 
 function SessionsList() {
+  const { t, language } = useTranslation()
   const [sessions, setSessions] = useState<WorkSession[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
@@ -112,7 +118,7 @@ function SessionsList() {
   }
 
   const handleDelete = async (session: WorkSession) => {
-    if (!(await confirmDialog('Supprimer cette session ? Les activités associées ne seront pas supprimées.', { danger: true }))) return
+    if (!(await confirmDialog(t('sessionsList.confirmDelete', 'Supprimer cette session ? Les activités associées ne seront pas supprimées.'), { danger: true }))) return
     setDeletingId(session.id)
     try {
       await window.electron.ipc.invoke('delete-session', session.id)
@@ -167,7 +173,7 @@ function SessionsList() {
     }
   }
 
-  const formatTime = (ms: number) => new Date(ms).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const formatTime = (ms: number) => new Date(ms).toLocaleTimeString(localeTag(language), { hour: '2-digit', minute: '2-digit' })
   const formatDuration = (seconds: number) => {
     const h = Math.floor(seconds / 3600)
     const m = Math.floor((seconds % 3600) / 60)
@@ -231,7 +237,7 @@ function SessionsList() {
   const formatSessionTime = (ms: number) => {
     const time = formatTime(ms)
     if (ms >= todayStart) return time
-    const date = new Date(ms).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+    const date = new Date(ms).toLocaleDateString(localeTag(language), { day: '2-digit', month: '2-digit' })
     return `${date} ${time}`
   }
 
@@ -286,7 +292,7 @@ function SessionsList() {
               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
               <div className="min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate flex items-center gap-2">
-                  {session.label || `${formatSessionTime(session.start_time)}${!isOpen && session.end_time ? ` → ${formatTime(session.end_time)}` : ' (en cours)'}`}
+                  {session.label || `${formatSessionTime(session.start_time)}${!isOpen && session.end_time ? ` → ${formatTime(session.end_time)}` : ` (${t('sessionsList.inProgress', 'en cours')})`}`}
                   {session.project_name && (
                     <span
                       className="text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0"
@@ -297,7 +303,7 @@ function SessionsList() {
                   )}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {session.label ? `${formatSessionTime(session.start_time)}${!isOpen && session.end_time ? ` → ${formatTime(session.end_time)}` : ' (en cours)'} • ` : ''}
+                  {session.label ? `${formatSessionTime(session.start_time)}${!isOpen && session.end_time ? ` → ${formatTime(session.end_time)}` : ` (${t('sessionsList.inProgress', 'en cours')})`} • ` : ''}
                   {formatDuration(durationSeconds)}
                 </p>
               </div>
@@ -306,14 +312,14 @@ function SessionsList() {
           <div className="flex items-center gap-2 flex-shrink-0 ml-3">
             <button onClick={() => handleToggleBillable(session)} disabled={updatingId === session.id} className="disabled:opacity-50">
               <Badge variant={session.billable ? 'primary' : 'neutral'} icon={<Icon name="briefcase" size={12} />}>
-                {session.billable ? 'Facturable' : 'Personnel'}
+                {session.billable ? t('sessionsList.billable', 'Facturable') : t('sessionsList.personal', 'Personnel')}
               </Badge>
             </button>
             {!isOpen && (
               <button
                 onClick={() => handleDelete(session)}
                 disabled={deletingId === session.id}
-                title="Supprimer cette session"
+                title={t('sessionsList.deleteTitle', 'Supprimer cette session')}
                 className="w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors"
               >
                 <Icon name="trash" size={13} />
@@ -330,7 +336,7 @@ function SessionsList() {
                 type="text"
                 value={draftLabel}
                 onChange={(e) => setDraftLabel(e.target.value)}
-                placeholder="Nom de la session (ex : Rédaction proposition)"
+                placeholder={t('sessionsList.namePlaceholder', 'Nom de la session (ex : Rédaction proposition)')}
                 className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
               />
               <Dropdown
@@ -340,9 +346,9 @@ function SessionsList() {
                   setDraftPhaseId('')
                 }}
                 className="w-40 flex-shrink-0"
-                placeholder="Aucun projet"
+                placeholder={t('sessionsList.noProject', 'Aucun projet')}
                 options={[
-                  { value: '', label: 'Aucun projet' },
+                  { value: '', label: t('sessionsList.noProject', 'Aucun projet') },
                   ...projects.map((p) => ({ value: String(p.id), label: p.name, color: p.color })),
                 ]}
               />
@@ -351,9 +357,9 @@ function SessionsList() {
                   value={draftPhaseId}
                   onChange={setDraftPhaseId}
                   className="w-36 flex-shrink-0"
-                  placeholder="Aucune phase"
+                  placeholder={t('sessionsList.noPhase', 'Aucune phase')}
                   options={[
-                    { value: '', label: 'Aucune phase' },
+                    { value: '', label: t('sessionsList.noPhase', 'Aucune phase') },
                     ...draftPhases.map((ph) => ({ value: String(ph.id), label: ph.name, color: ph.color })),
                   ]}
                 />
@@ -362,7 +368,7 @@ function SessionsList() {
                 onClick={() => handleSaveDetails(session)}
                 className="px-3 py-1.5 text-sm rounded-lg accent-gradient-bg text-white font-medium hover:brightness-110 transition-all flex-shrink-0"
               >
-                Enregistrer
+                {t('sessionsList.save', 'Enregistrer')}
               </button>
             </div>
 
@@ -374,15 +380,15 @@ function SessionsList() {
                 <div className="flex items-center gap-3 text-xs bg-amber-50 dark:bg-amber-900/10 rounded-lg px-3 py-2">
                   <span className="flex items-center gap-1.5 text-gray-700 dark:text-slate-300">
                     <Icon name="clock" size={12} className="text-emerald-500" />
-                    <strong>{formatDuration(activeSeconds)}</strong> actif
+                    <strong>{formatDuration(activeSeconds)}</strong> {t('sessionsList.active', 'actif')}
                   </span>
                   <span className="text-gray-400 dark:text-slate-500">•</span>
                   <span className="text-gray-700 dark:text-slate-300">
-                    <strong>{formatDuration(totalSeconds)}</strong> au total
+                    <strong>{formatDuration(totalSeconds)}</strong> {t('sessionsList.total', 'au total')}
                   </span>
                   <span className="text-gray-400 dark:text-slate-500">•</span>
                   <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
-                    dont <strong>{formatDuration(pausedSeconds)}</strong> de pause
+                    {t('sessionsList.includingPrefix', 'dont')} <strong>{formatDuration(pausedSeconds)}</strong> {t('sessionsList.includingPauseSuffix', 'de pause')}
                   </span>
                 </div>
               )
@@ -394,7 +400,7 @@ function SessionsList() {
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-500"></div>
               </div>
             ) : breakdown.length === 0 && pauses.length === 0 ? (
-              <p className="text-xs text-gray-500 dark:text-gray-400 py-2">Aucune activité enregistrée pendant cette session.</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 py-2">{t('sessionsList.noActivityInSession', 'Aucune activité enregistrée pendant cette session.')}</p>
             ) : (
               <div className="space-y-1.5">
                 {breakdown.map((app) => (
@@ -407,7 +413,7 @@ function SessionsList() {
                   <div key={`pause-${pause.id}`} className="flex items-center justify-between text-xs">
                     <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 truncate">
                       <Icon name="clock" size={11} />
-                      Pause{pause.end_time === null ? ' (en cours)' : ''}
+                      {t('sessionsList.pauseWord', 'Pause')}{pause.end_time === null ? ` (${t('sessionsList.inProgress', 'en cours')})` : ''}
                     </span>
                     <span className="text-amber-500 dark:text-amber-400 flex-shrink-0 ml-2">{formatDuration(pause.duration_seconds)}</span>
                   </div>
@@ -420,7 +426,10 @@ function SessionsList() {
               <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-200 dark:border-slate-700">
                 <span className="flex items-center gap-1.5 font-medium text-gray-700 dark:text-slate-300">
                   <Icon name="dollar" size={12} className="accent-text" />
-                  Total facturable ({formatDuration(billableSeconds)} × {session.project_hourly_rate} €/h)
+                  {tf(t('sessionsList.totalBillable', 'Total facturable ({{duration}} × {{rate}} €/h)'), {
+                    duration: formatDuration(billableSeconds),
+                    rate: session.project_hourly_rate,
+                  })}
                 </span>
                 <span className="font-semibold accent-text">
                   {((billableSeconds / 3600) * session.project_hourly_rate).toFixed(2)} €
@@ -444,15 +453,22 @@ function SessionsList() {
   if (sessions.length === 0) {
     return (
       <Card>
-        <CardHeader title="Sessions actives" icon={<Icon name="target" size={18} />} />
-        <p className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">Aucune session enregistrée pour le moment.</p>
+        <CardHeader title={t('sessionsList.title', 'Sessions actives')} icon={<Icon name="target" size={18} />} />
+        <p className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">{t('sessionsList.noneRecorded', 'Aucune session enregistrée pour le moment.')}</p>
       </Card>
     )
   }
 
   return (
     <Card>
-      <CardHeader title="Sessions actives" icon={<Icon name="target" size={18} />} subtitle={`${filteredSessions.length} session${filteredSessions.length !== 1 ? 's' : ''}`} />
+      <CardHeader
+        title={t('sessionsList.title', 'Sessions actives')}
+        icon={<Icon name="target" size={18} />}
+        subtitle={tf(
+          filteredSessions.length === 1 ? t('sessionsList.countSingular', '{{n}} session') : t('sessionsList.countPlural', '{{n}} sessions'),
+          { n: filteredSessions.length }
+        )}
+      />
 
       {/* Filtres */}
       <div className="flex items-center gap-2 flex-wrap mb-3">
@@ -460,15 +476,15 @@ function SessionsList() {
           value={clientFilter}
           onChange={setClientFilter}
           className="w-40"
-          placeholder="Tous les clients"
-          options={[{ value: '', label: 'Tous les clients' }, ...clientsWithProjects.map((c) => ({ value: String(c.id), label: c.name, color: c.color }))]}
+          placeholder={t('sessionsList.allClients', 'Tous les clients')}
+          options={[{ value: '', label: t('sessionsList.allClients', 'Tous les clients') }, ...clientsWithProjects.map((c) => ({ value: String(c.id), label: c.name, color: c.color }))]}
         />
         <Dropdown
           value={projectFilter}
           onChange={setProjectFilter}
           className="w-40"
-          placeholder="Tous les projets"
-          options={[{ value: '', label: 'Tous les projets' }, ...projects.map((p) => ({ value: String(p.id), label: p.name, color: p.color }))]}
+          placeholder={t('sessionsList.allProjects', 'Tous les projets')}
+          options={[{ value: '', label: t('sessionsList.allProjects', 'Tous les projets') }, ...projects.map((p) => ({ value: String(p.id), label: p.name, color: p.color }))]}
         />
         <div className="flex items-center gap-1.5">
           <div className="relative">
@@ -477,7 +493,7 @@ function SessionsList() {
               value={dateFilterStart}
               onChange={(e) => setDateFilterStart(e.target.value)}
               className="pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
-              placeholder="De"
+              placeholder={t('sessionsList.dateFrom', 'De')}
             />
             <Icon name="calendar" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
@@ -488,7 +504,7 @@ function SessionsList() {
               value={dateFilterEnd}
               onChange={(e) => setDateFilterEnd(e.target.value)}
               className="pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
-              placeholder="À"
+              placeholder={t('sessionsList.dateTo', 'À')}
             />
             <Icon name="calendar" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
@@ -504,7 +520,7 @@ function SessionsList() {
             className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 rounded-full hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
           >
             <Icon name="x" size={12} />
-            Réinitialiser les filtres
+            {t('sessionsList.resetFilters', 'Réinitialiser les filtres')}
           </button>
         )}
       </div>
@@ -514,38 +530,41 @@ function SessionsList() {
         <div className="mb-4 p-4 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-indigo-900 dark:text-indigo-200">
-              {selectedSessions.size} session{selectedSessions.size !== 1 ? 's' : ''} sélectionnée{selectedSessions.size !== 1 ? 's' : ''}
+              {tf(
+                selectedSessions.size === 1 ? t('sessionsList.selectedSingular', '{{n}} session sélectionnée') : t('sessionsList.selectedPlural', '{{n}} sessions sélectionnées'),
+                { n: selectedSessions.size }
+              )}
             </span>
             <button
               onClick={() => setSelectedSessions(new Set())}
               className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
             >
-              Désélectionner tout
+              {t('sessionsList.deselectAll', 'Désélectionner tout')}
             </button>
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Dropdown
               value={bulkProjectId}
               onChange={setBulkProjectId}
-              placeholder="Projet (inchangé)"
-              options={[{ value: '', label: 'Projet (inchangé)' }, ...projects.map((p) => ({ value: String(p.id), label: p.name, color: p.color }))]}
+              placeholder={t('sessionsList.projectUnchanged', 'Projet (inchangé)')}
+              options={[{ value: '', label: t('sessionsList.projectUnchanged', 'Projet (inchangé)') }, ...projects.map((p) => ({ value: String(p.id), label: p.name, color: p.color }))]}
             />
             {bulkProjectId && (
               <Dropdown
                 value={bulkPhaseId}
                 onChange={setBulkPhaseId}
-                placeholder="Phase (inchangée)"
-                options={[{ value: '', label: 'Phase (inchangée)' }, ...draftPhases.map((ph) => ({ value: String(ph.id), label: ph.name, color: ph.color }))]}
+                placeholder={t('sessionsList.phaseUnchanged', 'Phase (inchangée)')}
+                options={[{ value: '', label: t('sessionsList.phaseUnchanged', 'Phase (inchangée)') }, ...draftPhases.map((ph) => ({ value: String(ph.id), label: ph.name, color: ph.color }))]}
               />
             )}
             <Dropdown
               value={bulkBillable}
               onChange={(v) => setBulkBillable(v as 'unchanged' | 'true' | 'false')}
-              placeholder="Facturable"
+              placeholder={t('sessionsList.billable', 'Facturable')}
               options={[
-                { value: 'unchanged', label: 'Facturable (inchangé)' },
-                { value: 'true', label: '✓ Facturable' },
-                { value: 'false', label: '○ Non facturable' },
+                { value: 'unchanged', label: t('sessionsList.billableUnchanged', 'Facturable (inchangé)') },
+                { value: 'true', label: `✓ ${t('sessionsList.billable', 'Facturable')}` },
+                { value: 'false', label: `○ ${t('sessionsList.notBillable', 'Non facturable')}` },
               ]}
             />
             <button
@@ -553,26 +572,26 @@ function SessionsList() {
               disabled={isBulkUpdating}
               className="px-4 py-2 text-sm rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
             >
-              {isBulkUpdating ? 'Mise à jour...' : 'Appliquer'}
+              {isBulkUpdating ? t('sessionsList.updating', 'Mise à jour...') : t('sessionsList.apply', 'Appliquer')}
             </button>
           </div>
         </div>
       )}
 
       {filteredSessions.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">Aucune session ne correspond à ce filtre.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">{t('sessionsList.noMatch', 'Aucune session ne correspond à ce filtre.')}</p>
       ) : (
         <div className="space-y-4">
           {todaysSessions.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500 px-1">Aujourd'hui</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500 px-1">{t('timeline.today', "Aujourd'hui")}</p>
               <div className="space-y-2">{todaysSessions.map(renderSession)}</div>
             </div>
           )}
           {olderSessions.length > 0 && (
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500 px-1 pt-1 border-t border-gray-100 dark:border-slate-800">
-                Sessions précédentes
+                {t('sessionsList.previousSessions', 'Sessions précédentes')}
               </p>
               <div className="space-y-2">{olderSessions.map(renderSession)}</div>
             </div>

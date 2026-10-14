@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from '../hooks/useTranslation'
 
 interface Tag {
   id: number
@@ -15,6 +16,7 @@ interface TagBadgesProps {
 }
 
 function TagBadges({ activityId, tags = [], allTags = [], onTagsChange, editable = false }: TagBadgesProps) {
+  const { t } = useTranslation()
   const [activityTags, setActivityTags] = useState<Tag[]>(tags)
   const [availableTags, setAvailableTags] = useState<Tag[]>(allTags)
   const [showDropdown, setShowDropdown] = useState(false)
@@ -70,7 +72,7 @@ function TagBadges({ activityId, tags = [], allTags = [], onTagsChange, editable
             <button
               onClick={() => removeTag(tag.id)}
               className="ml-1 hover:opacity-70 font-bold"
-              title="Retirer le tag"
+              title={t('tagBadges.removeTag', 'Retirer le tag')}
             >
               ×
             </button>
@@ -85,7 +87,7 @@ function TagBadges({ activityId, tags = [], allTags = [], onTagsChange, editable
             onClick={() => setShowDropdown(!showDropdown)}
             className="px-2 py-1 rounded-full text-sm font-medium border-2 border-dashed border-gray-400 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-indigo-500 hover:text-indigo-600 dark:hover:border-indigo-400 dark:hover:text-indigo-400 transition-colors"
           >
-            + Ajouter
+            + {t('categoryForm.add', 'Ajouter')}
           </button>
 
           {/* Dropdown */}

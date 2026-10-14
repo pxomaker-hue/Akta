@@ -1,16 +1,37 @@
 import { getDatabase, recordSyncTombstone } from './database'
 import type { FocusSession } from '../shared/types'
 
-export function startFocusSession(plannedDuration: number, blockedApps: string[], projectId?: number, phaseId?: number): FocusSession {
+export function startFocusSession(
+  plannedDuration: number,
+  blockedApps: string[],
+  projectId?: number,
+  phaseId?: number,
+  mode: 'simple' | 'chained' = 'simple',
+  numSessions: number = 4,
+  sessionDuration: number = 25,
+  pauseDuration: number = 5
+): FocusSession {
   const db = getDatabase()
   const startTime = Date.now()
 
   const stmt = db.prepare(`
-    INSERT INTO focus_sessions (start_time, planned_duration, completed, blocked_apps, updated_at, project_id, phase_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO focus_sessions (start_time, planned_duration, completed, blocked_apps, updated_at, project_id, phase_id, mode, num_sessions, session_duration, pause_duration)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
 
-  const result = stmt.run(startTime, plannedDuration, 0, JSON.stringify(blockedApps), startTime, projectId || null, phaseId || null)
+  const result = stmt.run(
+    startTime,
+    plannedDuration,
+    0,
+    JSON.stringify(blockedApps),
+    startTime,
+    projectId || null,
+    phaseId || null,
+    mode,
+    numSessions,
+    sessionDuration,
+    pauseDuration
+  )
   const sessionId = Number(result.lastInsertRowid)
 
   // Return the complete session object to avoid a second DB query
@@ -21,7 +42,10 @@ export function startFocusSession(plannedDuration: number, blockedApps: string[]
     planned_duration: plannedDuration,
     completed: false,
     blocked_apps: blockedApps,
-    updated_at: startTime,
+    mode,
+    num_sessions: numSessions,
+    session_duration: sessionDuration,
+    pause_duration: pauseDuration,
   } as unknown as FocusSession
 }
 
@@ -82,6 +106,35 @@ export function deleteFocusSession(sessionId: number): void {
   const session = db.prepare('SELECT start_time FROM focus_sessions WHERE id = ?').get(sessionId) as any
   if (session) recordSyncTombstone('focus_session', String(session.start_time))
   db.prepare('DELETE FROM focus_sessions WHERE id = ?').run(sessionId)
+}
+
+// Détermine si la session chaînée en cours est actuellement dans une phase de pause (plutôt que
+// de concentration). Recalculé côté process principal (même logique que calculatePomodoroState
+// dans FocusMode.tsx) pour que le blocage d'applis puisse s'en servir indépendamment de la fenêtre
+// de rendu — sinon rien ne désactive le blocage pendant les pauses des sessions chaînées.
+export function isFocusSessionOnBreak(): boolean {
+  const session = getCurrentFocusSession()
+  if (!session || session.mode !== 'chained') return false
+
+  const numSessions = session.num_sessions || 4
+  const sessionDurationSec = (session.session_duration || 25) * 60
+  const pauseDurationSec = (session.pause_duration || 5) * 60
+
+  let remaining = Math.floor((Date.now() - session.start_time) / 1000)
+  let sessionNum = 1
+
+  while (sessionNum <= numSessions) {
+    if (remaining < sessionDurationSec) return false // en cours de session focus
+    remaining -= sessionDurationSec
+
+    if (sessionNum < numSessions) {
+      if (remaining < pauseDurationSec) return true // en cours de pause
+      remaining -= pauseDurationSec
+    }
+    sessionNum++
+  }
+
+  return false
 }
 
 // Clôture automatiquement la session focus en cours si sa durée prévue est dépassée. Nécessaire

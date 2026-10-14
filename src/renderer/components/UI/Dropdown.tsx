@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Icon from './Icon'
+import { useTranslation } from '../../hooks/useTranslation'
 
 export interface DropdownOption {
   value: string
@@ -16,9 +17,11 @@ interface DropdownProps {
   disabled?: boolean
 }
 
-function Dropdown({ value, options, onChange, placeholder = 'Sélectionner...', className = '', disabled }: DropdownProps) {
+function Dropdown({ value, options, onChange, placeholder, className = '', disabled }: DropdownProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const resolvedPlaceholder = placeholder ?? t('dropdown.selectPlaceholder', 'Sélectionner...')
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -42,7 +45,7 @@ function Dropdown({ value, options, onChange, placeholder = 'Sélectionner...', 
       >
         <span className="flex items-center gap-2 truncate">
           {selected?.color && <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: selected.color }} />}
-          <span className="truncate">{selected ? selected.label : placeholder}</span>
+          <span className="truncate">{selected ? selected.label : resolvedPlaceholder}</span>
         </span>
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={`flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}>
           <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />

@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import type { Activity, Category } from '../../shared/types'
 import { Card, CardHeader, Icon } from './UI'
+import { useTranslation } from '../hooks/useTranslation'
 
 interface DailyStatsProps {
   activities: Activity[]
@@ -8,6 +9,7 @@ interface DailyStatsProps {
 }
 
 function DailyStats({ activities, categories }: DailyStatsProps) {
+  const { t } = useTranslation()
   const categoryMap = useMemo(() => {
     const map = new Map<number, Category>()
     categories.forEach((cat) => map.set(cat.id, cat))
@@ -51,7 +53,7 @@ function DailyStats({ activities, categories }: DailyStatsProps) {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Par Catégorie */}
       <Card>
-        <CardHeader title="Temps par catégorie" icon={<Icon name="chart-pie" size={18} />} />
+        <CardHeader title={t('dailyStats.timeByCategory', 'Temps par catégorie')} icon={<Icon name="chart-pie" size={18} />} />
         {categoryStats.length > 0 ? (
           <div className="space-y-2">
             {categoryStats.map((stat) => (
@@ -65,13 +67,13 @@ function DailyStats({ activities, categories }: DailyStatsProps) {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-gray-500 dark:text-slate-400">Aucune activité catégorisée ce jour-là</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">{t('dailyStats.noCategorizedActivity', 'Aucune activité catégorisée ce jour-là')}</p>
         )}
       </Card>
 
       {/* Par Application */}
       <Card>
-        <CardHeader title="Applications utilisées" icon={<Icon name="laptop" size={18} />} />
+        <CardHeader title={t('dailyStats.appsUsed', 'Applications utilisées')} icon={<Icon name="laptop" size={18} />} />
         {appStats.length > 0 ? (
           <div className="space-y-2">
             {appStats.map((stat) => (
@@ -82,7 +84,7 @@ function DailyStats({ activities, categories }: DailyStatsProps) {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-gray-500 dark:text-slate-400">Aucune activité enregistrée ce jour-là</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">{t('dailyStats.noActivityRecorded', 'Aucune activité enregistrée ce jour-là')}</p>
         )}
       </Card>
     </div>

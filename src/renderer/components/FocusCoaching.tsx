@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Icon, Card, CardHeader } from './UI'
+import { useTranslation } from '../hooks/useTranslation'
+
+function tf(text: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
+}
 
 interface FocusCoachingData {
   analysis: {
@@ -24,12 +29,14 @@ interface FocusCoachingData {
   }>
   optimalCycle: {
     duration: number
+    breakDuration: number
     reason: string
   }
   sessionCount: number
 }
 
 function FocusCoaching() {
+  const { t } = useTranslation()
   const [coaching, setCoaching] = useState<FocusCoachingData | null>(null)
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState<'tdah' | 'standard'>('tdah')
@@ -118,9 +125,9 @@ function FocusCoaching() {
   return (
     <Card>
       <CardHeader
-        title="Focus Coaching"
+        title={t('focusCoaching.title', 'Focus Coaching')}
         icon={<Icon name="activity" size={16} />}
-        subtitle={mode === 'tdah' ? '🧠 Mode TDAH (Optimisé courtes cycles)' : '⏱️ Mode Standard (Pomodoro classique)'}
+        subtitle={mode === 'tdah' ? t('focusCoaching.tdahSubtitle', '🧠 Mode TDAH (Optimisé courtes cycles)') : t('focusCoaching.standardSubtitle', '⏱️ Mode Standard (Pomodoro classique)')}
       />
 
       <div className="space-y-4">
@@ -130,7 +137,7 @@ function FocusCoaching() {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-2xl">{getQualityIcon()}</span>
-                <span className="text-sm font-medium text-gray-600 dark:text-slate-400">Deep Work Score</span>
+                <span className="text-sm font-medium text-gray-600 dark:text-slate-400">{t('focusCoaching.deepWorkScore', 'Deep Work Score')}</span>
               </div>
               <div className={`text-3xl font-bold ${getQualityColor()}`}>
                 {analysis.deepWorkScore}
@@ -138,14 +145,19 @@ function FocusCoaching() {
             </div>
             <div className="text-right">
               <div className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
-                {analysis.streakDays > 0 ? '🔥' : '⭐'} {analysis.streakDays} jours
+                {analysis.streakDays > 0 ? '🔥' : '⭐'} {tf(t('focusCoaching.streakDays', '{{n}} jours'), { n: analysis.streakDays })}
               </div>
               <div className="text-xs text-gray-500 dark:text-slate-400">
-                {analysis.completionRate.toFixed(0)}% complétées
+                {tf(t('focusCoaching.completionRate', '{{pct}}% complétées'), { pct: analysis.completionRate.toFixed(0) })}
               </div>
               {analysis.sessionsToday > 0 && (
                 <div className="text-xs font-medium text-indigo-600 dark:text-indigo-400 mt-1">
-                  {analysis.sessionsToday} session{analysis.sessionsToday > 1 ? 's' : ''} aujourd'hui
+                  {tf(
+                    analysis.sessionsToday > 1
+                      ? t('focusCoaching.sessionsTodayPlural', "{{n}} sessions aujourd'hui")
+                      : t('focusCoaching.sessionsTodaySingular', "{{n}} session aujourd'hui"),
+                    { n: analysis.sessionsToday }
+                  )}
                 </div>
               )}
             </div>
@@ -171,28 +183,28 @@ function FocusCoaching() {
         {/* Key Metrics - 2x2 Grid */}
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-lg bg-gray-50 dark:bg-slate-800/50 p-3">
-            <div className="text-xs text-gray-600 dark:text-slate-400 mb-1">Total Focus</div>
+            <div className="text-xs text-gray-600 dark:text-slate-400 mb-1">{t('focusCoaching.totalFocus', 'Total Focus')}</div>
             <div className="text-xl font-semibold text-gray-900 dark:text-white">
               {(analysis.totalDeepWorkMinutes / 60).toFixed(1)}h
             </div>
           </div>
 
           <div className="rounded-lg bg-gray-50 dark:bg-slate-800/50 p-3">
-            <div className="text-xs text-gray-600 dark:text-slate-400 mb-1">Session Moy</div>
+            <div className="text-xs text-gray-600 dark:text-slate-400 mb-1">{t('focusCoaching.avgSession', 'Session Moy')}</div>
             <div className="text-xl font-semibold text-gray-900 dark:text-white">
               {Math.round(analysis.averageSessionDuration / 60)}m
             </div>
           </div>
 
           <div className="rounded-lg bg-gray-50 dark:bg-slate-800/50 p-3">
-            <div className="text-xs text-gray-600 dark:text-slate-400 mb-1">Meilleure Heure</div>
+            <div className="text-xs text-gray-600 dark:text-slate-400 mb-1">{t('focusCoaching.bestHour', 'Meilleure Heure')}</div>
             <div className="text-xl font-semibold text-gray-900 dark:text-white">
               {pattern.peakHour !== null ? `${pattern.peakHour}h` : '—'}
             </div>
           </div>
 
           <div className="rounded-lg bg-gray-50 dark:bg-slate-800/50 p-3">
-            <div className="text-xs text-gray-600 dark:text-slate-400 mb-1">Régularité</div>
+            <div className="text-xs text-gray-600 dark:text-slate-400 mb-1">{t('focusCoaching.consistency', 'Régularité')}</div>
             <div className="text-xl font-semibold text-gray-900 dark:text-white">
               {pattern.consistency}%
             </div>
@@ -203,9 +215,12 @@ function FocusCoaching() {
         <div className="rounded-lg bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 p-4">
           <div className="flex items-end justify-between">
             <div>
-              <div className="text-xs font-medium text-indigo-700 dark:text-indigo-300 mb-1">Cycle Optimal</div>
+              <div className="text-xs font-medium text-indigo-700 dark:text-indigo-300 mb-1">{t('focusCoaching.optimalCycle', 'Cycle Optimal')}</div>
               <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
                 {Math.round(optimalCycle.duration / 60)}m
+              </div>
+              <div className="text-[11px] text-indigo-600/80 dark:text-indigo-400/80 mt-0.5">
+                {tf(t('focusCoaching.plusBreak', '+ pause de {{m}}m'), { m: Math.round(optimalCycle.breakDuration / 60) })}
               </div>
             </div>
             <div className="text-xs text-indigo-700 dark:text-indigo-300 text-right max-w-xs">
@@ -218,10 +233,10 @@ function FocusCoaching() {
         {mode === 'tdah' && recommendations.length > 0 && (
           <div className="rounded-lg border border-gray-200 dark:border-slate-700 p-4">
             <div className="text-xs font-semibold text-gray-600 dark:text-slate-400 mb-3 uppercase tracking-wide">
-              💡 Recommandations
+              {t('focusCoaching.recommendations', '💡 Recommandations')}
             </div>
-            <div className={`space-y-2.5 ${recommendations.length > 3 ? 'max-h-64 overflow-y-auto' : ''}`}>
-              {recommendations.slice(0, 3).map((rec, idx) => (
+            <div className={`space-y-2.5 ${recommendations.length > 4 ? 'max-h-80 overflow-y-auto' : ''}`}>
+              {recommendations.map((rec, idx) => (
                 <div
                   key={idx}
                   className="rounded-lg border-l-4 border-transparent p-3 bg-white dark:bg-slate-800 text-sm"
@@ -252,16 +267,11 @@ function FocusCoaching() {
                       }}
                       className="text-xs px-3 py-1.5 bg-[var(--accent-primary)] hover:brightness-110 text-white rounded-full transition-all font-medium inline-flex items-center gap-1"
                     >
-                      ▶ Lancer
+                      ▶ {t('focusCoaching.launch', 'Lancer')}
                     </button>
                   )}
                 </div>
               ))}
-              {recommendations.length > 3 && (
-                <div className="text-xs text-gray-500 dark:text-slate-400 pt-2 text-center italic">
-                  +{recommendations.length - 3} autres recommandations
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -270,7 +280,7 @@ function FocusCoaching() {
         {mode === 'tdah' && pattern.bestHours.length > 0 && (
           <div className="rounded-lg border border-gray-200 dark:border-slate-700 p-4">
             <div className="text-xs font-semibold text-gray-600 dark:text-slate-400 mb-3 uppercase tracking-wide">
-              ⏰ Heures Optimales
+              {t('focusCoaching.optimalHours', '⏰ Heures Optimales')}
             </div>
 
             <div className="flex flex-wrap gap-2 mb-3">
@@ -287,7 +297,7 @@ function FocusCoaching() {
                           ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
                           : 'bg-gray-100 dark:bg-slate-700/50 text-gray-600 dark:text-slate-400'
                     }`}
-                    title={isBest ? 'Meilleure heure' : isWorst ? 'Pire heure' : 'Normal'}
+                    title={isBest ? t('focusCoaching.bestHourTitle', 'Meilleure heure') : isWorst ? t('focusCoaching.worstHourTitle', 'Pire heure') : t('focusCoaching.normalHourTitle', 'Normal')}
                   >
                     {h}h
                   </div>
@@ -297,7 +307,9 @@ function FocusCoaching() {
 
             {pattern.peakHour !== null && (
               <div className="rounded-lg bg-indigo-50 dark:bg-indigo-950/20 px-3 py-2 text-xs text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/50">
-                <span className="font-medium">💡 Insight:</span> Tu es le plus productif vers <span className="font-semibold">{pattern.peakHour}h</span>. Bloque ce créneau pour du travail profond.
+                <span className="font-medium">{t('focusCoaching.insightLabel', '💡 Insight:')}</span>{' '}
+                {t('focusCoaching.insightPrefix', 'Tu es le plus productif vers')} <span className="font-semibold">{pattern.peakHour}h</span>.{' '}
+                {t('focusCoaching.insightSuffix', 'Bloque ce créneau pour du travail profond.')}
               </div>
             )}
           </div>

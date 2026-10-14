@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Client, Project } from '../../shared/types'
 import { Icon, Card, CardHeader, confirmDialog } from './UI'
+import { useTranslation } from '../hooks/useTranslation'
+
+function tf(text: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
+}
 
 interface ClientManagerProps {
   onClientsLoaded?: (clients: Client[]) => void
@@ -12,6 +17,7 @@ interface Billing {
 }
 
 function ClientManager({ onClientsLoaded }: ClientManagerProps) {
+  const { t } = useTranslation()
   const [clients, setClients] = useState<Client[]>([])
   const [newClientName, setNewClientName] = useState('')
   const [newClientColor, setNewClientColor] = useState('#6366f1')
@@ -88,7 +94,7 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
   }
 
   async function deleteClient(clientId: number) {
-    if (!(await confirmDialog('Supprimer ce client ? Les projets qui lui étaient rattachés ne seront plus associés à aucun client.', { danger: true }))) return
+    if (!(await confirmDialog(t('clientManager.confirmDelete', 'Supprimer ce client ? Les projets qui lui étaient rattachés ne seront plus associés à aucun client.'), { danger: true }))) return
     try {
       await window.electron.ipc.invoke('delete-client', clientId)
       await loadClients()
@@ -115,7 +121,11 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
 
   return (
     <Card>
-      <CardHeader title="Clients" icon={<Icon name="user" size={18} />} subtitle={`${clients.length} client${clients.length !== 1 ? 's' : ''}`} />
+      <CardHeader
+        title={t('clientManager.title', 'Clients')}
+        icon={<Icon name="user" size={18} />}
+        subtitle={tf(clients.length === 1 ? t('clientManager.countSingular', '{{n}} client') : t('clientManager.countPlural', '{{n}} clients'), { n: clients.length })}
+      />
 
       <div className="flex gap-2 mb-4">
         <input
@@ -123,7 +133,7 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
           value={newClientName}
           onChange={(e) => setNewClientName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && createClient()}
-          placeholder="Nom du client"
+          placeholder={t('clientManager.namePlaceholder', 'Nom du client')}
           className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
         />
         <button
@@ -131,7 +141,7 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
           disabled={!newClientName.trim()}
           className="px-4 py-2 rounded-lg accent-gradient-bg text-white text-sm font-medium hover:brightness-110 disabled:opacity-50 transition-all flex-shrink-0"
         >
-          Ajouter
+          {t('clientManager.add', 'Ajouter')}
         </button>
       </div>
 
@@ -147,7 +157,7 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
       </div>
 
       {clients.length === 0 ? (
-        <p className="text-center text-gray-500 dark:text-gray-400 py-4 text-sm">Aucun client créé</p>
+        <p className="text-center text-gray-500 dark:text-gray-400 py-4 text-sm">{t('clientManager.noClient', 'Aucun client créé')}</p>
       ) : (
         <div className="space-y-2">
           {clients.map((client) => {
@@ -161,7 +171,10 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
                     <span className="text-sm font-medium text-gray-900 dark:text-white truncate">{client.name}</span>
                     {stats && stats.projects.length > 0 && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-slate-300 flex-shrink-0">
-                        {stats.projects.length} projet{stats.projects.length !== 1 ? 's' : ''}
+                        {tf(
+                          stats.projects.length === 1 ? t('clientManager.projectCountSingular', '{{n}} projet') : t('clientManager.projectCountPlural', '{{n}} projets'),
+                          { n: stats.projects.length }
+                        )}
                       </span>
                     )}
                   </div>
@@ -180,7 +193,7 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
                       className="w-full flex items-center justify-between text-xs pt-2 border-t border-gray-200/50 dark:border-slate-700/50 text-gray-500 dark:text-gray-400 hover:accent-text transition-colors"
                     >
                       <span>
-                        {formatHours(stats.monthSeconds)}h ce mois • {formatHours(stats.totalSeconds)}h au total
+                        {tf(t('projectManager.hoursThisMonth', '{{h}}h ce mois'), { h: formatHours(stats.monthSeconds) })} • {tf(t('projectManager.hoursTotal', '{{h}}h au total'), { h: formatHours(stats.totalSeconds) })}
                         {stats.amount > 0 && ` ≈ ${stats.amount.toFixed(2)} €`}
                       </span>
                       <Icon name={isExpanded ? 'x' : 'chart-bar'} size={11} />

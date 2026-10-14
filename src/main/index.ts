@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, Tray, dialog, nativeImage, nativeTheme, globalShortcut, Notification } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, Tray, nativeImage, nativeTheme, globalShortcut, Notification, screen } from 'electron'
 import path from 'path'
 import { initDatabase, closeDatabase, getDatabase, getSetting, setSetting, getAllSettings, createTag, getTags, getTagsByActivity, addTagToActivity, removeTagFromActivity, deleteTag, exportData, importData, exportActivitiesCSV, updateWorkSessionBillable, getWorkSessionById, getActivitiesInRange, deleteWorkSession, createProject, getProjects, deleteProject, updateProject, updateSessionDetails, createClient, getClients, deleteClient, getProjectBillableSeconds, getSessionBillableSeconds, getSessionsForProject, getSessionPauses, getSessionPausedSeconds, getPausesInRange, createProjectPhase, getProjectPhases, updateProjectPhase, deleteProjectPhase, getPhaseBillableSeconds, getProjectTimeBreakdown, exportProjectSessionsCSV, exportMonthlyCSV, getWorkSessionsWithProjectInRange, recordSyncTombstone, getSessionsWithoutProjectToday, getProjectsWithBudgetOrDeadlineIssues, getBudgetPredictions } from './database'
 import { generateProjectPDF, generateMonthlyPDF } from './pdf-export'
@@ -11,10 +11,12 @@ import { initializeChallenges, getActiveChallenges, getChallengeProgress, getCur
 import { getProductivityScore, getOptimalTimes, getMonthComparison, getWeekTrends } from './analytics'
 import { getSyncFilePath, setSyncFilePath, pickExistingSyncFile, pickNewSyncFile, createNewSyncFile, runSync } from './sync'
 import { setUpdaterWindow, initAutoUpdater, checkForUpdatesManually } from './updater'
+import { mt, mtf } from './i18n'
 import type { Activity, Category } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
+let trayWidgetWindow: BrowserWindow | null = null
 let isQuitting = false
 
 // En dev, electron est lancé directement sur le fichier compilé (pas via "electron ."),
@@ -92,7 +94,7 @@ function createWindow() {
     minWidth: 950,
     minHeight: 600,
     icon: ICON_PATH,
-    autoHideMenuBar: true,
+    frame: false,
     backgroundColor,
     show: false,
     webPreferences: {
@@ -101,6 +103,9 @@ function createWindow() {
       contextIsolation: true,
     },
   })
+
+  mainWindow.on('maximize', () => mainWindow?.webContents.send('window-maximized-changed', true))
+  mainWindow.on('unmaximize', () => mainWindow?.webContents.send('window-maximized-changed', false))
 
   mainWindow.once('ready-to-show', () => {
     // Lancée automatiquement au démarrage de Windows : reste réduite dans le tray plutôt que
@@ -123,29 +128,27 @@ function createWindow() {
     })
   }
 
-  // Demande confirmation à la fermeture : quitter réellement ou réduire dans la barre système
+  // Demande confirmation à la fermeture : quitter réellement ou réduire dans la barre système.
+  // Si l'utilisateur a déjà mémorisé un choix (Paramètres → Fermeture), on l'applique directement
+  // sans redemander ; sinon on délègue l'affichage à une modale custom côté renderer (au style de
+  // l'app plutôt qu'une boîte de dialogue native de l'OS).
   mainWindow.on('close', (event) => {
     if (isQuitting) return
 
     event.preventDefault()
 
-    const choice = dialog.showMessageBoxSync(mainWindow as BrowserWindow, {
-      type: 'question',
-      buttons: ['Quitter', 'Réduire en arrière-plan', 'Annuler'],
-      defaultId: 1,
-      cancelId: 2,
-      title: 'Fermer Akta',
-      message: 'Que veux-tu faire ?',
-      detail: 'Tu peux quitter complètement l\'application ou la garder active en arrière-plan (icône dans la zone de notification).',
-    })
-
-    if (choice === 0) {
+    const savedAction = getSetting('close_action')
+    if (savedAction === 'quit') {
       isQuitting = true
       app.quit()
-    } else if (choice === 1) {
-      mainWindow?.hide()
+      return
     }
-    // choice === 2 (Annuler) : ne rien faire, la fenêtre reste ouverte
+    if (savedAction === 'minimize') {
+      mainWindow?.hide()
+      return
+    }
+
+    mainWindow?.webContents.send('request-close-confirmation')
   })
 
   mainWindow.on('closed', () => {
@@ -168,13 +171,13 @@ function handleGlobalToggle() {
   const status = getTrackingStatus()
   if (status.sessionState === 'stopped') {
     startSession()
-    notifyGlobalAction('Session démarrée')
+    notifyGlobalAction(mt('tray', 'sessionStarted'))
   } else if (status.sessionState === 'running') {
     pauseSession()
-    notifyGlobalAction('Session en pause')
+    notifyGlobalAction(mt('tray', 'sessionPaused'))
   } else {
     resumeSession()
-    notifyGlobalAction('Session reprise')
+    notifyGlobalAction(mt('tray', 'sessionResumed'))
   }
   mainWindow?.webContents.send('tracking-status-changed')
 }
@@ -183,7 +186,7 @@ function handleGlobalStop() {
   const status = getTrackingStatus()
   if (status.sessionState === 'stopped') return
   stopSession()
-  notifyGlobalAction('Session arrêtée')
+  notifyGlobalAction(mt('tray', 'sessionStopped'))
   mainWindow?.webContents.send('tracking-status-changed')
 }
 
@@ -227,18 +230,18 @@ function updateTrayMenu() {
 
     if (session.isRunning) {
       menuItems.push({
-        label: 'Pause',
+        label: mt('tray', 'pause'),
         click: () => pauseSession(),
       })
     } else if (session.isPaused) {
       menuItems.push({
-        label: 'Reprendre',
+        label: mt('tray', 'resume'),
         click: () => resumeSession(),
       })
     }
 
     menuItems.push({
-      label: 'Arrêter',
+      label: mt('tray', 'stop'),
       click: () => stopSession(),
     })
 
@@ -246,7 +249,7 @@ function updateTrayMenu() {
   }
 
   menuItems.push({
-    label: 'Afficher Akta',
+    label: mt('tray', 'showApp'),
     click: () => {
       mainWindow?.show()
       mainWindow?.focus()
@@ -256,7 +259,7 @@ function updateTrayMenu() {
   menuItems.push({ type: 'separator' })
 
   menuItems.push({
-    label: 'Quitter',
+    label: mt('tray', 'quit'),
     click: () => {
       isQuitting = true
       app.quit()
@@ -268,8 +271,8 @@ function updateTrayMenu() {
 
   // Mettre à jour le tooltip
   const tooltip = session
-    ? `Akta — ${formatSessionTime(session.elapsedSeconds)} (${session.isRunning ? 'en cours' : session.isPaused ? 'pause' : 'arrêtée'})`
-    : 'Akta — Suivi d\'activité'
+    ? `Akta — ${formatSessionTime(session.elapsedSeconds)} (${session.isRunning ? mt('tray', 'statusRunning') : session.isPaused ? mt('tray', 'statusPaused') : mt('tray', 'statusStopped')})`
+    : mt('tray', 'tooltip')
   tray.setToolTip(tooltip)
 }
 
@@ -284,14 +287,118 @@ function createTray() {
     updateTrayMenu()
   }, 1000)
 
+  // Clic simple : petit aperçu sans ouvrir toute l'app. Double-clic : fenêtre principale complète.
   tray.on('click', () => {
-    if (mainWindow?.isVisible()) {
-      mainWindow.hide()
-    } else {
-      mainWindow?.show()
-      mainWindow?.focus()
-    }
+    toggleTrayWidget()
   })
+
+  tray.on('double-click', () => {
+    trayWidgetWindow?.hide()
+    mainWindow?.show()
+    mainWindow?.focus()
+  })
+}
+
+function isTrayWidgetPinned(): boolean {
+  return getSetting('tray_widget_pinned') === 'true'
+}
+
+// Positionne le widget juste à côté de l'icône du tray, collé au bord de l'écran le plus proche
+// (le tray peut être en bas comme en haut selon la config Windows de l'utilisateur).
+function positionTrayWidgetWindow() {
+  if (!trayWidgetWindow || !tray) return
+
+  const trayBounds = tray.getBounds()
+  const windowBounds = trayWidgetWindow.getBounds()
+  const display = screen.getDisplayNearestPoint({ x: trayBounds.x, y: trayBounds.y })
+  const workArea = display.workArea
+
+  let x = Math.round(trayBounds.x + trayBounds.width / 2 - windowBounds.width / 2)
+  const y =
+    trayBounds.y < workArea.y + workArea.height / 2
+      ? trayBounds.y + trayBounds.height + 4
+      : trayBounds.y - windowBounds.height - 4
+
+  x = Math.min(Math.max(x, workArea.x + 4), workArea.x + workArea.width - windowBounds.width - 4)
+  const clampedY = Math.min(Math.max(y, workArea.y + 4), workArea.y + workArea.height - windowBounds.height - 4)
+
+  trayWidgetWindow.setPosition(x, clampedY)
+}
+
+function createTrayWidgetWindow() {
+  const theme = getSetting('theme') || 'auto'
+  const isDark = theme === 'dark' || (theme === 'auto' && nativeTheme.shouldUseDarkColors)
+  const backgroundColor = isDark ? '#0f172a' : '#ffffff'
+
+  trayWidgetWindow = new BrowserWindow({
+    width: 320,
+    height: 300,
+    show: false,
+    frame: false,
+    resizable: false,
+    movable: true,
+    skipTaskbar: true,
+    alwaysOnTop: isTrayWidgetPinned(),
+    backgroundColor,
+    icon: ICON_PATH,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  })
+
+  const isDev = process.env.NODE_ENV === 'development'
+  if (isDev) {
+    trayWidgetWindow.loadURL('http://localhost:3000?widget=tray')
+  } else {
+    const filePath = path.join(__dirname, '../../renderer/index.html')
+    trayWidgetWindow.loadFile(filePath, { search: 'widget=tray' }).catch((err) => {
+      console.error('Failed to load tray widget:', err)
+    })
+  }
+
+  // Se ferme comme un popover quand on clique ailleurs — sauf si l'utilisateur l'a épinglé en
+  // widget flottant permanent.
+  trayWidgetWindow.on('blur', () => {
+    if (!isTrayWidgetPinned()) trayWidgetWindow?.hide()
+  })
+
+  // Ne mémorise la position que si épinglé : sinon le widget doit toujours se recoller au tray.
+  trayWidgetWindow.on('moved', () => {
+    if (!trayWidgetWindow || !isTrayWidgetPinned()) return
+    const [x, y] = trayWidgetWindow.getPosition()
+    setSetting('tray_widget_position', JSON.stringify({ x, y }))
+  })
+
+  trayWidgetWindow.on('closed', () => {
+    trayWidgetWindow = null
+  })
+}
+
+function toggleTrayWidget() {
+  if (!trayWidgetWindow || trayWidgetWindow.isDestroyed()) createTrayWidgetWindow()
+  if (!trayWidgetWindow) return
+
+  if (trayWidgetWindow.isVisible()) {
+    trayWidgetWindow.hide()
+    return
+  }
+
+  const savedPosition = isTrayWidgetPinned() ? getSetting('tray_widget_position') : null
+  if (savedPosition) {
+    try {
+      const { x, y } = JSON.parse(savedPosition)
+      trayWidgetWindow.setPosition(x, y)
+    } catch {
+      positionTrayWidgetWindow()
+    }
+  } else {
+    positionTrayWidgetWindow()
+  }
+
+  trayWidgetWindow.show()
+  trayWidgetWindow.focus()
 }
 
 function checkSmartNotifications() {
@@ -302,46 +409,71 @@ function checkSmartNotifications() {
     const sessionsWithoutProject = getSessionsWithoutProjectToday()
     if (sessionsWithoutProject.length > 0) {
       new Notification({
-        title: 'Akta — Sessions sans projet',
-        body: `Tu as ${sessionsWithoutProject.length} session(s) non attribuée(s) aujourd'hui. Assigne-les à un projet pour une meilleure facturation.`,
+        title: mt('notifications', 'noProjectTitle'),
+        body: mtf('notifications', 'noProjectBody', { count: sessionsWithoutProject.length }),
         icon: ICON_PATH,
       }).show()
     }
 
-    // 2. Budget exceeded
+    // 2. Budget exceeded (projet ou phase)
     const issues = getProjectsWithBudgetOrDeadlineIssues()
-    const budgetIssues = issues.filter(i => i.type.startsWith('budget'))
+    const budgetIssues = issues.filter(i => i.type.includes('budget'))
     const deadlineIssues = issues.filter(i => i.type.includes('deadline'))
 
     for (const issue of budgetIssues.slice(0, 2)) {
       if (issue.type === 'budget_hours') {
         new Notification({
-          title: 'Akta — Budget dépassé',
-          body: `Le projet "${issue.projectName}" a dépassé son budget en heures.`,
+          title: mt('notifications', 'budgetExceededTitle'),
+          body: mtf('notifications', 'budgetExceededHoursBody', { project: issue.projectName }),
           icon: ICON_PATH,
         }).show()
       } else if (issue.type === 'budget_amount') {
         new Notification({
-          title: 'Akta — Budget dépassé',
-          body: `Le projet "${issue.projectName}" a dépassé son budget en montant.`,
+          title: mt('notifications', 'budgetExceededTitle'),
+          body: mtf('notifications', 'budgetExceededAmountBody', { project: issue.projectName }),
+          icon: ICON_PATH,
+        }).show()
+      } else if (issue.type === 'phase_budget_hours') {
+        new Notification({
+          title: mt('notifications', 'budgetExceededTitle'),
+          body: mtf('notifications', 'phaseBudgetExceededHoursBody', { phase: issue.phaseName, project: issue.projectName }),
+          icon: ICON_PATH,
+        }).show()
+      } else if (issue.type === 'phase_budget_amount') {
+        new Notification({
+          title: mt('notifications', 'budgetExceededTitle'),
+          body: mtf('notifications', 'phaseBudgetExceededAmountBody', { phase: issue.phaseName, project: issue.projectName }),
           icon: ICON_PATH,
         }).show()
       }
     }
 
-    // 3. Deadline issues
+    // 3. Deadline issues (projet ou phase)
     for (const issue of deadlineIssues.slice(0, 2)) {
       if (issue.type === 'deadline_passed' && issue.deadline) {
         new Notification({
-          title: 'Akta — Deadline passée',
-          body: `La deadline du projet "${issue.projectName}" est passée.`,
+          title: mt('notifications', 'deadlinePassedTitle'),
+          body: mtf('notifications', 'deadlinePassedBody', { project: issue.projectName }),
           icon: ICON_PATH,
         }).show()
       } else if (issue.type === 'deadline_soon' && issue.deadline) {
         const daysLeft = Math.ceil((new Date(issue.deadline).getTime() - new Date().getTime()) / (24 * 60 * 60 * 1000))
         new Notification({
-          title: 'Akta — Deadline approche',
-          body: `La deadline du projet "${issue.projectName}" est dans ${daysLeft} jour(s).`,
+          title: mt('notifications', 'deadlineApproachingTitle'),
+          body: mtf('notifications', 'deadlineApproachingBody', { project: issue.projectName, days: daysLeft }),
+          icon: ICON_PATH,
+        }).show()
+      } else if (issue.type === 'phase_deadline_passed' && issue.deadline) {
+        new Notification({
+          title: mt('notifications', 'deadlinePassedTitle'),
+          body: mtf('notifications', 'phaseDeadlinePassedBody', { phase: issue.phaseName, project: issue.projectName }),
+          icon: ICON_PATH,
+        }).show()
+      } else if (issue.type === 'phase_deadline_soon' && issue.deadline) {
+        const daysLeft = Math.ceil((new Date(issue.deadline).getTime() - new Date().getTime()) / (24 * 60 * 60 * 1000))
+        new Notification({
+          title: mt('notifications', 'deadlineApproachingTitle'),
+          body: mtf('notifications', 'phaseDeadlineApproachingBody', { phase: issue.phaseName, project: issue.projectName, days: daysLeft }),
           icon: ICON_PATH,
         }).show()
       }
@@ -398,8 +530,8 @@ app.on('ready', () => {
 
     if (Notification.isSupported()) {
       new Notification({
-        title: 'Akta — Session terminée !',
-        body: 'Ta session de concentration est terminée, bien joué !',
+        title: mt('notifications', 'focusSessionDoneTitle'),
+        body: mt('notifications', 'focusSessionDoneBody'),
         icon: ICON_PATH,
       }).show()
     }
@@ -587,7 +719,13 @@ function setupIpcHandlers() {
   // Delete a single activity
   ipcMain.handle('delete-activity', async (event, activityId: number) => {
     try {
+      const { recordSyncTombstone } = await import('./database')
       const db = getDatabase()
+      // Record tombstone before deletion for sync
+      const activity = db.prepare('SELECT start_time FROM activities WHERE id = ?').get(activityId) as any
+      if (activity) {
+        recordSyncTombstone('activity', String(activity.start_time))
+      }
       db.prepare('DELETE FROM activities WHERE id = ?').run(activityId)
       return true
     } catch (error) {
@@ -599,7 +737,18 @@ function setupIpcHandlers() {
   // Clean up invalid activities (Unknown app name, or leftover Akta self-tracking)
   ipcMain.handle('delete-invalid-activities', async () => {
     try {
+      const { recordSyncTombstone } = await import('./database')
       const db = getDatabase()
+      // Record tombstones before deletion for sync
+      const invalid = db.prepare(`
+        SELECT start_time FROM activities
+        WHERE app_name = 'Unknown'
+           OR LOWER(app_name) LIKE '%akta%'
+           OR LOWER(window_title) LIKE '%akta%'
+      `).all() as any[]
+      for (const act of invalid) {
+        recordSyncTombstone('activity', String(act.start_time))
+      }
       const stmt = db.prepare(`
         DELETE FROM activities
         WHERE app_name = 'Unknown'
@@ -617,7 +766,13 @@ function setupIpcHandlers() {
   // Delete every uncategorized activity
   ipcMain.handle('delete-uncategorized-activities', async () => {
     try {
+      const { recordSyncTombstone } = await import('./database')
       const db = getDatabase()
+      // Record tombstones before deletion for sync
+      const uncategorized = db.prepare('SELECT start_time FROM activities WHERE category_id IS NULL').all() as any[]
+      for (const act of uncategorized) {
+        recordSyncTombstone('activity', String(act.start_time))
+      }
       const stmt = db.prepare('DELETE FROM activities WHERE category_id IS NULL')
       const result = stmt.run()
       return result.changes
@@ -630,9 +785,15 @@ function setupIpcHandlers() {
   // Delete every activity recorded today
   ipcMain.handle('delete-today-activities', async () => {
     try {
+      const { recordSyncTombstone } = await import('./database')
       const db = getDatabase()
       const todayStart = new Date()
       todayStart.setHours(0, 0, 0, 0)
+      // Record tombstones before deletion for sync
+      const today = db.prepare('SELECT start_time FROM activities WHERE start_time >= ?').all(todayStart.getTime()) as any[]
+      for (const act of today) {
+        recordSyncTombstone('activity', String(act.start_time))
+      }
       const stmt = db.prepare('DELETE FROM activities WHERE start_time >= ?')
       const result = stmt.run(todayStart.getTime())
       return result.changes
@@ -645,7 +806,13 @@ function setupIpcHandlers() {
   // Delete every activity ever recorded (full reset)
   ipcMain.handle('delete-all-activities', async () => {
     try {
+      const { recordSyncTombstone } = await import('./database')
       const db = getDatabase()
+      // Record tombstones before deletion for sync
+      const all = db.prepare('SELECT start_time FROM activities').all() as any[]
+      for (const act of all) {
+        recordSyncTombstone('activity', String(act.start_time))
+      }
       const result = db.prepare('DELETE FROM activities').run()
       return result.changes
     } catch (error) {
@@ -728,6 +895,85 @@ function setupIpcHandlers() {
   // Get live tracking status (session en cours, idle ou non)
   ipcMain.handle('get-tracking-status', async () => {
     return getTrackingStatus()
+  })
+
+  ipcMain.handle('get-current-work-session-details', async () => {
+    return getCurrentWorkSessionDetails()
+  })
+
+  // Widget tray : aperçu compact ouvert au clic sur l'icône, sans passer par la fenêtre principale
+  ipcMain.handle('get-tray-widget-pinned', async () => {
+    return isTrayWidgetPinned()
+  })
+
+  ipcMain.handle('set-tray-widget-pinned', async (event, pinned: boolean) => {
+    setSetting('tray_widget_pinned', pinned ? 'true' : 'false')
+    if (trayWidgetWindow) {
+      trayWidgetWindow.setAlwaysOnTop(pinned)
+      if (pinned) {
+        const [x, y] = trayWidgetWindow.getPosition()
+        setSetting('tray_widget_position', JSON.stringify({ x, y }))
+      }
+    }
+    return pinned
+  })
+
+  ipcMain.handle('hide-tray-widget', async () => {
+    trayWidgetWindow?.hide()
+  })
+
+  // Le widget s'auto-dimensionne à son contenu réel (session/focus/panneau de projet visibles ou
+  // non) plutôt que de garder une hauteur fixe qui laisserait un vide en bas la plupart du temps.
+  ipcMain.handle('resize-tray-widget', async (event, height: number) => {
+    if (!trayWidgetWindow) return
+    const clamped = Math.max(260, Math.min(640, Math.round(height)))
+    const [width, currentHeight] = trayWidgetWindow.getSize()
+    if (Math.abs(currentHeight - clamped) < 2) return
+    // Sur Windows, setSize() sur une fenêtre resizable:false ignore parfois le rétrécissement
+    // (fonctionne pour agrandir, pas pour réduire) — activer resizable le temps de l'appel force
+    // Windows à appliquer la nouvelle taille dans les deux sens.
+    trayWidgetWindow.setResizable(true)
+    trayWidgetWindow.setSize(width, clamped)
+    trayWidgetWindow.setResizable(false)
+    if (!isTrayWidgetPinned()) positionTrayWidgetWindow()
+  })
+
+  // Barre de titre custom (fenêtre principale sans cadre natif) : contrôles + réponse à la modale
+  // de confirmation de fermeture affichée côté renderer.
+  ipcMain.handle('window-minimize', async () => {
+    mainWindow?.minimize()
+  })
+
+  ipcMain.handle('window-maximize-toggle', async () => {
+    if (!mainWindow) return
+    if (mainWindow.isMaximized()) mainWindow.unmaximize()
+    else mainWindow.maximize()
+  })
+
+  ipcMain.handle('window-is-maximized', async () => {
+    return mainWindow?.isMaximized() ?? false
+  })
+
+  ipcMain.handle('window-close', async () => {
+    mainWindow?.close()
+  })
+
+  ipcMain.handle('close-confirmation-response', async (event, action: 'quit' | 'minimize' | 'cancel', remember: boolean) => {
+    if (remember && action !== 'cancel') {
+      setSetting('close_action', action)
+    }
+    if (action === 'quit') {
+      isQuitting = true
+      app.quit()
+    } else if (action === 'minimize') {
+      mainWindow?.hide()
+    }
+    // 'cancel' : ne rien faire, la fenêtre reste ouverte
+  })
+
+  ipcMain.handle('show-main-window', async () => {
+    mainWindow?.show()
+    mainWindow?.focus()
   })
 
   // Contrôle de la session active : démarrer / mettre en pause / reprendre / arrêter
@@ -972,14 +1218,26 @@ function setupIpcHandlers() {
   })
 
   // Phases de projet (ex : Esquisse, PC, DCE, Chantier) — permettent de ventiler le temps d'un projet
-  ipcMain.handle('create-project-phase', async (event, projectId: number, name: string, color: string = '#6366f1', keywords: string | null = null) => {
-    try {
-      return createProjectPhase(projectId, name, color, keywords)
-    } catch (error) {
-      console.error('Error creating project phase:', error)
-      throw error
+  ipcMain.handle(
+    'create-project-phase',
+    async (
+      event,
+      projectId: number,
+      name: string,
+      color: string = '#6366f1',
+      keywords: string | null = null,
+      budgetHours: number | null = null,
+      budgetAmount: number | null = null,
+      deadline: number | null = null
+    ) => {
+      try {
+        return createProjectPhase(projectId, name, color, keywords, budgetHours, budgetAmount, deadline)
+      } catch (error) {
+        console.error('Error creating project phase:', error)
+        throw error
+      }
     }
-  })
+  )
 
   ipcMain.handle('get-project-phases', async (event, projectId: number) => {
     try {
@@ -991,15 +1249,28 @@ function setupIpcHandlers() {
     }
   })
 
-  ipcMain.handle('update-project-phase', async (event, phaseId: number, name: string, color: string, status: string, keywords: string | null = null) => {
-    try {
-      updateProjectPhase(phaseId, name, color, status, keywords)
-      return true
-    } catch (error) {
-      console.error('Error updating project phase:', error)
-      throw error
+  ipcMain.handle(
+    'update-project-phase',
+    async (
+      event,
+      phaseId: number,
+      name: string,
+      color: string,
+      status: string,
+      keywords: string | null = null,
+      budgetHours: number | null = null,
+      budgetAmount: number | null = null,
+      deadline: number | null = null
+    ) => {
+      try {
+        updateProjectPhase(phaseId, name, color, status, keywords, budgetHours, budgetAmount, deadline)
+        return true
+      } catch (error) {
+        console.error('Error updating project phase:', error)
+        throw error
+      }
     }
-  })
+  )
 
   ipcMain.handle('delete-project-phase', async (event, phaseId: number) => {
     try {
@@ -1044,45 +1315,57 @@ function setupIpcHandlers() {
   // Map to track which Focus Sessions created their own Work Sessions
   const focusSessionWorkSessionMap = new Map<number, boolean>()
 
-  ipcMain.handle('start-focus-session', async (event, duration: number, blockedApps: string[], createWorkSession: boolean = false) => {
-    try {
-      // Check if a work session is already active
-      const currentStatus = getTrackingStatus()
-      const hasActiveWorkSession = currentStatus.sessionState === 'running' || currentStatus.sessionState === 'paused'
-
-      // Track if we created a work session
-      let didCreateWorkSession = false
-
-      // If user wants to create a work session and none is active, start one
-      if (createWorkSession && !hasActiveWorkSession) {
-        console.log('[FocusMode] Creating work session for focus mode')
-        startSession()
-        didCreateWorkSession = true
-      }
-
-      const session = startFocusSession(duration, blockedApps)
-
-      // Remember that this focus session created a work session
-      if (didCreateWorkSession) {
-        focusSessionWorkSessionMap.set(session.id, true)
-      }
-
+  ipcMain.handle(
+    'start-focus-session',
+    async (
+      event,
+      duration: number,
+      blockedApps: string[],
+      createWorkSession: boolean = false,
+      mode: 'simple' | 'chained' = 'simple',
+      numSessions: number = 4,
+      sessionDuration: number = 25,
+      pauseDuration: number = 5
+    ) => {
       try {
-        activateBlocking(blockedApps)
-      } catch (blockError) {
-        console.warn('Warning: could not activate app blocking:', blockError)
-      }
+        // Check if a work session is already active
+        const currentStatus = getTrackingStatus()
+        const hasActiveWorkSession = currentStatus.sessionState === 'running' || currentStatus.sessionState === 'paused'
 
-      // Notify all windows that a session was started
-      if (mainWindow) {
-        mainWindow.webContents.send('focus-session-started', session)
+        // Track if we created a work session
+        let didCreateWorkSession = false
+
+        // If user wants to create a work session and none is active, start one
+        if (createWorkSession && !hasActiveWorkSession) {
+          console.log('[FocusMode] Creating work session for focus mode')
+          startSession()
+          didCreateWorkSession = true
+        }
+
+        const session = startFocusSession(duration, blockedApps, undefined, undefined, mode, numSessions, sessionDuration, pauseDuration)
+
+        // Remember that this focus session created a work session
+        if (didCreateWorkSession) {
+          focusSessionWorkSessionMap.set(session.id, true)
+        }
+
+        try {
+          activateBlocking(blockedApps)
+        } catch (blockError) {
+          console.warn('Warning: could not activate app blocking:', blockError)
+        }
+
+        // Notify all windows that a session was started
+        if (mainWindow) {
+          mainWindow.webContents.send('focus-session-started', session)
+        }
+        return session
+      } catch (error) {
+        console.error('Error starting focus session:', error)
+        throw error
       }
-      return session
-    } catch (error) {
-      console.error('Error starting focus session:', error)
-      throw error
     }
-  })
+  )
 
   ipcMain.handle('end-focus-session', async (event, sessionId: number) => {
     try {
@@ -1100,15 +1383,6 @@ function setupIpcHandlers() {
 
       const result = endFocusSession(sessionId)
       deactivateBlocking()
-
-      // Send notification for completed session
-      if (result.completed) {
-        const { notifySessionCompleted, getCurrentStreak } = await import('./coach')
-        const streakDays = getCurrentStreak()
-        const mode = await store.get('focus_coaching_mode', 'tdah')
-        notifySessionCompleted(result.duration, streakDays, mode)
-      }
-
       return result
     } catch (error) {
       console.error('Error ending focus session:', error)
@@ -1489,9 +1763,9 @@ function setupIpcHandlers() {
     try {
       const sessions = getFocusSessions(dayLimit)
       const analysis = analyzeFocusQuality(sessions)
-      const pattern = getProductivityPattern(sessions)
+      const pattern = getProductivityPattern(sessions, dayLimit)
       const recommendations = getCoachingRecommendations(analysis, pattern)
-      const optimalCycle = getOptimalCycleDuration(analysis)
+      const optimalCycle = getOptimalCycleDuration(analysis, pattern)
 
       return {
         analysis,

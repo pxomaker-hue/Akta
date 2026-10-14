@@ -5,3 +5,6 @@ dist/
 *.log
 .DS_Store
 out/
+
+# Binaires de build (publiés via GitHub Releases, > 100 Mo)
+release/

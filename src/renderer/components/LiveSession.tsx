@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import type { ProjectPhase } from '../../shared/types'
 import { Icon, Dropdown } from './UI'
 import { useLiveSession } from '../contexts/LiveSessionContext'
+import { useTranslation } from '../hooks/useTranslation'
 
 function LiveSession() {
+  const { t } = useTranslation()
   const {
     status,
     elapsed,
@@ -78,12 +80,16 @@ function LiveSession() {
 
       <div key={status.sessionState} className="flex items-center gap-2 animate-pop-in min-w-0">
         {isStopped ? (
-          <span className="text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">Suivi arrêté</span>
+          <span className="text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">{t('liveSession.stopped', 'Suivi arrêté')}</span>
         ) : (
           <>
             <span className="text-sm font-mono font-semibold text-gray-900 dark:text-white whitespace-nowrap">{formatDuration(elapsed)}</span>
             <span className="text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">
-              {status.sessionState === 'paused' ? 'en pause' : status.isIdle ? 'inactif' : 'session active'}
+              {status.sessionState === 'paused'
+                ? t('liveSession.paused', 'en pause')
+                : status.isIdle
+                  ? t('liveSession.idle', 'inactif')
+                  : t('liveSession.active', 'session active')}
             </span>
           </>
         )}
@@ -95,7 +101,7 @@ function LiveSession() {
             ref={categoryToggleRef}
             onClick={() => setShowCategoryPanel((v) => !v)}
             disabled={busy}
-            title="Configurer le projet et les catégories focus / distraction de cette session"
+            title={t('liveSession.configureTitle', 'Configurer le projet et les catégories focus / distraction de cette session')}
             className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors disabled:opacity-50 ${
               Object.keys(status.categoryOverrides || {}).length > 0 || status.projectId
                 ? 'bg-amber-500 text-white hover:bg-amber-600'
@@ -108,16 +114,16 @@ function LiveSession() {
 
         {!isStopped && showCategoryPanel && (
           <div ref={categoryPanelRef} className="absolute top-9 right-0 z-[60] w-72 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 p-3">
-            <p className="text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">Projet</p>
-            <p className="text-[11px] text-gray-500 dark:text-slate-400 mb-2">Rattache cette session à un projet, sans attendre qu'elle se termine.</p>
+            <p className="text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1">{t('liveSession.project', 'Projet')}</p>
+            <p className="text-[11px] text-gray-500 dark:text-slate-400 mb-2">{t('liveSession.projectHint', "Rattache cette session à un projet, sans attendre qu'elle se termine.")}</p>
             <div className="flex items-center gap-1.5 mb-3">
               <Dropdown
                 value={status.projectId ? String(status.projectId) : ''}
                 onChange={(v) => setSessionProject(v ? Number(v) : null, null)}
                 disabled={busy}
                 className="flex-1 min-w-0"
-                placeholder="Aucun projet"
-                options={[{ value: '', label: 'Aucun projet' }, ...projects.map((p) => ({ value: String(p.id), label: p.name, color: p.color }))]}
+                placeholder={t('liveSession.noProject', 'Aucun projet')}
+                options={[{ value: '', label: t('liveSession.noProject', 'Aucun projet') }, ...projects.map((p) => ({ value: String(p.id), label: p.name, color: p.color }))]}
               />
               {status.projectId && sessionPhases.length > 0 && (
                 <Dropdown
@@ -125,17 +131,17 @@ function LiveSession() {
                   onChange={(v) => setSessionProject(status.projectId, v ? Number(v) : null)}
                   disabled={busy}
                   className="w-28 flex-shrink-0"
-                  placeholder="Phase"
-                  options={[{ value: '', label: 'Aucune phase' }, ...sessionPhases.map((ph) => ({ value: String(ph.id), label: ph.name, color: ph.color }))]}
+                  placeholder={t('liveSession.phase', 'Phase')}
+                  options={[{ value: '', label: t('liveSession.noPhase', 'Aucune phase') }, ...sessionPhases.map((ph) => ({ value: String(ph.id), label: ph.name, color: ph.color }))]}
                 />
               )}
             </div>
 
             <p className="text-xs font-semibold text-gray-700 dark:text-slate-200 mb-1 pt-2 border-t border-gray-100 dark:border-slate-700/50">
-              Pour cette session
+              {t('liveSession.forThisSession', 'Pour cette session')}
             </p>
             <p className="text-[11px] text-gray-500 dark:text-slate-400 mb-3">
-              Force une catégorie en focus ou en distraction, uniquement pour cette session (le réglage global des catégories n'est pas modifié).
+              {t('liveSession.overrideHint', "Force une catégorie en focus ou en distraction, uniquement pour cette session (le réglage global des catégories n'est pas modifié).")}
             </p>
             <div className="space-y-1.5 max-h-64 overflow-y-auto">
               {categories.map((cat) => {
@@ -156,7 +162,7 @@ function LiveSession() {
                             : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-600'
                         }`}
                       >
-                        Focus
+                        {t('liveSession.focusOverride', 'Focus')}
                       </button>
                       <button
                         onClick={() => setCategoryOverride(cat.id, override === 'distraction' ? null : 'distraction')}
@@ -167,7 +173,7 @@ function LiveSession() {
                             : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-600'
                         }`}
                       >
-                        Distraction
+                        {t('liveSession.distractionOverride', 'Distraction')}
                       </button>
                     </div>
                   </div>
@@ -181,7 +187,7 @@ function LiveSession() {
           <button
             onClick={() => toggleBillable(!status.billableOverride)}
             disabled={busy}
-            title={status.billableOverride ? 'Session facturable — cliquer pour marquer non facturable' : 'Marquer cette session comme facturable'}
+            title={status.billableOverride ? t('liveSession.billableToggleOn', 'Session facturable — cliquer pour marquer non facturable') : t('liveSession.billableToggleOff', 'Marquer cette session comme facturable')}
             className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors disabled:opacity-50 ${
               status.billableOverride
                 ? 'bg-emerald-500 text-white hover:bg-emerald-600'
@@ -199,7 +205,7 @@ function LiveSession() {
           <button
             onClick={() => runAction('start-session')}
             disabled={busy}
-            title="Démarrer une session"
+            title={t('liveSession.startSession', 'Démarrer une session')}
             className="w-7 h-7 flex items-center justify-center rounded-full bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600 disabled:opacity-50 transition-transform duration-150 hover:scale-110 active:scale-90"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" key="play" className="animate-pop-in">
@@ -212,7 +218,7 @@ function LiveSession() {
           <button
             onClick={() => runAction(isPaused ? 'resume-session' : 'pause-session')}
             disabled={busy || (status.sessionState === 'running' && status.isIdle)}
-            title={isPaused ? 'Reprendre la session' : 'Mettre en pause'}
+            title={isPaused ? t('liveSession.resumeSession', 'Reprendre la session') : t('liveSession.pauseSession', 'Mettre en pause')}
             className="w-7 h-7 flex items-center justify-center rounded-full bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-600 disabled:opacity-50 transition-transform duration-150 hover:scale-110 active:scale-90"
           >
             {isPaused ? (
@@ -232,7 +238,7 @@ function LiveSession() {
           <button
             onClick={() => runAction('stop-session')}
             disabled={busy}
-            title="Arrêter la session"
+            title={t('liveSession.stopSession', 'Arrêter la session')}
             className="w-7 h-7 flex items-center justify-center rounded-full bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-50 transition-transform duration-150 hover:scale-110 active:scale-90"
           >
             <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">

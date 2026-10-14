@@ -1,7 +1,13 @@
 import { useRef, useState } from 'react'
 import { Icon } from './UI'
+import { useTranslation } from '../hooks/useTranslation'
+
+function tf(text: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
+}
 
 function BackupRestore() {
+  const { t } = useTranslation()
   const [isExporting, setIsExporting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [exportResult, setExportResult] = useState<string | null>(null)
@@ -25,9 +31,9 @@ function BackupRestore() {
       element.click()
       document.body.removeChild(element)
 
-      setExportResult('ok:Sauvegarde téléchargée avec succès')
+      setExportResult(`ok:${t('backupRestore.exportSuccess', 'Sauvegarde téléchargée avec succès')}`)
     } catch (error) {
-      setExportResult(`err:Erreur lors de l'export: ${error}`)
+      setExportResult(`err:${tf(t('backupRestore.exportError', "Erreur lors de l'export: {{error}}"), { error: String(error) })}`)
     } finally {
       setIsExporting(false)
     }
@@ -47,9 +53,9 @@ function BackupRestore() {
       element.click()
       document.body.removeChild(element)
 
-      setCsvExportResult('ok:Export CSV téléchargé avec succès')
+      setCsvExportResult(`ok:${t('backupRestore.csvExportSuccess', 'Export CSV téléchargé avec succès')}`)
     } catch (error) {
-      setCsvExportResult(`err:Erreur lors de l'export CSV: ${error}`)
+      setCsvExportResult(`err:${tf(t('backupRestore.csvExportError', "Erreur lors de l'export CSV: {{error}}"), { error: String(error) })}`)
     } finally {
       setIsExportingCsv(false)
     }
@@ -69,18 +75,18 @@ function BackupRestore() {
       if (result.errors.length > 0) {
         setImportResult({
           success: false,
-          message: `Importé ${result.imported} éléments avec ${result.errors.length} erreur(s):\n${result.errors.join('\n')}`,
+          message: `${tf(t('backupRestore.importPartial', 'Importé {{count}} éléments avec {{errors}} erreur(s):'), { count: result.imported, errors: result.errors.length })}\n${result.errors.join('\n')}`,
         })
       } else {
         setImportResult({
           success: true,
-          message: `Importé ${result.imported} éléments avec succès`,
+          message: tf(t('backupRestore.importSuccess', 'Importé {{count}} éléments avec succès'), { count: result.imported }),
         })
       }
     } catch (error) {
       setImportResult({
         success: false,
-        message: `Erreur lors de l'import: ${error}`,
+        message: tf(t('backupRestore.importError', "Erreur lors de l'import: {{error}}"), { error: String(error) }),
       })
     } finally {
       setIsImporting(false)
@@ -96,11 +102,11 @@ function BackupRestore() {
       <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
           <Icon name="save" size={18} className="accent-text" />
-          Créer une sauvegarde
+          {t('backupRestore.createTitle', 'Créer une sauvegarde')}
         </h3>
 
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Téléchargez un fichier contenant toutes vos données (activités, catégories, tags, paramètres).
+          {t('backupRestore.createDescription', 'Téléchargez un fichier contenant toutes vos données (activités, catégories, tags, paramètres).')}
         </p>
 
         <button
@@ -109,7 +115,7 @@ function BackupRestore() {
           className="w-full px-4 py-2.5 rounded-lg accent-gradient-bg text-white text-sm font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
         >
           <Icon name={isExporting ? 'refresh' : 'download'} size={16} className={isExporting ? 'animate-spin' : ''} />
-          {isExporting ? 'Export en cours...' : 'Télécharger la sauvegarde'}
+          {isExporting ? t('backupRestore.exportInProgress', 'Export en cours...') : t('backupRestore.downloadBackup', 'Télécharger la sauvegarde')}
         </button>
 
         {exportResult && (
@@ -124,11 +130,11 @@ function BackupRestore() {
       <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
           <Icon name="chart-bar" size={18} className="accent-text" />
-          Exporter en CSV
+          {t('backupRestore.csvTitle', 'Exporter en CSV')}
         </h3>
 
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Exporte tes activités au format tableur (Excel, Google Sheets...) — pratique pour un comptable ou une analyse manuelle.
+          {t('backupRestore.csvDescription', 'Exporte tes activités au format tableur (Excel, Google Sheets...) — pratique pour un comptable ou une analyse manuelle.')}
         </p>
 
         <button
@@ -137,7 +143,7 @@ function BackupRestore() {
           className="w-full px-4 py-2.5 rounded-lg accent-gradient-bg text-white text-sm font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
         >
           <Icon name={isExportingCsv ? 'refresh' : 'download'} size={16} className={isExportingCsv ? 'animate-spin' : ''} />
-          {isExportingCsv ? 'Export en cours...' : 'Télécharger le CSV des activités'}
+          {isExportingCsv ? t('backupRestore.exportInProgress', 'Export en cours...') : t('backupRestore.downloadCsv', 'Télécharger le CSV des activités')}
         </button>
 
         {csvExportResult && (
@@ -152,11 +158,11 @@ function BackupRestore() {
       <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
           <Icon name="folder" size={18} className="accent-text" />
-          Restaurer une sauvegarde
+          {t('backupRestore.restoreTitle', 'Restaurer une sauvegarde')}
         </h3>
 
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Chargez un fichier de sauvegarde pour restaurer vos données. Les données existantes seront fusionnées/remplacées.
+          {t('backupRestore.restoreDescription', 'Chargez un fichier de sauvegarde pour restaurer vos données. Les données existantes seront fusionnées/remplacées.')}
         </p>
 
         <div className="relative">
@@ -174,7 +180,7 @@ function BackupRestore() {
             className="w-full px-4 py-2.5 rounded-lg accent-gradient-bg text-white text-sm font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
           >
             <Icon name={isImporting ? 'refresh' : 'upload'} size={16} className={isImporting ? 'animate-spin' : ''} />
-            {isImporting ? 'Import en cours...' : 'Charger une sauvegarde'}
+            {isImporting ? t('backupRestore.importInProgress', 'Import en cours...') : t('backupRestore.loadBackup', 'Charger une sauvegarde')}
           </button>
         </div>
 
@@ -195,7 +201,7 @@ function BackupRestore() {
       <div className="bg-gray-50 dark:bg-slate-800/60 rounded-lg p-4 border border-gray-200 dark:border-slate-700 flex items-start gap-2.5">
         <Icon name="alert" size={16} className="accent-text mt-0.5 flex-shrink-0" />
         <p className="text-sm text-gray-600 dark:text-slate-300">
-          Les sauvegardes contiennent tout sauf les fichiers de configuration système. Elles sont au format JSON et peuvent être inspectées/éditées manuellement si besoin.
+          {t('backupRestore.infoNote', 'Les sauvegardes contiennent tout sauf les fichiers de configuration système. Elles sont au format JSON et peuvent être inspectées/éditées manuellement si besoin.')}
         </p>
       </div>
     </div>

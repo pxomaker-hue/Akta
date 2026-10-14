@@ -7,6 +7,11 @@ import CategoryIcon from './CategoryIcon'
 import TimelineV2, { getTodayStart, formatDayLabel } from './TimelineV2'
 import LiveSessionStat from './LiveSessionStat'
 import { Card, CardHeader, CardGrid, Stat, Icon } from './UI'
+import { useTranslation } from '../hooks/useTranslation'
+
+function tf(text: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -19,6 +24,7 @@ interface DashboardProps {
 }
 
 function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusActive = false }: DashboardProps) {
+  const { t, language } = useTranslation()
   // Jour affiché, partagé avec la Timeline (contrôlée par ce state) pour que les stats du dashboard
   // et le graphique restent toujours synchronisés sur la même journée.
   const [dayStart, setDayStart] = useState(() => getTodayStart())
@@ -135,10 +141,11 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
     })
 
     return [
-      { name: 'Facturable', value: Math.round(billableSeconds / 3600), color: DESIGN.colors.secondary },
-      { name: 'Personnel', value: Math.round(personalSeconds / 3600), color: DESIGN.colors.primary },
+      { name: t('dashboard.billable', 'Facturable'), value: Math.round(billableSeconds / 3600), color: DESIGN.colors.secondary },
+      { name: t('dashboard.personal', 'Personnel'), value: Math.round(personalSeconds / 3600), color: DESIGN.colors.primary },
     ]
-  }, [categoryStats])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryStats, t])
 
   return (
     <div className="space-y-6">
@@ -148,7 +155,7 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
           <div>
             <div className="flex items-baseline gap-2.5 flex-wrap">
               <h2 className="text-2xl font-bold accent-gradient-text">
-                Ton tableau de bord
+                {t('dashboard.title', 'Ton tableau de bord')}
               </h2>
               {/* Rappelle sur quel jour portent les stats ci-dessous : sans ça, après avoir navigué
                   dans la Timeline, on peut croire à tort que les chiffres sont ceux d'aujourd'hui.
@@ -157,18 +164,27 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
                   (moins besoin d'insister visuellement dessus). */}
               <span className="text-gray-300 dark:text-slate-600 text-xl select-none" aria-hidden="true">•</span>
               <span className={`font-bold accent-gradient-text ${isTodayOrYesterday ? 'text-xl' : 'text-base'}`}>
-                {formatDayLabel(dayStart)}
+                {formatDayLabel(dayStart, t, language)}
               </span>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-              {formatTime(totalSeconds)} d'activité • {dayActivities.length} activités • {daySessions.length} session{daySessions.length !== 1 ? 's' : ''} active{daySessions.length !== 1 ? 's' : ''}
+              {tf(
+                daySessions.length === 1
+                  ? t('dashboard.summarySingular', "{{time}} d'activité • {{count}} activités • {{sessions}} session active")
+                  : t('dashboard.summaryPlural', "{{time}} d'activité • {{count}} activités • {{sessions}} sessions actives"),
+                {
+                  time: formatTime(totalSeconds),
+                  count: dayActivities.length,
+                  sessions: daySessions.length,
+                }
+              )}
             </p>
           </div>
 
           {onOpenFocusMode && (
             <button
               onClick={onOpenFocusMode}
-              title={isFocusActive ? 'Session Mode Focus en cours' : 'Démarrer une session Mode Focus'}
+              title={isFocusActive ? t('dashboard.focusActiveTitle', 'Session Mode Focus en cours') : t('dashboard.focusStartTitle', 'Démarrer une session Mode Focus')}
               className="group flex flex-col items-center gap-1.5 flex-shrink-0"
             >
               <span className="relative w-16 h-16 flex items-center justify-center">
@@ -186,7 +202,7 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
                 </span>
               </span>
               <span className="text-xs font-medium text-gray-600 dark:text-slate-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
-                Mode Focus
+                {t('dashboard.focusModeButton', 'Mode Focus')}
               </span>
             </button>
           )}
@@ -199,29 +215,29 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
       {/* Stats principales */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Stat
-          label="Temps total"
+          label={t('dashboard.totalTime', 'Temps total')}
           value={formatTime(totalSeconds)}
           icon={<Icon name="clock" size={18} />}
           gradient="from-indigo-50 to-indigo-100 dark:from-indigo-900/30 dark:to-indigo-800/20"
         />
         <LiveSessionStat sessions={daySessions} />
         <Stat
-          label="Catégorisé"
+          label={t('dashboard.categorized', 'Catégorisé')}
           value={`${Math.round((categorizedSeconds / totalSeconds) * 100)}%`}
           icon={<Icon name="chart-pie" size={18} />}
           gradient="from-cyan-50 to-cyan-100 dark:from-cyan-900/30 dark:to-cyan-800/20"
         />
         <Stat
-          label="Facturable"
+          label={t('dashboard.billableLabel', 'Facturable')}
           value={formatTime(billableSeconds)}
           icon={<Icon name="briefcase" size={18} />}
           gradient="from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/20"
         />
         <Stat
-          label="Deep Work"
+          label={t('dashboard.deepWork', 'Deep Work')}
           value={deepWorkSessions.length}
           icon={<Icon name="target" size={18} />}
-          subtext="sessions"
+          subtext={t('dashboard.sessionsSubtext', 'sessions')}
           gradient="from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/20"
         />
       </div>
@@ -230,7 +246,7 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Bar Chart */}
         <Card>
-          <CardHeader title="Temps par catégorie" icon={<Icon name="chart-bar" size={18} />} />
+          <CardHeader title={t('dashboard.timeByCategory', 'Temps par catégorie')} icon={<Icon name="chart-bar" size={18} />} />
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={barChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -260,7 +276,7 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
 
         {/* Pie Chart */}
         <Card>
-          <CardHeader title="Facturable vs Personnel" icon={<Icon name="chart-pie" size={18} />} />
+          <CardHeader title={t('dashboard.billableVsPersonal', 'Facturable vs Personnel')} icon={<Icon name="chart-pie" size={18} />} />
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie data={billableStats} cx="50%" cy="50%" labelLine={false} label={({ name, value }) => `${name} ${value}h`} outerRadius={80} fill="#8884d8" dataKey="value">
@@ -287,7 +303,7 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
       {/* Top catégories */}
       {categoryStats.length > 0 && (
         <Card>
-          <CardHeader title="Catégories les plus actives" icon={<Icon name="trophy" size={18} />} />
+          <CardHeader title={t('dashboard.mostActiveCategories', 'Catégories les plus actives')} icon={<Icon name="trophy" size={18} />} />
           <div className="space-y-3">
             {categoryStats.slice(0, 5).map((stat, idx) => (
               <div key={stat.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-colors">
@@ -303,7 +319,7 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
                       />
                       <p className="font-medium text-gray-900 dark:text-white truncate">{stat.name}</p>
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{stat.count} activités</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{tf(t('dashboard.activitiesCount', '{{n}} activités'), { n: stat.count })}</p>
                   </div>
                 </div>
                 <p className="text-right font-semibold text-gray-900 dark:text-white ml-4 flex-shrink-0">{formatTime(stat.totalSeconds)}</p>
@@ -316,7 +332,7 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
       {/* Temps par projet */}
       {projectStats.length > 0 && (
         <Card>
-          <CardHeader title="Temps par projet" icon={<Icon name="folder" size={18} />} />
+          <CardHeader title={t('dashboard.timeByProject', 'Temps par projet')} icon={<Icon name="folder" size={18} />} />
           <div className="space-y-3">
             {projectStats.map((stat) => (
               <div key={stat.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-colors">

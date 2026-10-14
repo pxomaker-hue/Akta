@@ -1,4 +1,6 @@
-import { getDatabase } from './database'
+import { getDatabase, getSetting } from './database'
+import { notifyMilestoneUnlocked } from './coach'
+import { translateMilestoneName, translateChallenge, mt } from './i18n'
 import type { FocusSession } from '../shared/types'
 
 export interface Challenge {
@@ -85,9 +87,12 @@ export function initializeChallenges() {
   const db = getDatabase()
   const now = Date.now()
 
-  // Créer les défis par défaut
+  // Identité stable = (type, duration, target) / (type, threshold) plutôt que le nom affiché : ça
+  // permet de traduire le nom sans jamais réinsérer un doublon pour les lignes déjà existantes.
   for (const challenge of DEFAULT_CHALLENGES) {
-    const existing = db.prepare('SELECT id FROM focus_challenges WHERE name = ?').get(challenge.name)
+    const existing = db
+      .prepare('SELECT id FROM focus_challenges WHERE type = ? AND duration = ? AND target_value = ?')
+      .get(challenge.type, challenge.duration, challenge.target)
     if (!existing) {
       db.prepare(
         'INSERT INTO focus_challenges (name, type, target_value, duration, reward_points, description, created_at, start_date, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
@@ -97,7 +102,7 @@ export function initializeChallenges() {
 
   // Créer les milestones par défaut
   for (const milestone of DEFAULT_MILESTONES) {
-    const existing = db.prepare('SELECT id FROM focus_milestones WHERE name = ?').get(milestone.name)
+    const existing = db.prepare('SELECT id FROM focus_milestones WHERE type = ? AND threshold = ?').get(milestone.type, milestone.threshold)
     if (!existing) {
       db.prepare('INSERT INTO focus_milestones (name, type, threshold, progress) VALUES (?, ?, ?, ?)').run(milestone.name, milestone.type, milestone.threshold, 0)
     }
@@ -106,7 +111,11 @@ export function initializeChallenges() {
 
 export function getActiveChallenges(): Challenge[] {
   const db = getDatabase()
-  return db.prepare('SELECT * FROM focus_challenges WHERE active = 1 ORDER BY duration, type').all() as Challenge[]
+  const rows = db.prepare('SELECT * FROM focus_challenges WHERE active = 1 ORDER BY duration, type').all() as Challenge[]
+  return rows.map((row) => {
+    const translated = translateChallenge(row.type, row.duration, row.target_value, { name: row.name, description: row.description })
+    return { ...row, name: translated.name, description: translated.description ?? row.description }
+  })
 }
 
 export function getChallengeProgress(challengeId: number): ChallengeProgress | null {
@@ -196,24 +205,42 @@ export function getWeeklyConsistency(): number {
 
 export function getMilestones(): Milestone[] {
   const db = getDatabase()
-  const milestones = db.prepare('SELECT * FROM focus_milestones').all() as Milestone[]
+  const rawMilestones = db.prepare('SELECT * FROM focus_milestones').all() as Milestone[]
+  // Nom traduit dès la lecture : la notification de déblocage plus bas (notifyMilestoneUnlocked)
+  // doit recevoir le libellé déjà traduit, pas le texte brut stocké en base.
+  const milestones = rawMilestones.map((m) => ({ ...m, name: translateMilestoneName(m.type, m.threshold, m.name) }))
 
   // Mettre à jour le progrès pour chaque milestone
   const totalSessions = db.prepare('SELECT COUNT(*) as count FROM focus_sessions WHERE completed = 1').get() as any
   const totalDeepWork = db.prepare('SELECT COALESCE(SUM(planned_duration), 0) as total FROM focus_sessions WHERE completed = 1').get() as any
   const deepWorkHours = Math.floor(totalDeepWork.total / 3600)
 
+  const mode = (getSetting('focus_coaching_mode') as 'tdah' | 'standard') || 'tdah'
+
   return milestones.map((m) => {
     let progress = 0
-    if (m.type === 'sessions') {
+    if (m.type === 'sessions' || m.type === 'first_session') {
       progress = Math.min(totalSessions.count, m.threshold)
     } else if (m.type === 'deep_work_hours') {
       progress = Math.min(deepWorkHours, m.threshold)
     }
 
+    // Débloque le jalon dès que le seuil réel est atteint — auparavant le calcul de progression
+    // ne suffisait pas à lui seul, unlockMilestone() n'était jamais appelée nulle part.
+    let unlockedAt = m.unlocked_at
+    const realValue = m.type === 'sessions' || m.type === 'first_session' ? totalSessions.count : m.type === 'deep_work_hours' ? deepWorkHours : progress
+    if (!unlockedAt && realValue >= m.threshold) {
+      const justUnlocked = unlockMilestone(m.id)
+      if (justUnlocked) {
+        unlockedAt = Date.now()
+        notifyMilestoneUnlocked(m.name, mode)
+      }
+    }
+
     return {
       ...m,
       progress,
+      unlocked_at: unlockedAt,
     }
   })
 }
@@ -247,7 +274,7 @@ export function getLeaderboard(duration: 'weekly' | 'monthly' | 'all_time' = 'we
   return [
     {
       rank: 1,
-      name: '🎮 You',
+      name: mt('misc', 'you'),
       sessions: stats.sessions_completed,
       hours: deepWorkHours,
       streak,

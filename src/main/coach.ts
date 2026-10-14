@@ -1,6 +1,7 @@
 import { Notification } from 'electron'
 import path from 'path'
 import { getDatabase } from './database'
+import { mt, mtf } from './i18n'
 
 const ICON_PATH = path.join(__dirname, '../../../assets/icon.png')
 
@@ -30,8 +31,8 @@ export function maybeNudgeDistraction() {
   lastDistractionNudge = now
   if (Notification.isSupported()) {
     new Notification({
-      title: 'Akta — Un peu dispersé ?',
-      body: `Tu as changé d'application ${switchTimestamps.length} fois en 5 minutes. Une session focus pourrait aider.`,
+      title: mt('coach', 'scatteredTitle'),
+      body: mtf('coach', 'scatteredAppSwitchBody', { count: switchTimestamps.length }),
       icon: ICON_PATH,
     }).show()
   }
@@ -42,23 +43,18 @@ export function notifyDeepWorkMilestone(minutes: number, mode: 'tdah' | 'standar
 
   if (mode === 'tdah') {
     // Mode TDAH : encourageant et gamifié
-    const messages = [
-      `🔥 Incroyable ! ${minutes} minutes de concentration pure !`,
-      `⭐ Vous dominez ! ${minutes}min c'est du lourd !`,
-      `💪 Impressionnant ! Continuez cette énergie !`,
-      `🎯 En feu ! ${minutes}min de deep work pur !`,
-    ]
-    const msg = messages[Math.floor(Math.random() * messages.length)]
+    const messageKeys = ['deepWorkMsg1', 'deepWorkMsg2', 'deepWorkMsg3', 'deepWorkMsg4']
+    const key = messageKeys[Math.floor(Math.random() * messageKeys.length)]
     new Notification({
-      title: 'Akta — 🏆 Streak en cours !',
-      body: msg,
+      title: mt('coach', 'streakTitle'),
+      body: mtf('coach', key, { minutes }),
       icon: ICON_PATH,
     }).show()
   } else {
     // Mode Standard : discret
     new Notification({
-      title: 'Akta',
-      body: `${minutes} minutes de concentration.`,
+      title: mt('coach', 'genericTitle'),
+      body: mtf('coach', 'focusMinutesBody', { minutes }),
       icon: ICON_PATH,
     }).show()
   }
@@ -70,14 +66,14 @@ export function notifyMilestoneUnlocked(milestoneName: string, mode: 'tdah' | 's
   if (mode === 'tdah') {
     // Mode TDAH : célébration gamifiée
     new Notification({
-      title: '🏆 Jalon Débloqué !',
-      body: `${milestoneName} — Vous êtes une légende ! 🌟`,
+      title: mt('coach', 'milestoneUnlockedTdahTitle'),
+      body: mtf('coach', 'milestoneUnlockedTdahBody', { name: milestoneName }),
       icon: ICON_PATH,
     }).show()
   } else {
     // Mode Standard : notification simple
     new Notification({
-      title: 'Jalon débloqué',
+      title: mt('coach', 'milestoneUnlockedStandardTitle'),
       body: milestoneName,
       icon: ICON_PATH,
     }).show()
@@ -89,21 +85,17 @@ export function notifyChallengeCompleted(challengeName: string, mode: 'tdah' | '
 
   if (mode === 'tdah') {
     // Mode TDAH : célébration gamifiée avec récompense
-    const celebrations = [
-      `🎊 ${challengeName} COMPLÉTÉ ! Vous êtes une MACHINE !`,
-      `🚀 WOW ! ${challengeName} — Bravo champion !`,
-      `⚡ BOOM ! ${challengeName} — Vous êtes inarrêtable !`,
-    ]
-    const msg = celebrations[Math.floor(Math.random() * celebrations.length)]
+    const bodyKeys = ['challengeCompletedTdahBody1', 'challengeCompletedTdahBody2', 'challengeCompletedTdahBody3']
+    const key = bodyKeys[Math.floor(Math.random() * bodyKeys.length)]
     new Notification({
-      title: '🏅 Défi Complété !',
-      body: msg,
+      title: mt('coach', 'challengeCompletedTdahTitle'),
+      body: mtf('coach', key, { name: challengeName }),
       icon: ICON_PATH,
     }).show()
   } else {
     // Mode Standard : notification simple
     new Notification({
-      title: 'Défi complété',
+      title: mt('coach', 'challengeCompletedStandardTitle'),
       body: challengeName,
       icon: ICON_PATH,
     }).show()
@@ -115,22 +107,18 @@ export function notifyDistractionDuringSession(appName: string, mode: 'tdah' | '
 
   if (mode === 'tdah') {
     // Mode TDAH : ludique et motivant
-    const messages = [
-      `Hé ho ! 👀 Tu driftes sur "${appName}" — Retour au focus ?`,
-      `⚠️ Dodo alerte ! "${appName}" c'est pendant la pause, pas pendant la session !`,
-      `🎮 J'ai vu ça ! On se refocalise champion ?`,
-    ]
-    const msg = messages[Math.floor(Math.random() * messages.length)]
+    const messageKeys = ['distraction1', 'distraction2', 'distraction3']
+    const key = messageKeys[Math.floor(Math.random() * messageKeys.length)]
     new Notification({
-      title: 'Akta — Petit écart ?',
-      body: msg,
+      title: mt('coach', 'driftingTitle'),
+      body: mtf('coach', key, { app: appName }),
       icon: ICON_PATH,
     }).show()
   } else {
     // Mode Standard : discret
     new Notification({
-      title: 'Akta',
-      body: `Vous êtes sur ${appName}.`,
+      title: mt('coach', 'genericTitle'),
+      body: mtf('coach', 'onAppBody', { app: appName }),
       icon: ICON_PATH,
     }).show()
   }
@@ -141,22 +129,19 @@ export function notifySessionCompleted(duration: number, streakDays: number, mod
 
   if (mode === 'tdah') {
     // Mode TDAH : célébration gamifiée
-    const celebrations = [
-      `🎉 Session terminée ! ${Math.round(duration / 60)} minutes de pure CONCENTRATION !`,
-      `⭐ Champion ! Streak à ${streakDays} jours !`,
-      `🏆 Vous êtes en FEU ! Session complétée avec succès !`,
-    ]
-    const msg = celebrations[Math.floor(Math.random() * celebrations.length)]
+    const minutes = Math.round(duration / 60)
+    const bodyKeys = ['sessionDone1', 'sessionDone2', 'sessionDone3']
+    const key = bodyKeys[Math.floor(Math.random() * bodyKeys.length)]
     new Notification({
-      title: '✅ Focus Session Complétée !',
-      body: msg,
+      title: mt('coach', 'focusSessionCompletedTdahTitle'),
+      body: mtf('coach', key, { minutes, days: streakDays }),
       icon: ICON_PATH,
     }).show()
   } else {
     // Mode Standard : simple
     new Notification({
-      title: 'Session complétée',
-      body: `${Math.round(duration / 60)} minutes.`,
+      title: mt('coach', 'focusSessionCompletedStandardTitle'),
+      body: mtf('coach', 'focusSessionCompletedStandardBody', { minutes: Math.round(duration / 60) }),
       icon: ICON_PATH,
     }).show()
   }
@@ -197,6 +182,9 @@ export function analyzeFocusQuality(sessions: any[]): FocusAnalysis {
       totalDeepWorkMinutes: 0,
       completionRate: 0,
       averageSessionDuration: 0,
+      sessionsToday: 0,
+      billableMinutesToday: 0,
+      personalMinutesToday: 0,
     }
   }
 
@@ -278,7 +266,7 @@ export function analyzeFocusQuality(sessions: any[]): FocusAnalysis {
   }
 }
 
-export function getProductivityPattern(sessions: any[]): ProductivityPattern {
+export function getProductivityPattern(sessions: any[], windowDays: number = 7): ProductivityPattern {
   const hourActivity = new Map<number, { count: number; completed: number }>()
 
   for (let h = 0; h < 24; h++) {
@@ -306,14 +294,17 @@ export function getProductivityPattern(sessions: any[]): ProductivityPattern {
   const worstHours = hourScores.slice(-3).map((h) => h[0]).reverse()
   const peakHour = bestHours.length > 0 ? bestHours[0] : null
 
-  // Consistency: standard deviation of sessions per hour
-  const totalSessions = sessions.length
-  const avgPerHour = totalSessions / 24
-  const variance = Array.from(hourActivity.values()).reduce((sum, data) => {
-    return sum + Math.pow(data.count - avgPerHour, 2)
-  }, 0) / 24
-  const stdDev = Math.sqrt(variance)
-  const consistency = Math.max(0, 100 - (stdDev / avgPerHour) * 100)
+  // Régularité : proportion des derniers jours (fenêtre du coaching) avec au moins une session.
+  // Un écart-type sur la répartition par heure était utilisé avant, mais avec peu de sessions
+  // réparties sur des heures différentes (le cas normal en usage léger), la majorité des 24 cases
+  // horaires restent à 0 et le coefficient de variation explose systématiquement — le score
+  // retombait quasi toujours à 0%, même pour un usage tout à fait régulier.
+  const dayMs = 24 * 60 * 60 * 1000
+  const daysWithSessions = new Set<number>()
+  for (const s of sessions) {
+    daysWithSessions.add(Math.floor(s.start_time / dayMs))
+  }
+  const consistency = windowDays > 0 ? Math.round(Math.min(daysWithSessions.size / windowDays, 1) * 100) : 0
 
   return {
     bestHours,
@@ -331,14 +322,14 @@ export function getCoachingRecommendations(analysis: FocusAnalysis, pattern: Pro
     recommendations.push({
       type: 'cycle',
       priority: 'high',
-      message: 'Ton focus est dispersé. Essaie des micro-cycles de 18 min (optimisé pour le TDAH) au lieu de 25.',
+      message: mt('coach', 'scatteredAdviceBody'),
       action: 'start-18min-cycle',
     })
   } else if (analysis.focusQuality === 'fair') {
     recommendations.push({
       type: 'practice',
       priority: 'medium',
-      message: 'Ton focus s\'améliore ! Continue avec des sessions régulières chaque jour.',
+      message: mt('coach', 'improvingAdviceBody'),
       action: 'consistency',
     })
   }
@@ -348,7 +339,7 @@ export function getCoachingRecommendations(analysis: FocusAnalysis, pattern: Pro
     recommendations.push({
       type: 'timing',
       priority: 'high',
-      message: `Tu es le plus productif vers ${pattern.peakHour}h. Bloque ce créneau pour du focus intense.`,
+      message: mtf('coach', 'recoPeakHour', { hour: pattern.peakHour }),
       action: `schedule-${pattern.peakHour}`,
     })
   }
@@ -358,14 +349,14 @@ export function getCoachingRecommendations(analysis: FocusAnalysis, pattern: Pro
     recommendations.push({
       type: 'streak',
       priority: 'high',
-      message: 'Tu n\'as pas lancé de session focus aujourd\'hui. Une petite session de 15 min pour démarrer ?',
+      message: mt('coach', 'noSessionTodayBody'),
       action: 'start-session',
     })
   } else if (analysis.streakDays >= 3) {
     recommendations.push({
       type: 'streak',
       priority: 'medium',
-      message: `C\'est ${analysis.streakDays} jours d'affilée ! 🔥 Continue la série.`,
+      message: mtf('coach', 'recoStreak', { days: analysis.streakDays }),
     })
   }
 
@@ -377,13 +368,13 @@ export function getCoachingRecommendations(analysis: FocusAnalysis, pattern: Pro
       recommendations.push({
         type: 'break',
         priority: 'high',
-        message: `Tu as ${billablePercent}% de travail pro aujourd'hui. N'oublie pas de décompresser un peu !`,
+        message: mtf('coach', 'recoBillableHigh', { percent: billablePercent }),
       })
     } else if (billablePercent > 60) {
       recommendations.push({
         type: 'break',
         priority: 'medium',
-        message: `Bonne répartition ! ${billablePercent}% pro, ${100 - billablePercent}% perso. Bien dosé !`,
+        message: mtf('coach', 'recoBillableBalanced', { percent: billablePercent, rest: 100 - billablePercent }),
       })
     }
   }
@@ -396,7 +387,7 @@ export function getCoachingRecommendations(analysis: FocusAnalysis, pattern: Pro
       recommendations.push({
         type: 'timing',
         priority: 'medium',
-        message: `C'est historiquement une mauvaise heure pour toi. Reste vigilant ou prends une pause recharge.`,
+        message: mt('coach', 'recoWorstHour'),
       })
     }
   }
@@ -406,7 +397,7 @@ export function getCoachingRecommendations(analysis: FocusAnalysis, pattern: Pro
     recommendations.push({
       type: 'break',
       priority: 'medium',
-      message: `Tes sessions durent ${Math.round(analysis.averageSessionDuration / 60)} min en moyenne. Les micro-cycles de 18 min pourraient mieux te convenir !`,
+      message: mtf('coach', 'recoLongSession', { minutes: Math.round(analysis.averageSessionDuration / 60) }),
       action: 'break-strategy',
     })
   }
@@ -416,7 +407,7 @@ export function getCoachingRecommendations(analysis: FocusAnalysis, pattern: Pro
     recommendations.push({
       type: 'practice',
       priority: 'low',
-      message: `Tu as ${analysis.sessionsToday} session${analysis.sessionsToday > 1 ? 's' : ''} aujourd'hui. Une de plus pour la victoire ? 💪`,
+      message: mtf('coach', analysis.sessionsToday > 1 ? 'recoMomentumPlural' : 'recoMomentumSingular', { count: analysis.sessionsToday }),
       action: 'start-session',
     })
   }
@@ -427,16 +418,58 @@ export function getCoachingRecommendations(analysis: FocusAnalysis, pattern: Pro
   })
 }
 
-export function getOptimalCycleDuration(analysis: FocusAnalysis): { duration: number; reason: string } {
-  // TDAH-optimized: shorter cycles with regular breaks
-  if (analysis.averageSessionDuration < 15 * 60) {
-    return { duration: 12 * 60, reason: 'Tu as du mal à tenir 15 min. Essaie 12 min pour commencer.' }
+// Paliers de durée, du plus court au plus long — la durée moyenne réelle sert de point de départ,
+// puis plusieurs autres signaux (taux de complétion, régularité, heure actuelle) font monter ou
+// descendre d'un palier plutôt que de se fier à la seule moyenne brute, qui peut être trompeuse
+// (ex : une moyenne "correcte" alors que la moitié des sessions sont abandonnées en route).
+const CYCLE_TIERS = [
+  { maxAvgDuration: 15 * 60, duration: 12 * 60, labelKey: 'cycleShort' },
+  { maxAvgDuration: 20 * 60, duration: 18 * 60, labelKey: 'cycleTdah' },
+  { maxAvgDuration: 30 * 60, duration: 25 * 60, labelKey: 'cyclePomodoro' },
+  { maxAvgDuration: Infinity, duration: 45 * 60, labelKey: 'cycleLong' },
+] as const
+
+export function getOptimalCycleDuration(
+  analysis: FocusAnalysis,
+  pattern: ProductivityPattern
+): { duration: number; breakDuration: number; reason: string } {
+  let tierIndex = CYCLE_TIERS.findIndex((t) => analysis.averageSessionDuration < t.maxAvgDuration)
+  if (tierIndex === -1) tierIndex = CYCLE_TIERS.length - 1
+
+  const adjustments: string[] = []
+
+  // Le taux de complétion pèse plus lourd que la durée moyenne brute : une moyenne correcte peut
+  // cacher beaucoup de sessions arrêtées avant la fin.
+  if (analysis.completionRate < 50 && tierIndex > 0) {
+    tierIndex -= 1
+    adjustments.push(mtf('coach', 'adjustLowCompletion', { percent: analysis.completionRate }))
+  } else if (analysis.completionRate >= 85 && analysis.focusQuality !== 'poor' && tierIndex < CYCLE_TIERS.length - 1) {
+    tierIndex += 1
+    adjustments.push(mtf('coach', 'adjustHighCompletion', { percent: analysis.completionRate }))
   }
-  if (analysis.averageSessionDuration < 20 * 60) {
-    return { duration: 18 * 60, reason: 'Cycle de 18 min — optimal pour le TDAH' }
+
+  // Peu de régularité récente : mieux vaut un cycle facile à démarrer pour construire l'habitude
+  // plutôt que viser long et risquer l'abandon.
+  if (pattern.consistency < 40 && tierIndex > 0) {
+    tierIndex -= 1
+    adjustments.push(mt('coach', 'adjustLowConsistency'))
   }
-  if (analysis.averageSessionDuration < 30 * 60) {
-    return { duration: 25 * 60, reason: 'Pomodoro classique, tu as la capacité' }
+
+  // Heure actuelle historiquement difficile : on vise plus court, quitte à enchaîner les cycles.
+  const currentHour = new Date().getHours()
+  if (pattern.worstHours.includes(currentHour) && tierIndex > 0) {
+    tierIndex -= 1
+    adjustments.push(mt('coach', 'adjustWorstHour'))
   }
-  return { duration: 45 * 60, reason: 'Tu peux faire des sessions plus longues. Essaie 45 min.' }
+
+  tierIndex = Math.max(0, Math.min(CYCLE_TIERS.length - 1, tierIndex))
+  const tier = CYCLE_TIERS[tierIndex]
+  const label = mt('coach', tier.labelKey)
+
+  // Pause ~20% du temps de focus (base Pomodoro), plancher 3 min / plafond 15 min, arrondie à la minute.
+  const breakDuration = Math.round(Math.min(15 * 60, Math.max(3 * 60, tier.duration * 0.2)) / 60) * 60
+
+  const reason = adjustments.length > 0 ? `${label} (${adjustments.join(', ')})` : label
+
+  return { duration: tier.duration, breakDuration, reason }
 }

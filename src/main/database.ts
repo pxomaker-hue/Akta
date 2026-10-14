@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3'
 import path from 'path'
 import { app } from 'electron'
+import { mt, mainLocaleTag } from './i18n'
 
 let db: Database.Database | null = null
 
@@ -68,6 +69,14 @@ function createTables() {
       FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
     )
   `)
+
+  // Add updated_at to activities for sync support
+  try {
+    db.exec(`ALTER TABLE activities ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0`)
+    db.exec(`UPDATE activities SET updated_at = ${Date.now()} WHERE updated_at = 0`)
+  } catch {
+    // colonne déjà présente
+  }
 
   // Table clients — pour la gestion de projet interne
   db.exec(`
@@ -179,6 +188,24 @@ function createTables() {
     // colonne déjà présente
   }
 
+  // Budget/échéance propres à la phase — même modèle que sur le projet, pour permettre un suivi
+  // plus fin sans avoir à créer un projet séparé par phase réelle.
+  try {
+    db.exec(`ALTER TABLE project_phases ADD COLUMN budget_hours REAL`)
+  } catch {
+    // colonne déjà présente
+  }
+  try {
+    db.exec(`ALTER TABLE project_phases ADD COLUMN budget_amount REAL`)
+  } catch {
+    // colonne déjà présente
+  }
+  try {
+    db.exec(`ALTER TABLE project_phases ADD COLUMN deadline INTEGER`)
+  } catch {
+    // colonne déjà présente
+  }
+
   // Table sessions de travail (start/pause/stop) — entités persistées, comptabilisables et facturables
   db.exec(`
     CREATE TABLE IF NOT EXISTS work_sessions (
@@ -259,6 +286,26 @@ function createTables() {
   }
   try {
     db.exec(`ALTER TABLE focus_sessions ADD COLUMN phase_id INTEGER REFERENCES project_phases(id)`)
+  } catch {
+    // colonne déjà présente
+  }
+  try {
+    db.exec(`ALTER TABLE focus_sessions ADD COLUMN mode TEXT DEFAULT 'simple'`)
+  } catch {
+    // colonne déjà présente
+  }
+  try {
+    db.exec(`ALTER TABLE focus_sessions ADD COLUMN num_sessions INTEGER DEFAULT 4`)
+  } catch {
+    // colonne déjà présente
+  }
+  try {
+    db.exec(`ALTER TABLE focus_sessions ADD COLUMN session_duration INTEGER DEFAULT 25`)
+  } catch {
+    // colonne déjà présente
+  }
+  try {
+    db.exec(`ALTER TABLE focus_sessions ADD COLUMN pause_duration INTEGER DEFAULT 5`)
   } catch {
     // colonne déjà présente
   }
@@ -377,6 +424,19 @@ function createTables() {
   seedDefaultCategories()
   seedDefaultSettings()
   migrateCategoriesToDualRules()
+  migrateDivertissementDistraction()
+}
+
+// Le seed initial de "Divertissement" ne renseignait pas is_distraction (resté à 0 par défaut),
+// ce qui faussait tous les calculs de productivité/focus qui s'appuient sur ce champ. Correction
+// ponctuelle pour les bases existantes — gardée derrière un flag pour ne jamais écraser un choix
+// de l'utilisateur qui aurait depuis décoché cette catégorie volontairement.
+function migrateDivertissementDistraction() {
+  if (!db) return
+  if (getSetting('_migrated_divertissement_distraction') === '1') return
+
+  db.prepare(`UPDATE categories SET is_distraction = 1 WHERE name = 'Divertissement' AND is_distraction = 0`).run()
+  setSetting('_migrated_divertissement_distraction', '1')
 }
 
 interface DefaultCategory {
@@ -384,6 +444,7 @@ interface DefaultCategory {
   color: string
   billable: boolean
   keywords: string[]
+  isDistraction?: boolean
 }
 
 const DEFAULT_CATEGORIES: DefaultCategory[] = [
@@ -422,6 +483,7 @@ const DEFAULT_CATEGORIES: DefaultCategory[] = [
     color: '#ec4899',
     billable: false,
     keywords: ['youtube', 'netflix', 'spotify', 'crunchyroll', 'steam', 'twitch', 'prime video', 'disney'],
+    isDistraction: true,
   },
 ]
 
@@ -430,14 +492,14 @@ function seedDefaultCategories() {
 
   const existsStmt = db.prepare('SELECT 1 FROM categories WHERE name = ?')
   const insertStmt = db.prepare(`
-    INSERT INTO categories (name, color, billable_default, match_rules, updated_at)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO categories (name, color, billable_default, match_rules, is_distraction, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
   `)
 
   for (const category of DEFAULT_CATEGORIES) {
     if (existsStmt.get(category.name)) continue
     const matchRules = buildDefaultCategoryRules(category.keywords)
-    insertStmt.run(category.name, category.color, category.billable ? 1 : 0, JSON.stringify(matchRules), Date.now())
+    insertStmt.run(category.name, category.color, category.billable ? 1 : 0, JSON.stringify(matchRules), category.isDistraction ? 1 : 0, Date.now())
   }
 }
 
@@ -758,11 +820,21 @@ export function deleteProject(projectId: number): void {
 
 // ---- Phases de projet ----
 
-export function createProjectPhase(projectId: number, name: string, color: string = '#6366f1', keywords: string | null = null): number {
+export function createProjectPhase(
+  projectId: number,
+  name: string,
+  color: string = '#6366f1',
+  keywords: string | null = null,
+  budgetHours: number | null = null,
+  budgetAmount: number | null = null,
+  deadline: number | null = null
+): number {
   if (!db) throw new Error('Database not initialized')
   const now = Date.now()
-  const stmt = db.prepare('INSERT INTO project_phases (project_id, name, color, status, keywords, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-  const result = stmt.run(projectId, name, color, 'active', keywords, now, now)
+  const stmt = db.prepare(
+    'INSERT INTO project_phases (project_id, name, color, status, keywords, budget_hours, budget_amount, deadline, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  )
+  const result = stmt.run(projectId, name, color, 'active', keywords, budgetHours, budgetAmount, deadline, now, now)
   return Number(result.lastInsertRowid)
 }
 
@@ -771,9 +843,20 @@ export function getProjectPhases(projectId: number): any[] {
   return db.prepare('SELECT * FROM project_phases WHERE project_id = ? ORDER BY status ASC, created_at ASC').all(projectId) as any[]
 }
 
-export function updateProjectPhase(phaseId: number, name: string, color: string, status: string, keywords: string | null = null): void {
+export function updateProjectPhase(
+  phaseId: number,
+  name: string,
+  color: string,
+  status: string,
+  keywords: string | null = null,
+  budgetHours: number | null = null,
+  budgetAmount: number | null = null,
+  deadline: number | null = null
+): void {
   if (!db) return
-  db.prepare('UPDATE project_phases SET name = ?, color = ?, status = ?, keywords = ?, updated_at = ? WHERE id = ?').run(name, color, status, keywords, Date.now(), phaseId)
+  db.prepare(
+    'UPDATE project_phases SET name = ?, color = ?, status = ?, keywords = ?, budget_hours = ?, budget_amount = ?, deadline = ?, updated_at = ? WHERE id = ?'
+  ).run(name, color, status, keywords, budgetHours, budgetAmount, deadline, Date.now(), phaseId)
 }
 
 export function deleteProjectPhase(phaseId: number): void {
@@ -962,6 +1045,7 @@ export function exportData(): string {
   const settings = db.prepare('SELECT * FROM settings').all() as any[]
   const clients = db.prepare('SELECT * FROM clients').all() as any[]
   const projects = db.prepare('SELECT * FROM projects').all() as any[]
+  const projectPhases = db.prepare('SELECT * FROM project_phases').all() as any[]
   const workSessions = db.prepare('SELECT * FROM work_sessions').all() as any[]
   const sessionPauses = db.prepare('SELECT * FROM session_pauses').all() as any[]
   const focusSessions = db.prepare('SELECT * FROM focus_sessions').all() as any[]
@@ -980,6 +1064,7 @@ export function exportData(): string {
       settings,
       clients,
       projects,
+      projectPhases,
       workSessions,
       sessionPauses,
       focusSessions,
@@ -1047,8 +1132,8 @@ export function importData(jsonData: string): { imported: number; errors: string
     // Import projects
     try {
       const projectStmt = db.prepare(`
-        INSERT OR REPLACE INTO projects (id, name, color, created_at, client_id, hourly_rate, status, hour_goal)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO projects (id, name, color, created_at, client_id, hourly_rate, status, hour_goal, budget_hours, budget_amount, deadline, keywords)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       for (const project of backup.data.projects || []) {
         projectStmt.run(
@@ -1059,12 +1144,43 @@ export function importData(jsonData: string): { imported: number; errors: string
           project.client_id,
           project.hourly_rate,
           project.status,
-          project.hour_goal
+          project.hour_goal,
+          project.budget_hours ?? null,
+          project.budget_amount ?? null,
+          project.deadline ?? null,
+          project.keywords ?? null
         )
         imported++
       }
     } catch (e) {
       errors.push(`Erreur lors de l'import des projets: ${e}`)
+    }
+
+    // Import project phases (après les projets, qu'elles référencent ; avant les sessions de
+    // travail, qui peuvent référencer une phase)
+    try {
+      const phaseStmt = db.prepare(`
+        INSERT OR REPLACE INTO project_phases (id, project_id, name, color, status, keywords, budget_hours, budget_amount, deadline, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      for (const phase of backup.data.projectPhases || []) {
+        phaseStmt.run(
+          phase.id,
+          phase.project_id,
+          phase.name,
+          phase.color,
+          phase.status,
+          phase.keywords ?? null,
+          phase.budget_hours ?? null,
+          phase.budget_amount ?? null,
+          phase.deadline ?? null,
+          phase.created_at,
+          phase.updated_at ?? phase.created_at
+        )
+        imported++
+      }
+    } catch (e) {
+      errors.push(`Erreur lors de l'import des phases de projet: ${e}`)
     }
 
     // Import activities
@@ -1104,8 +1220,8 @@ export function importData(jsonData: string): { imported: number; errors: string
     // Import work sessions (avant les pauses, qui les référencent)
     try {
       const sessionStmt = db.prepare(`
-        INSERT OR REPLACE INTO work_sessions (id, start_time, end_time, duration_seconds, billable, label, project_id, category_overrides)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO work_sessions (id, start_time, end_time, duration_seconds, billable, label, project_id, category_overrides, phase_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       for (const session of backup.data.workSessions || []) {
         sessionStmt.run(
@@ -1116,7 +1232,8 @@ export function importData(jsonData: string): { imported: number; errors: string
           session.billable,
           session.label,
           session.project_id,
-          session.category_overrides ?? null
+          session.category_overrides ?? null,
+          session.phase_id ?? null
         )
         imported++
       }
@@ -1141,8 +1258,8 @@ export function importData(jsonData: string): { imported: number; errors: string
     // Import focus sessions
     try {
       const focusStmt = db.prepare(`
-        INSERT OR REPLACE INTO focus_sessions (id, start_time, end_time, planned_duration, completed, blocked_apps)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO focus_sessions (id, start_time, end_time, planned_duration, completed, blocked_apps, mode, num_sessions, session_duration, pause_duration, project_id, phase_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       for (const focusSession of backup.data.focusSessions || []) {
         focusStmt.run(
@@ -1151,7 +1268,13 @@ export function importData(jsonData: string): { imported: number; errors: string
           focusSession.end_time,
           focusSession.planned_duration,
           focusSession.completed,
-          focusSession.blocked_apps ?? '[]'
+          focusSession.blocked_apps ?? '[]',
+          focusSession.mode ?? 'simple',
+          focusSession.num_sessions ?? 4,
+          focusSession.session_duration ?? 25,
+          focusSession.pause_duration ?? 5,
+          focusSession.project_id ?? null,
+          focusSession.phase_id ?? null
         )
         imported++
       }
@@ -1184,7 +1307,7 @@ export function importData(jsonData: string): { imported: number; errors: string
 // une clé naturelle (nom, ou start_time+app_name pour les activités) et on retrouve/insère l'id local
 // correspondant, avant de réécrire les références (category_id, project_id, tag_id...).
 
-export type SyncEntityType = 'category' | 'tag' | 'client' | 'project' | 'project_phase' | 'work_session' | 'focus_session'
+export type SyncEntityType = 'category' | 'tag' | 'client' | 'project' | 'project_phase' | 'work_session' | 'focus_session' | 'activity'
 
 // Enregistre (ou met à jour) la trace de suppression d'une entité, pour que la fusion de synchro
 // sache qu'elle ne doit pas la réimporter tant qu'une autre machine n'a pas une version plus récente
@@ -1328,6 +1451,13 @@ export function importSyncDataMerge(jsonData: string): { imported: number; skipp
             )
             break
           }
+          case 'activity':
+            deleteStale(
+              () => db!.prepare('SELECT id, updated_at FROM activities WHERE start_time = ?').get(Number(tomb.natural_key)) as any,
+              (id) => db!.prepare('DELETE FROM activities WHERE id = ?').run(id),
+              tomb.deleted_at
+            )
+            break
           case 'work_session':
             deleteStale(
               () => db!.prepare('SELECT id, updated_at FROM work_sessions WHERE start_time = ?').get(Number(tomb.natural_key)) as any,
@@ -1513,9 +1643,11 @@ export function importSyncDataMerge(jsonData: string): { imported: number; skipp
       WHERE p.name = ? AND ph.name = ?
     `)
     const insertPhase = db.prepare(
-      'INSERT INTO project_phases (project_id, name, color, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
+      'INSERT INTO project_phases (project_id, name, color, status, keywords, budget_hours, budget_amount, deadline, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     )
-    const updatePhase = db.prepare('UPDATE project_phases SET color = ?, status = ?, updated_at = ? WHERE id = ?')
+    const updatePhase = db.prepare(
+      'UPDATE project_phases SET color = ?, status = ?, keywords = ?, budget_hours = ?, budget_amount = ?, deadline = ?, updated_at = ? WHERE id = ?'
+    )
     for (const phase of backup.data.projectPhases || []) {
       try {
         const localProjectId = projectIdMap.get(phase.project_id)
@@ -1531,13 +1663,33 @@ export function importSyncDataMerge(jsonData: string): { imported: number; skipp
         if (existing) {
           phaseIdMap.set(phase.id, existing.id)
           if (remoteUpdatedAt > (existing.updated_at ?? 0)) {
-            updatePhase.run(phase.color, phase.status, remoteUpdatedAt, existing.id)
+            updatePhase.run(
+              phase.color,
+              phase.status,
+              phase.keywords ?? null,
+              phase.budget_hours ?? null,
+              phase.budget_amount ?? null,
+              phase.deadline ?? null,
+              remoteUpdatedAt,
+              existing.id
+            )
             imported++
           } else {
             skipped++
           }
         } else {
-          const result = insertPhase.run(localProjectId, phase.name, phase.color, phase.status, phase.created_at, remoteUpdatedAt)
+          const result = insertPhase.run(
+            localProjectId,
+            phase.name,
+            phase.color,
+            phase.status,
+            phase.keywords ?? null,
+            phase.budget_hours ?? null,
+            phase.budget_amount ?? null,
+            phase.deadline ?? null,
+            phase.created_at,
+            remoteUpdatedAt
+          )
           phaseIdMap.set(phase.id, Number(result.lastInsertRowid))
           imported++
         }
@@ -1628,10 +1780,10 @@ export function importSyncDataMerge(jsonData: string): { imported: number; skipp
     // ---- Sessions Mode Focus (clé naturelle : start_time) ----
     const findFocusSession = db.prepare('SELECT id, updated_at FROM focus_sessions WHERE start_time = ?')
     const insertFocusSession = db.prepare(
-      'INSERT INTO focus_sessions (start_time, end_time, planned_duration, completed, blocked_apps, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
+      'INSERT INTO focus_sessions (start_time, end_time, planned_duration, completed, blocked_apps, updated_at, mode, num_sessions, session_duration, pause_duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     )
     const updateFocusSession = db.prepare(
-      'UPDATE focus_sessions SET end_time = ?, planned_duration = ?, completed = ?, blocked_apps = ?, updated_at = ? WHERE id = ?'
+      'UPDATE focus_sessions SET end_time = ?, planned_duration = ?, completed = ?, blocked_apps = ?, updated_at = ?, mode = ?, num_sessions = ?, session_duration = ?, pause_duration = ? WHERE id = ?'
     )
     for (const focusSession of backup.data.focusSessions || []) {
       try {
@@ -1649,6 +1801,10 @@ export function importSyncDataMerge(jsonData: string): { imported: number; skipp
               focusSession.completed,
               focusSession.blocked_apps ?? '[]',
               remoteUpdatedAt,
+              focusSession.mode ?? 'simple',
+              focusSession.num_sessions ?? 4,
+              focusSession.session_duration ?? 25,
+              focusSession.pause_duration ?? 5,
               existing.id
             )
             imported++
@@ -1662,7 +1818,11 @@ export function importSyncDataMerge(jsonData: string): { imported: number; skipp
             focusSession.planned_duration,
             focusSession.completed,
             focusSession.blocked_apps ?? '[]',
-            remoteUpdatedAt
+            remoteUpdatedAt,
+            focusSession.mode ?? 'simple',
+            focusSession.num_sessions ?? 4,
+            focusSession.session_duration ?? 25,
+            focusSession.pause_duration ?? 5
           )
           imported++
         }
@@ -1671,28 +1831,40 @@ export function importSyncDataMerge(jsonData: string): { imported: number; skipp
       }
     }
 
-    // ---- Activités (clé naturelle : start_time + app_name) — pas de tombstone : volume trop élevé
-    // pour un suivi individuel, la suppression en masse depuis les Paramètres reste locale à chaque
-    // machine plutôt que de se propager activité par activité. ----
+    // ---- Activités (clé naturelle : start_time) ----
     const activityIdMap = new Map<number, number>()
-    const findActivity = db.prepare('SELECT id FROM activities WHERE start_time = ? AND app_name = ?')
+    const findActivity = db.prepare('SELECT id, updated_at FROM activities WHERE start_time = ?')
     const insertActivity = db.prepare(
-      'INSERT INTO activities (app_name, window_title, category_id, start_time, end_time, duration_seconds, billable) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO activities (app_name, window_title, category_id, start_time, end_time, duration_seconds, billable, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    )
+    const updateActivity = db.prepare(
+      'UPDATE activities SET window_title = ?, category_id = ?, end_time = ?, duration_seconds = ?, billable = ?, updated_at = ? WHERE id = ?'
     )
     for (const act of backup.data.activities || []) {
       try {
-        const existing = findActivity.get(act.start_time, act.app_name) as any
+        const remoteUpdatedAt = act.updated_at ?? 0
+        // Check if this activity was deleted (tombstoned)
+        if (isTombstoned('activity', String(act.start_time), remoteUpdatedAt)) {
+          skipped++
+          continue
+        }
+        const existing = findActivity.get(act.start_time) as any
         const localCategoryId = act.category_id ? categoryIdMap.get(act.category_id) ?? null : null
         if (existing) {
           activityIdMap.set(act.id, existing.id)
-          skipped++
+          if (remoteUpdatedAt > (existing.updated_at ?? 0)) {
+            updateActivity.run(act.window_title, localCategoryId, act.end_time, act.duration_seconds, act.billable, remoteUpdatedAt, existing.id)
+            imported++
+          } else {
+            skipped++
+          }
         } else {
-          const result = insertActivity.run(act.app_name, act.window_title, localCategoryId, act.start_time, act.end_time, act.duration_seconds, act.billable)
+          const result = insertActivity.run(act.app_name, act.window_title, localCategoryId, act.start_time, act.end_time, act.duration_seconds, act.billable, remoteUpdatedAt)
           activityIdMap.set(act.id, Number(result.lastInsertRowid))
           imported++
         }
       } catch (e) {
-        errors.push(`Activité "${act.app_name}" @ ${act.start_time}: ${e}`)
+        errors.push(`Activité @ ${act.start_time}: ${e}`)
       }
     }
 
@@ -1738,7 +1910,11 @@ export function exportActivitiesCSV(): string {
     )
     .all() as any[]
 
-  const header = ['Date', 'Heure début', 'Heure fin', 'Durée (min)', 'Application', 'Titre de fenêtre', 'Catégorie', 'Facturable']
+  const locale = mainLocaleTag()
+  const header = [
+    mt('csv', 'date'), mt('csv', 'startTime'), mt('csv', 'endTime'), mt('csv', 'durationMin'),
+    mt('csv', 'application'), mt('csv', 'windowTitle'), mt('csv', 'category'), mt('csv', 'billable'),
+  ]
   const lines = [header.map(csvEscape).join(',')]
 
   for (const row of rows) {
@@ -1746,14 +1922,14 @@ export function exportActivitiesCSV(): string {
     const end = row.end_time ? new Date(row.end_time) : null
     lines.push(
       [
-        csvEscape(start.toLocaleDateString('fr-FR')),
-        csvEscape(start.toLocaleTimeString('fr-FR')),
-        csvEscape(end ? end.toLocaleTimeString('fr-FR') : ''),
+        csvEscape(start.toLocaleDateString(locale)),
+        csvEscape(start.toLocaleTimeString(locale)),
+        csvEscape(end ? end.toLocaleTimeString(locale) : ''),
         csvEscape(Math.round(row.duration_seconds / 60)),
         csvEscape(row.app_name),
         csvEscape(row.window_title),
-        csvEscape(row.category_name || 'Non catégorisé'),
-        csvEscape(row.billable === 1 ? 'Oui' : row.billable === 0 ? 'Non' : ''),
+        csvEscape(row.category_name || mt('csv', 'uncategorized')),
+        csvEscape(row.billable === 1 ? mt('csv', 'yes') : row.billable === 0 ? mt('csv', 'no') : ''),
       ].join(',')
     )
   }
@@ -1769,7 +1945,11 @@ export function exportProjectSessionsCSV(projectId: number): string {
   if (!project) throw new Error('Projet introuvable')
 
   const rows = getSessionsForProject(projectId)
-  const header = ['Date', 'Heure début', 'Heure fin', 'Phase', 'Session', 'Durée facturable (h)', 'Facturable', 'Montant (€)']
+  const locale = mainLocaleTag()
+  const header = [
+    mt('csv', 'date'), mt('csv', 'startTime'), mt('csv', 'endTime'), mt('csv', 'phase'),
+    mt('csv', 'session'), mt('csv', 'billableDurationH'), mt('csv', 'billable'), mt('csv', 'amount'),
+  ]
   const lines = [header.map(csvEscape).join(',')]
 
   for (const row of rows) {
@@ -1780,13 +1960,13 @@ export function exportProjectSessionsCSV(projectId: number): string {
     const amount = project.hourly_rate ? hours * project.hourly_rate : null
     lines.push(
       [
-        csvEscape(start.toLocaleDateString('fr-FR')),
-        csvEscape(start.toLocaleTimeString('fr-FR')),
-        csvEscape(end ? end.toLocaleTimeString('fr-FR') : ''),
+        csvEscape(start.toLocaleDateString(locale)),
+        csvEscape(start.toLocaleTimeString(locale)),
+        csvEscape(end ? end.toLocaleTimeString(locale) : ''),
         csvEscape(row.phase_name || ''),
         csvEscape(row.label || ''),
         csvEscape(hours.toFixed(2)),
-        csvEscape(row.billable === 1 ? 'Oui' : row.billable === 0 ? 'Non' : ''),
+        csvEscape(row.billable === 1 ? mt('csv', 'yes') : row.billable === 0 ? mt('csv', 'no') : ''),
         csvEscape(amount !== null ? amount.toFixed(2) : ''),
       ].join(',')
     )
@@ -1816,7 +1996,11 @@ export function getWorkSessionsWithProjectInRange(startMs: number, endMs: number
 export function exportMonthlyCSV(startMs: number, endMs: number): string {
   if (!db) throw new Error('Database not initialized')
   const rows = getWorkSessionsWithProjectInRange(startMs, endMs)
-  const header = ['Date', 'Heure début', 'Heure fin', 'Client', 'Projet', 'Session', 'Durée facturable (h)', 'Facturable', 'Montant (€)']
+  const locale = mainLocaleTag()
+  const header = [
+    mt('csv', 'date'), mt('csv', 'startTime'), mt('csv', 'endTime'), mt('csv', 'client'), mt('csv', 'project'),
+    mt('csv', 'session'), mt('csv', 'billableDurationH'), mt('csv', 'billable'), mt('csv', 'amount'),
+  ]
   const lines = [header.map(csvEscape).join(',')]
 
   for (const row of rows) {
@@ -1827,14 +2011,14 @@ export function exportMonthlyCSV(startMs: number, endMs: number): string {
     const amount = row.project_hourly_rate ? hours * row.project_hourly_rate : null
     lines.push(
       [
-        csvEscape(start.toLocaleDateString('fr-FR')),
-        csvEscape(start.toLocaleTimeString('fr-FR')),
-        csvEscape(end ? end.toLocaleTimeString('fr-FR') : ''),
+        csvEscape(start.toLocaleDateString(locale)),
+        csvEscape(start.toLocaleTimeString(locale)),
+        csvEscape(end ? end.toLocaleTimeString(locale) : ''),
         csvEscape(row.client_name || ''),
         csvEscape(row.project_name || ''),
         csvEscape(row.label || ''),
         csvEscape(hours.toFixed(2)),
-        csvEscape(row.billable === 1 ? 'Oui' : row.billable === 0 ? 'Non' : ''),
+        csvEscape(row.billable === 1 ? mt('csv', 'yes') : row.billable === 0 ? mt('csv', 'no') : ''),
         csvEscape(amount !== null ? amount.toFixed(2) : ''),
       ].join(',')
     )
@@ -1912,6 +2096,9 @@ export function getSessionsWithoutProjectToday() {
   return stmt.all(startOfDay.getTime(), endOfDay.getTime()) as any[]
 }
 
+// Hiérarchie Projet > Phases : le statut archivé du projet est prioritaire et coupe la vérification
+// de toutes ses phases d'un coup (on ne les récupère même pas) ; une phase individuellement archivée
+// ne coupe qu'elle-même, le projet et ses autres phases actives continuent d'être vérifiés.
 export function getProjectsWithBudgetOrDeadlineIssues() {
   if (!db) return []
 
@@ -1920,21 +2107,35 @@ export function getProjectsWithBudgetOrDeadlineIssues() {
 
   const stmt = db.prepare(`
     SELECT id, name, budget_hours, budget_amount, deadline, hourly_rate FROM projects
-    WHERE (budget_hours IS NOT NULL AND budget_hours > 0)
-       OR (budget_amount IS NOT NULL AND budget_amount > 0)
-       OR (deadline IS NOT NULL)
+    WHERE status = 'active'
+      AND (
+        (budget_hours IS NOT NULL AND budget_hours > 0)
+        OR (budget_amount IS NOT NULL AND budget_amount > 0)
+        OR (deadline IS NOT NULL)
+      )
   `)
   const projects = stmt.all() as any[]
+
+  const activePhasesStmt = db.prepare(`
+    SELECT id, name, budget_hours, budget_amount, deadline FROM project_phases
+    WHERE project_id = ? AND status = 'active'
+      AND (
+        (budget_hours IS NOT NULL AND budget_hours > 0)
+        OR (budget_amount IS NOT NULL AND budget_amount > 0)
+        OR (deadline IS NOT NULL)
+      )
+  `)
+
+  const billingStmt = db.prepare(`
+    SELECT COALESCE(SUM(a.duration_seconds), 0) AS total_seconds
+    FROM activities a
+    JOIN work_sessions ws ON a.start_time >= ws.start_time AND a.start_time <= COALESCE(ws.end_time, ?)
+    WHERE ws.project_id = ? AND a.billable = 1
+  `)
 
   const issues = []
   for (const p of projects) {
     // Calculate total billable seconds for this project
-    const billingStmt = db.prepare(`
-      SELECT COALESCE(SUM(a.duration_seconds), 0) AS total_seconds
-      FROM activities a
-      JOIN work_sessions ws ON a.start_time >= ws.start_time AND a.start_time <= COALESCE(ws.end_time, ?)
-      WHERE ws.project_id = ? AND a.billable = 1
-    `)
     const billing = billingStmt.get(Date.now(), p.id) as any
     const totalHours = (billing?.total_seconds || 0) / 3600
 
@@ -1962,16 +2163,101 @@ export function getProjectsWithBudgetOrDeadlineIssues() {
     }
   }
 
+  // Phases actives avec leur propre budget/deadline, uniquement pour des projets eux-mêmes actifs
+  // (les projets archivés ne sont jamais récupérés ci-dessus, donc leurs phases ne sont jamais vérifiées).
+  const activeProjects = db.prepare(`SELECT id, name, hourly_rate FROM projects WHERE status = 'active'`).all() as any[]
+  for (const proj of activeProjects) {
+    const phases = activePhasesStmt.all(proj.id) as any[]
+    for (const ph of phases) {
+      const totalSeconds = getPhaseBillableSeconds(ph.id)
+      const totalHours = totalSeconds / 3600
+
+      if (ph.budget_hours && totalHours >= ph.budget_hours) {
+        issues.push({ type: 'phase_budget_hours', projectId: proj.id, projectName: proj.name, phaseId: ph.id, phaseName: ph.name })
+      }
+
+      if (ph.budget_amount && proj.hourly_rate) {
+        const amount = totalHours * proj.hourly_rate
+        if (amount >= ph.budget_amount) {
+          issues.push({ type: 'phase_budget_amount', projectId: proj.id, projectName: proj.name, phaseId: ph.id, phaseName: ph.name })
+        }
+      }
+
+      if (ph.deadline) {
+        const deadline = new Date(ph.deadline)
+        if (deadline < now) {
+          issues.push({ type: 'phase_deadline_passed', projectId: proj.id, projectName: proj.name, phaseId: ph.id, phaseName: ph.name, deadline })
+        } else if (deadline <= threeDaysFromNow) {
+          issues.push({ type: 'phase_deadline_soon', projectId: proj.id, projectName: proj.name, phaseId: ph.id, phaseName: ph.name, deadline })
+        }
+      }
+    }
+  }
+
   return issues
 }
 
+// Prédictions "budget hours" / "budget amount" pour une entité (projet ou phase) donnée, à partir
+// de ses heures déjà consommées et de sa vélocité récente (h/jour sur les 7 derniers jours).
+function computeBudgetPredictionEntries(
+  totalHours: number,
+  hoursPerDay: number,
+  budgetHours: number | null | undefined,
+  budgetAmount: number | null | undefined,
+  hourlyRate: number | null | undefined,
+  now: number
+): any[] {
+  const entries: any[] = []
+
+  if (budgetHours && hoursPerDay > 0) {
+    const remainingHours = budgetHours - totalHours
+    const daysUntilBudget = remainingHours > 0 ? remainingHours / hoursPerDay : 0
+    const estimatedDate = new Date(now + daysUntilBudget * 24 * 60 * 60 * 1000)
+
+    entries.push({
+      type: 'hours',
+      currentUsage: totalHours,
+      budgetLimit: budgetHours,
+      percentUsed: (totalHours / budgetHours) * 100,
+      velocityPerDay: hoursPerDay,
+      daysUntilBudget: Math.max(0, daysUntilBudget),
+      estimatedDate: daysUntilBudget > 0 ? estimatedDate.toISOString().split('T')[0] : 'Atteint',
+    })
+  }
+
+  if (budgetAmount && hourlyRate && hoursPerDay > 0) {
+    const totalAmount = totalHours * hourlyRate
+    const remainingAmount = budgetAmount - totalAmount
+    const amountPerDay = hoursPerDay * hourlyRate
+    const daysUntilBudget = remainingAmount > 0 ? remainingAmount / amountPerDay : 0
+    const estimatedDate = new Date(now + daysUntilBudget * 24 * 60 * 60 * 1000)
+
+    entries.push({
+      type: 'amount',
+      currentUsage: totalAmount,
+      budgetLimit: budgetAmount,
+      percentUsed: (totalAmount / budgetAmount) * 100,
+      velocityPerDay: amountPerDay,
+      daysUntilBudget: Math.max(0, daysUntilBudget),
+      estimatedDate: daysUntilBudget > 0 ? estimatedDate.toISOString().split('T')[0] : 'Atteint',
+    })
+  }
+
+  return entries
+}
+
+// Même hiérarchie que getProjectsWithBudgetOrDeadlineIssues : un projet archivé exclut toutes ses
+// phases ; une phase archivée s'exclut elle-même sans affecter le projet ni ses autres phases.
 export function getBudgetPredictions() {
   if (!db) return []
 
   const stmt = db.prepare(`
     SELECT id, name, budget_hours, budget_amount, hourly_rate FROM projects
-    WHERE (budget_hours IS NOT NULL AND budget_hours > 0)
-       OR (budget_amount IS NOT NULL AND budget_amount > 0)
+    WHERE status = 'active'
+      AND (
+        (budget_hours IS NOT NULL AND budget_hours > 0)
+        OR (budget_amount IS NOT NULL AND budget_amount > 0)
+      )
   `)
   const projects = stmt.all() as any[]
 
@@ -1979,66 +2265,68 @@ export function getBudgetPredictions() {
   const now = Date.now()
   const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000
 
+  const totalStmt = db.prepare(`
+    SELECT COALESCE(SUM(a.duration_seconds), 0) AS total_seconds
+    FROM activities a
+    JOIN work_sessions ws ON a.start_time >= ws.start_time AND a.start_time <= COALESCE(ws.end_time, ?)
+    WHERE ws.project_id = ? AND a.billable = 1
+  `)
+  const recentStmt = db.prepare(`
+    SELECT COALESCE(SUM(a.duration_seconds), 0) AS total_seconds
+    FROM activities a
+    JOIN work_sessions ws ON a.start_time >= ws.start_time AND a.start_time <= COALESCE(ws.end_time, ?)
+    WHERE ws.project_id = ? AND a.billable = 1 AND a.start_time >= ?
+  `)
+
   for (const p of projects) {
-    // Calculate total billable seconds for this project
-    const totalStmt = db.prepare(`
-      SELECT COALESCE(SUM(a.duration_seconds), 0) AS total_seconds
-      FROM activities a
-      JOIN work_sessions ws ON a.start_time >= ws.start_time AND a.start_time <= COALESCE(ws.end_time, ?)
-      WHERE ws.project_id = ? AND a.billable = 1
-    `)
     const totalBilling = totalStmt.get(now, p.id) as any
     const totalHours = (totalBilling?.total_seconds || 0) / 3600
 
-    // Calculate hours in last 7 days for velocity calculation
-    const recentStmt = db.prepare(`
-      SELECT COALESCE(SUM(a.duration_seconds), 0) AS total_seconds
-      FROM activities a
-      JOIN work_sessions ws ON a.start_time >= ws.start_time AND a.start_time <= COALESCE(ws.end_time, ?)
-      WHERE ws.project_id = ? AND a.billable = 1 AND a.start_time >= ?
-    `)
     const recentBilling = recentStmt.get(now, p.id, sevenDaysAgo) as any
     const recentHours = (recentBilling?.total_seconds || 0) / 3600
     const hoursPerDay = recentHours / 7
 
-    // Budget hours prediction
-    if (p.budget_hours && hoursPerDay > 0) {
-      const remainingHours = p.budget_hours - totalHours
-      const daysUntilBudget = remainingHours > 0 ? remainingHours / hoursPerDay : 0
-      const estimatedDate = new Date(now + daysUntilBudget * 24 * 60 * 60 * 1000)
-
-      predictions.push({
-        projectId: p.id,
-        projectName: p.name,
-        type: 'hours',
-        currentUsage: totalHours,
-        budgetLimit: p.budget_hours,
-        percentUsed: (totalHours / p.budget_hours) * 100,
-        velocityPerDay: hoursPerDay,
-        daysUntilBudget: Math.max(0, daysUntilBudget),
-        estimatedDate: daysUntilBudget > 0 ? estimatedDate.toISOString().split('T')[0] : 'Atteint',
-      })
+    for (const entry of computeBudgetPredictionEntries(totalHours, hoursPerDay, p.budget_hours, p.budget_amount, p.hourly_rate, now)) {
+      predictions.push({ projectId: p.id, projectName: p.name, ...entry })
     }
+  }
 
-    // Budget amount prediction
-    if (p.budget_amount && p.hourly_rate && hoursPerDay > 0) {
-      const totalAmount = totalHours * p.hourly_rate
-      const remainingAmount = p.budget_amount - totalAmount
-      const amountPerDay = hoursPerDay * p.hourly_rate
-      const daysUntilBudget = remainingAmount > 0 ? remainingAmount / amountPerDay : 0
-      const estimatedDate = new Date(now + daysUntilBudget * 24 * 60 * 60 * 1000)
+  // Phases actives avec leur propre budget, pour des projets eux-mêmes actifs uniquement.
+  const activeProjects = db.prepare(`SELECT id, name, hourly_rate FROM projects WHERE status = 'active'`).all() as any[]
+  const activePhasesStmt = db.prepare(`
+    SELECT id, name, budget_hours, budget_amount FROM project_phases
+    WHERE project_id = ? AND status = 'active'
+      AND (
+        (budget_hours IS NOT NULL AND budget_hours > 0)
+        OR (budget_amount IS NOT NULL AND budget_amount > 0)
+      )
+  `)
+  const phaseTotalStmt = db.prepare(`
+    SELECT COALESCE(SUM(a.duration_seconds), 0) AS total_seconds
+    FROM activities a
+    JOIN work_sessions ws ON a.start_time >= ws.start_time AND a.start_time <= COALESCE(ws.end_time, ?)
+    WHERE ws.phase_id = ? AND a.billable = 1
+  `)
+  const phaseRecentStmt = db.prepare(`
+    SELECT COALESCE(SUM(a.duration_seconds), 0) AS total_seconds
+    FROM activities a
+    JOIN work_sessions ws ON a.start_time >= ws.start_time AND a.start_time <= COALESCE(ws.end_time, ?)
+    WHERE ws.phase_id = ? AND a.billable = 1 AND a.start_time >= ?
+  `)
 
-      predictions.push({
-        projectId: p.id,
-        projectName: p.name,
-        type: 'amount',
-        currentUsage: totalAmount,
-        budgetLimit: p.budget_amount,
-        percentUsed: (totalAmount / p.budget_amount) * 100,
-        velocityPerDay: amountPerDay,
-        daysUntilBudget: Math.max(0, daysUntilBudget),
-        estimatedDate: daysUntilBudget > 0 ? estimatedDate.toISOString().split('T')[0] : 'Atteint',
-      })
+  for (const proj of activeProjects) {
+    const phases = activePhasesStmt.all(proj.id) as any[]
+    for (const ph of phases) {
+      const totalBilling = phaseTotalStmt.get(now, ph.id) as any
+      const totalHours = (totalBilling?.total_seconds || 0) / 3600
+
+      const recentBilling = phaseRecentStmt.get(now, ph.id, sevenDaysAgo) as any
+      const recentHours = (recentBilling?.total_seconds || 0) / 3600
+      const hoursPerDay = recentHours / 7
+
+      for (const entry of computeBudgetPredictionEntries(totalHours, hoursPerDay, ph.budget_hours, ph.budget_amount, proj.hourly_rate, now)) {
+        predictions.push({ projectId: proj.id, projectName: proj.name, phaseId: ph.id, phaseName: ph.name, ...entry })
+      }
     }
   }
 

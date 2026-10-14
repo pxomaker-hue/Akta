@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Icon, confirmDialog } from './UI'
+import { useTranslation } from '../hooks/useTranslation'
 
 interface Exclusion {
   id: number
@@ -10,6 +11,7 @@ interface Exclusion {
 }
 
 function InactivityExclusionsManager() {
+  const { t } = useTranslation()
   const [exclusions, setExclusions] = useState<Exclusion[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -36,7 +38,7 @@ function InactivityExclusionsManager() {
 
   async function handleAdd() {
     if (!appPattern && !titlePattern) {
-      alert('Au moins un pattern (app ou titre) est requis')
+      alert(t('inactivityExclusions.patternRequired', 'Au moins un pattern (app ou titre) est requis'))
       return
     }
 
@@ -54,21 +56,21 @@ function InactivityExclusionsManager() {
       await loadExclusions()
     } catch (error) {
       console.error('Error adding exclusion:', error)
-      alert('Erreur lors de l\'ajout de l\'exclusion')
+      alert(t('inactivityExclusions.addError', "Erreur lors de l'ajout de l'exclusion"))
     } finally {
       setIsAdding(false)
     }
   }
 
   async function handleDelete(id: number) {
-    if (!await confirmDialog('Supprimer cette exclusion d\'inactivité ?')) return
+    if (!await confirmDialog(t('inactivityExclusions.deleteConfirm', "Supprimer cette exclusion d'inactivité ?"))) return
 
     try {
       await window.electron.ipc.invoke('remove-inactivity-exclusion', id)
       await loadExclusions()
     } catch (error) {
       console.error('Error deleting exclusion:', error)
-      alert('Erreur lors de la suppression')
+      alert(t('inactivityExclusions.deleteError', 'Erreur lors de la suppression'))
     }
   }
 
@@ -84,9 +86,9 @@ function InactivityExclusionsManager() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Exclusions d'inactivité</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('inactivityExclusions.title', "Exclusions d'inactivité")}</h3>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Applications/fenêtres où tu ne bouges pas mais où tu es actif (vidéos, tutos, etc.)
+            {t('inactivityExclusions.description', 'Applications/fenêtres où tu ne bouges pas mais où tu es actif (vidéos, tutos, etc.)')}
           </p>
         </div>
         <button
@@ -94,7 +96,7 @@ function InactivityExclusionsManager() {
           className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm font-medium flex-shrink-0"
         >
           <Icon name="plus" size={16} />
-          Ajouter
+          {t('inactivityExclusions.add', 'Ajouter')}
         </button>
       </div>
 
@@ -102,7 +104,7 @@ function InactivityExclusionsManager() {
         <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg border border-gray-200 dark:border-slate-700 space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Pattern d'application (ex: youtube, vlc, netflix)
+              {t('inactivityExclusions.appPatternLabel', "Pattern d'application (ex: youtube, vlc, netflix)")}
             </label>
             <input
               type="text"
@@ -111,12 +113,12 @@ function InactivityExclusionsManager() {
               placeholder="youtube"
               className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 text-sm"
             />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Recherche insensible à la casse sur le nom de l'app</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('inactivityExclusions.appPatternHint', "Recherche insensible à la casse sur le nom de l'app")}</p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Pattern de titre de fenêtre (ex: "video")
+              {t('inactivityExclusions.titlePatternLabel', 'Pattern de titre de fenêtre (ex: "video")')}
             </label>
             <input
               type="text"
@@ -125,18 +127,18 @@ function InactivityExclusionsManager() {
               placeholder="video"
               className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 text-sm"
             />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Recherche insensible à la casse sur le titre</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('inactivityExclusions.titlePatternHint', 'Recherche insensible à la casse sur le titre')}</p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Description (optionnel)
+              {t('inactivityExclusions.descriptionLabel', 'Description (optionnel)')}
             </label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Regarder des vidéos"
+              placeholder={t('inactivityExclusions.descriptionPlaceholder', 'Regarder des vidéos')}
               className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 text-sm"
             />
           </div>
@@ -147,13 +149,13 @@ function InactivityExclusionsManager() {
               disabled={isAdding}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg transition-colors text-sm font-medium"
             >
-              {isAdding ? 'Ajout...' : 'Ajouter'}
+              {isAdding ? t('inactivityExclusions.adding', 'Ajout...') : t('inactivityExclusions.add', 'Ajouter')}
             </button>
             <button
               onClick={() => setShowForm(false)}
               className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-gray-900 dark:text-white rounded-lg transition-colors text-sm font-medium"
             >
-              Annuler
+              {t('common.cancel', 'Annuler')}
             </button>
           </div>
         </div>
@@ -161,7 +163,7 @@ function InactivityExclusionsManager() {
 
       {exclusions.length === 0 ? (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-          <p className="text-sm">Aucune exclusion d'inactivité configurée</p>
+          <p className="text-sm">{t('inactivityExclusions.empty', 'Aucune exclusion d\'inactivité configurée')}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -174,12 +176,12 @@ function InactivityExclusionsManager() {
                 <div className="flex gap-2 flex-wrap">
                   {exclusion.app_pattern && (
                     <span className="inline-block px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded font-mono">
-                      app: {exclusion.app_pattern}
+                      {t('inactivityExclusions.appLabel', 'app')}: {exclusion.app_pattern}
                     </span>
                   )}
                   {exclusion.title_pattern && (
                     <span className="inline-block px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs rounded font-mono">
-                      title: {exclusion.title_pattern}
+                      {t('inactivityExclusions.titleLabel', 'title')}: {exclusion.title_pattern}
                     </span>
                   )}
                 </div>
@@ -190,7 +192,7 @@ function InactivityExclusionsManager() {
               <button
                 onClick={() => handleDelete(exclusion.id)}
                 className="ml-3 p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex-shrink-0"
-                title="Supprimer"
+                title={t('common.delete', 'Supprimer')}
               >
                 <Icon name="trash" size={16} />
               </button>

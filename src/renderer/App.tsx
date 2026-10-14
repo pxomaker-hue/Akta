@@ -15,10 +15,13 @@ import Settings from './components/Settings'
 import TagManager from './components/TagManager'
 import ProjectManager from './components/ProjectManager'
 import ClientManager from './components/ClientManager'
+import BudgetPredictions from './components/BudgetPredictions'
 import LiveSession from './components/LiveSession'
 import LiveSessionMascot from './components/LiveSessionMascot'
 import SyncButton from './components/SyncButton'
 import Onboarding from './components/Onboarding'
+import TitleBar from './components/TitleBar'
+import AppCloseDialog from './components/AppCloseDialog'
 import { LiveSessionProvider } from './contexts/LiveSessionContext'
 import Logo from './components/Logo'
 import { SlidingTabs, Card, Icon, ConfirmDialogHost } from './components/UI'
@@ -40,6 +43,10 @@ declare global {
 }
 
 type Tab = 'dashboard' | 'activities' | 'focus' | 'reports' | 'categories' | 'projects' | 'settings'
+
+function tf(text: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
+}
 
 function App() {
   const [activities, setActivities] = useState<Activity[]>([])
@@ -147,16 +154,16 @@ function App() {
   const tabs: { id: Tab; label: string }[] = [
     { id: 'dashboard', label: t('tabs.dashboard') },
     { id: 'activities', label: t('tabs.activities') },
-    { id: 'projects', label: 'Projets' },
-    { id: 'reports', label: 'Stats' },
-    { id: 'categories', label: 'Catégories & Tags' },
+    { id: 'projects', label: t('tabs.projects', 'Projets') },
+    { id: 'reports', label: t('tabs.reports', 'Stats') },
+    { id: 'categories', label: t('tabs.categories', 'Catégories & Tags') },
     { id: 'settings', label: t('tabs.settings') },
   ]
 
   const focusButtonJsx = isFocusActive ? (
     <button
       onClick={() => setActiveTab('focus')}
-      title="Session Mode Focus en cours — cliquer pour y accéder"
+      title={t('app.focusSessionActive', 'Session Mode Focus en cours — cliquer pour y accéder')}
       className="relative w-10 h-10 flex items-center justify-center flex-shrink-0"
     >
       <span className="absolute inset-0 rounded-full accent-gradient-bg animate-focus-glow-ring" aria-hidden="true" />
@@ -168,9 +175,10 @@ function App() {
 
   return (
     <LiveSessionProvider>
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-slate-950">
+      <TitleBar />
       {/* Header */}
-      <header className="bg-white dark:bg-slate-900 shadow">
+      <header className="bg-white dark:bg-slate-900 shadow flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
           <div className="flex items-center gap-3.5">
             <Logo size={58} />
@@ -201,14 +209,16 @@ function App() {
         </div>
       </header>
 
-      {/* Tabs */}
-      <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-50">
+      {/* Tabs (navbar) — reste fixe hors du flux de scroll, comme le header et la barre de titre :
+          seul le contenu de <main> ci-dessous défile, avec sa propre scrollbar qui démarre donc
+          juste en dessous plutôt que de couvrir toute la hauteur de la fenêtre. */}
+      <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* gap-4 sur tout le conteneur (et non plus justify-between entre deux groupes) : ça
               garantit un espacement minimum constant entre chaque élément, y compris entre le
               bouton de synchro et le bouton Focus qui le suit directement — sinon justify-between
               pouvait les coller l'un à l'autre à mesure que la fenêtre rétrécit. */}
-          <nav className="flex items-center gap-4" aria-label="Tabs">
+          <nav className="flex items-center gap-4" aria-label={t('app.tabsAriaLabel', 'Onglets')}>
             <SlidingTabs tabs={tabs} activeId={activeTab} onChange={setActiveTab} />
 
             {/* Theme Toggle Icon */}
@@ -220,7 +230,14 @@ function App() {
                 setTheme(themes[nextIndex])
               }}
               className="w-10 h-10 flex items-center justify-center rounded-full text-lg bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors flex-shrink-0"
-              title={`Theme: ${theme}`}
+              title={tf(t('app.themeTooltip', 'Thème : {{theme}}'), {
+                theme:
+                  theme === 'light'
+                    ? t('app.themeLight', 'clair')
+                    : theme === 'dark'
+                      ? t('app.themeDark', 'sombre')
+                      : t('app.themeAuto', 'auto'),
+              })}
             >
               {theme === 'light' && '☀️'}
               {theme === 'dark' && '🌙'}
@@ -241,7 +258,8 @@ function App() {
         </div>
       </div>
 
-      {/* Content */}
+      {/* Content — seule cette zone défile, avec sa propre scrollbar (voir index.css pour son style) */}
+      <div className="flex-1 overflow-y-auto">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'activities' && (
           <div className="space-y-6">
@@ -260,7 +278,7 @@ function App() {
             </div>
             <div className="lg:col-span-1">
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Résumé de vos activités</h2>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('app.activitiesSummary', 'Résumé de vos activités')}</h2>
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <div>
@@ -272,11 +290,11 @@ function App() {
                       <p className="text-2xl font-bold text-gray-900 dark:text-white">{categories.length}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Professionnel</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{t('app.professional', 'Professionnel')}</p>
                       <p className="text-2xl font-bold text-gray-900 dark:text-white">{activities.filter((a) => a.billable).length}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Personnel</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{t('app.personal', 'Personnel')}</p>
                       <p className="text-2xl font-bold text-gray-900 dark:text-white">{activities.filter((a) => !a.billable).length}</p>
                     </div>
                   </div>
@@ -286,8 +304,8 @@ function App() {
                         <PieChart>
                           <Pie
                             data={[
-                              { name: 'Professionnel', value: activities.filter((a) => a.billable).length },
-                              { name: 'Personnel', value: activities.filter((a) => !a.billable).length }
+                              { name: t('app.professional', 'Professionnel'), value: activities.filter((a) => a.billable).length },
+                              { name: t('app.personal', 'Personnel'), value: activities.filter((a) => !a.billable).length }
                             ]}
                             cx="50%"
                             cy="50%"
@@ -308,7 +326,7 @@ function App() {
                               boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
                             }}
                             formatter={(value: number, name: string, props: any) => [
-                              <span key="value" style={{ color: '#000', fontWeight: '500' }}>{value} activités</span>,
+                              <span key="value" style={{ color: '#000', fontWeight: '500' }}>{tf(t('app.activitiesCount', '{{count}} activités'), { count: value })}</span>,
                               <span key="name" style={{ color: '#666' }}>{props.payload.name}</span>
                             ]}
                             labelStyle={{ color: '#000' }}
@@ -343,10 +361,10 @@ function App() {
               <div>
                 <h2 className="text-2xl font-bold flex items-center gap-2.5">
                   <Icon name="layers" size={22} className="accent-text flex-shrink-0" />
-                  <span className="accent-gradient-text">Rapports & Analyses</span>
+                  <span className="accent-gradient-text">{t('app.reportsTitle', 'Rapports & Analyses')}</span>
                 </h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                  Ta semaine en un coup d'œil, puis une analyse plus approfondie de tes habitudes.
+                  {t('app.reportsDescription', "Ta semaine en un coup d'œil, puis une analyse plus approfondie de tes habitudes.")}
                 </p>
               </div>
             </Card>
@@ -383,10 +401,10 @@ function App() {
               <div>
                 <h2 className="text-2xl font-bold flex items-center gap-2.5">
                   <Icon name="briefcase" size={22} className="accent-text flex-shrink-0" />
-                  <span className="accent-gradient-text">Gestion de projet</span>
+                  <span className="accent-gradient-text">{t('app.projectManagementTitle', 'Gestion de projet')}</span>
                 </h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                  Organise tes sessions actives par client et par projet, avec un taux horaire pour préparer ta facturation.
+                  {t('app.projectManagementDescription', 'Organise tes sessions actives par client et par projet, avec un taux horaire pour préparer ta facturation.')}
                 </p>
               </div>
             </Card>
@@ -395,13 +413,19 @@ function App() {
               <ClientManager onClientsLoaded={setClients} />
               <ProjectManager clients={clients} />
             </div>
+
+            <div className="mt-6">
+              <BudgetPredictions />
+            </div>
           </div>
         )}
 
         {activeTab === 'settings' && <Settings accentColor={accentColor} onReplayOnboarding={() => setShowOnboarding(true)} />}
       </main>
+      </div>
 
       <ConfirmDialogHost />
+      <AppCloseDialog />
       {showOnboarding && <Onboarding onComplete={completeOnboarding} />}
     </div>
     </LiveSessionProvider>

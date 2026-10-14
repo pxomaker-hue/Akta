@@ -1,8 +1,21 @@
 import { useEffect, useState } from 'react'
 import frTranslations from '../locales/fr.json'
 import enTranslations from '../locales/en.json'
+import deTranslations from '../locales/de.json'
 
-type Language = 'fr' | 'en'
+export type Language = 'fr' | 'en' | 'de'
+
+// Tag de locale pour Intl/toLocaleDateString etc. — plusieurs composants formatent des dates avec
+// un tag figé en dur ('fr-FR'), ce qui reste français même quand la langue de l'app change.
+const LOCALE_TAGS: Record<Language, string> = {
+  fr: 'fr-FR',
+  en: 'en-US',
+  de: 'de-DE',
+}
+
+export function localeTag(language: Language): string {
+  return LOCALE_TAGS[language] || 'fr-FR'
+}
 
 interface Translations {
   [key: string]: string
@@ -11,6 +24,7 @@ interface Translations {
 const translations: Record<Language, Translations> = {
   fr: frTranslations,
   en: enTranslations,
+  de: deTranslations,
 }
 
 export function useTranslation() {

@@ -7,6 +7,10 @@ import SyncSettings from './SyncSettings'
 import UpdateSettings from './UpdateSettings'
 import InactivityExclusionsManager from './InactivityExclusionsManager'
 
+function tf(text: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
+}
+
 interface SettingsState {
   theme: string
   language: string
@@ -14,6 +18,7 @@ interface SettingsState {
   notifications_deep_work: string
   notifications_distraction: string
   focus_coaching_mode: string
+  close_action?: string
 }
 
 interface SettingsProps {
@@ -80,8 +85,14 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
   }
 
   async function handleDeleteAllActivities() {
-    if (!(await confirmDialog('Supprimer TOUTES les activités enregistrées depuis le début ? Cette action est irréversible.', { danger: true }))) return
-    if (!(await confirmDialog('Dernière confirmation : toutes tes données d\'activité seront définitivement perdues. Continuer ?', { danger: true, confirmLabel: 'Oui, tout supprimer' }))) return
+    if (!(await confirmDialog(t('settings.confirmDeleteAll', 'Supprimer TOUTES les activités enregistrées depuis le début ? Cette action est irréversible.'), { danger: true }))) return
+    if (
+      !(await confirmDialog(t('settings.confirmDeleteAllFinal', "Dernière confirmation : toutes tes données d'activité seront définitivement perdues. Continuer ?"), {
+        danger: true,
+        confirmLabel: t('settings.confirmDeleteAllLabel', 'Oui, tout supprimer'),
+      }))
+    )
+      return
 
     setIsDeletingAll(true)
     setDeleteAllResult(null)
@@ -109,9 +120,9 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
       <div className="border-b border-gray-200 dark:border-slate-700">
         <SlidingTabs
           tabs={[
-            { id: 'settings' as const, label: 'Paramètres', icon: <Icon name="settings" size={16} /> },
-            { id: 'inactivity' as const, label: 'Inactivité', icon: <Icon name="clock" size={16} /> },
-            { id: 'backup' as const, label: 'Sauvegarde', icon: <Icon name="save" size={16} /> },
+            { id: 'settings' as const, label: t('tabs.settings'), icon: <Icon name="settings" size={16} /> },
+            { id: 'inactivity' as const, label: t('settings.inactivityTab', 'Inactivité'), icon: <Icon name="clock" size={16} /> },
+            { id: 'backup' as const, label: t('settings.backupTab', 'Sauvegarde'), icon: <Icon name="save" size={16} /> },
           ]}
           activeId={tab}
           onChange={setTab}
@@ -129,7 +140,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
           <div className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
             <div>
               <p className="font-medium text-gray-900 dark:text-white">{t('settings.theme')}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.light')} {t('common.delete')} {t('settings.dark')}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.light')} / {t('settings.dark')}</p>
             </div>
             <Dropdown
               value={settings.theme}
@@ -147,7 +158,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
           <div className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
             <div>
               <p className="font-medium text-gray-900 dark:text-white">{t('settings.language')}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.french')} / {t('settings.english')}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.french')} / {t('settings.english')} / {t('settings.german')}</p>
             </div>
             <Dropdown
               value={settings.language}
@@ -156,6 +167,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
               options={[
                 { value: 'fr', label: t('settings.french') },
                 { value: 'en', label: t('settings.english') },
+                { value: 'de', label: t('settings.german') },
               ]}
             />
           </div>
@@ -166,9 +178,9 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
       <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
           <Icon name="palette" size={18} className="accent-text" />
-          Couleur d'accent
+          {t('settings.accentColor', "Couleur d'accent")}
         </h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">Personnalise la teinte principale utilisée dans toute l'application.</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{t('settings.accentColorHint', "Personnalise la teinte principale utilisée dans toute l'application.")}</p>
         <div className="flex gap-3 flex-wrap">
           {presets.map((preset) => (
             <button
@@ -186,17 +198,17 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
 
       {/* Raccourcis clavier globaux */}
       <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
-        <h3 className="text-lg font-bold accent-gradient-text mb-1">Raccourcis clavier globaux</h3>
+        <h3 className="text-lg font-bold accent-gradient-text mb-1">{t('settings.globalShortcuts', 'Raccourcis clavier globaux')}</h3>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-          Fonctionnent même si Akta n'est pas au premier plan (réduit dans le tray).
+          {t('settings.globalShortcutsHint', "Fonctionnent même si Akta n'est pas au premier plan (réduit dans le tray).")}
         </p>
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
-            <span className="text-gray-700 dark:text-slate-300">Démarrer / Mettre en pause / Reprendre</span>
+            <span className="text-gray-700 dark:text-slate-300">{t('settings.shortcutStartPauseResume', 'Démarrer / Mettre en pause / Reprendre')}</span>
             <kbd className="px-2 py-1 text-xs font-mono rounded bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200">Alt+Shift+S</kbd>
           </div>
           <div className="flex items-center justify-between text-sm p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
-            <span className="text-gray-700 dark:text-slate-300">Arrêter la session</span>
+            <span className="text-gray-700 dark:text-slate-300">{t('settings.shortcutStop', 'Arrêter la session')}</span>
             <kbd className="px-2 py-1 text-xs font-mono rounded bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200">Alt+Shift+X</kbd>
           </div>
         </div>
@@ -204,7 +216,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
 
       {/* Démarrage */}
       <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
-        <h3 className="text-lg font-bold accent-gradient-text mb-4">Démarrage</h3>
+        <h3 className="text-lg font-bold accent-gradient-text mb-4">{t('settings.startup', 'Démarrage')}</h3>
         <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer">
           <input
             type="checkbox"
@@ -214,8 +226,8 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
             className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50"
           />
           <div>
-            <p className="font-medium text-gray-900 dark:text-white">Lancer Akta au démarrage de Windows</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">L'application démarre automatiquement (réduite dans le tray) à l'ouverture de session.</p>
+            <p className="font-medium text-gray-900 dark:text-white">{t('settings.launchAtStartup', 'Lancer Akta au démarrage de Windows')}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.launchAtStartupHint', "L'application démarre automatiquement (réduite dans le tray) à l'ouverture de session.")}</p>
           </div>
         </label>
 
@@ -226,11 +238,48 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
           >
             <Icon name="refresh" size={16} className="text-gray-400 flex-shrink-0" />
             <div>
-              <p className="font-medium text-gray-900 dark:text-white">Revoir l'introduction</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Reparcourt la présentation des fonctionnalités affichée au premier lancement.</p>
+              <p className="font-medium text-gray-900 dark:text-white">{t('settings.replayOnboarding', "Revoir l'introduction")}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.replayOnboardingHint', 'Reparcourt la présentation des fonctionnalités affichée au premier lancement.')}</p>
             </div>
           </button>
         )}
+      </div>
+
+      {/* Fermeture */}
+      <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
+        <h3 className="text-lg font-bold accent-gradient-text mb-4">{t('settings.closeSection', "Fermeture de l'application")}</h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 -mt-2">
+          {t('settings.closeSectionHint', 'Comportement du bouton de fermeture de la fenêtre. Si tu as coché "Se souvenir de mon choix" dans la modale, change-le ici.')}
+        </p>
+        <div className="space-y-1">
+          <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer">
+            <input
+              type="radio"
+              checked={!settings.close_action || settings.close_action === 'ask'}
+              onChange={() => updateSetting('close_action', 'ask')}
+              className="w-4 h-4 text-indigo-600"
+            />
+            <p className="font-medium text-gray-900 dark:text-white">{t('settings.closeAlwaysAsk', 'Toujours demander')}</p>
+          </label>
+          <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer">
+            <input
+              type="radio"
+              checked={settings.close_action === 'minimize'}
+              onChange={() => updateSetting('close_action', 'minimize')}
+              className="w-4 h-4 text-indigo-600"
+            />
+            <p className="font-medium text-gray-900 dark:text-white">{t('settings.closeAlwaysMinimize', 'Toujours réduire en arrière-plan')}</p>
+          </label>
+          <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer">
+            <input
+              type="radio"
+              checked={settings.close_action === 'quit'}
+              onChange={() => updateSetting('close_action', 'quit')}
+              className="w-4 h-4 text-indigo-600"
+            />
+            <p className="font-medium text-gray-900 dark:text-white">{t('settings.closeAlwaysQuit', 'Toujours quitter')}</p>
+          </label>
+        </div>
       </div>
 
       {/* Notifications */}
@@ -270,7 +319,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
 
       {/* Focus Coaching Mode */}
       <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
-        <h3 className="text-lg font-bold accent-gradient-text mb-4">🧠 Focus Coaching</h3>
+        <h3 className="text-lg font-bold accent-gradient-text mb-4">🧠 {t('focusCoaching.title', 'Focus Coaching')}</h3>
 
         <div className="space-y-3">
           <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer">
@@ -281,8 +330,8 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
               className="w-4 h-4 text-indigo-600"
             />
             <div className="flex-1">
-              <p className="font-medium text-gray-900 dark:text-white">Mode TDAH</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Micro-cycles de 15-20 min, streaks, gamification, notifications encourageantes</p>
+              <p className="font-medium text-gray-900 dark:text-white">{t('settings.tdahMode', 'Mode TDAH')}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.tdahModeDesc', 'Micro-cycles de 15-20 min, streaks, gamification, notifications encourageantes')}</p>
             </div>
           </label>
 
@@ -294,8 +343,8 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
               className="w-4 h-4 text-indigo-600"
             />
             <div className="flex-1">
-              <p className="font-medium text-gray-900 dark:text-white">Mode Standard</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Pomodoro classique (25/45 min), recommandations simples et discrètes</p>
+              <p className="font-medium text-gray-900 dark:text-white">{t('settings.standardMode', 'Mode Standard')}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.standardModeDesc', 'Pomodoro classique (25/45 min), recommandations simples et discrètes')}</p>
             </div>
           </label>
         </div>
@@ -307,10 +356,10 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg p-6 border border-red-200 dark:border-red-900/40">
         <h3 className="text-lg font-bold text-red-600 dark:text-red-400 mb-1 flex items-center gap-2">
           <Icon name="alert" size={18} />
-          Zone de danger
+          {t('settings.dangerZone', 'Zone de danger')}
         </h3>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-          Supprime définitivement toutes les activités enregistrées, depuis le tout début du suivi. Les catégories, tags et paramètres sont conservés.
+          {t('settings.dangerZoneHint', 'Supprime définitivement toutes les activités enregistrées, depuis le tout début du suivi. Les catégories, tags et paramètres sont conservés.')}
         </p>
         <button
           onClick={handleDeleteAllActivities}
@@ -318,13 +367,18 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
           className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-medium transition-colors"
         >
           <Icon name="trash" size={16} />
-          {isDeletingAll ? 'Suppression en cours...' : 'Effacer toutes les activités'}
+          {isDeletingAll ? t('settings.deletingInProgress', 'Suppression en cours...') : t('settings.deleteAllActivities', 'Effacer toutes les activités')}
         </button>
 
         {deleteAllResult !== null && (
           <p className="mt-3 text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
             <Icon name="check" size={14} />
-            {deleteAllResult} activité{deleteAllResult !== 1 ? 's' : ''} supprimée{deleteAllResult !== 1 ? 's' : ''}.
+            {tf(
+              deleteAllResult === 1
+                ? t('settings.deletedResultSingular', '{{n}} activité supprimée.')
+                : t('settings.deletedResultPlural', '{{n}} activités supprimées.'),
+              { n: deleteAllResult }
+            )}
           </p>
         )}
       </div>
@@ -367,8 +421,8 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
                 className="w-full h-2 bg-gray-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-[var(--accent-primary)]"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-                <span>1 min</span>
-                <span>10 min</span>
+                <span>{tf(t('settings.minutesShort', '{{n}} min'), { n: 1 })}</span>
+                <span>{tf(t('settings.minutesShort', '{{n}} min'), { n: 10 })}</span>
               </div>
             </div>
           </div>

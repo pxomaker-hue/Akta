@@ -1,5 +1,5 @@
 import activeWin from 'active-win'
-import robotjs from 'robotjs'
+import { screen } from 'electron'
 import { getDatabase, createWorkSession, endWorkSession, updateWorkSessionBillable, getWorkSessions, setActivitiesBillableInRange, createSessionPause, endSessionPause, updateSessionCategoryOverrides, updateSessionProject, getSetting, isAppExcludedFromInactivityDetection } from './database'
 import { checkBlocking, isBlockingActive } from './blocker'
 import { findMatchingCategory, findMatchingProject } from './categorizer'
@@ -156,7 +156,7 @@ export function startTracker() {
 
   // Initialize mouse position for inactivity detection
   try {
-    lastMousePosition = robotjs.getMousePos()
+    lastMousePosition = screen.getCursorScreenPoint()
   } catch (error) {
     console.warn('Could not initialize mouse tracking:', error)
     mouseTrackingEnabled = false
@@ -405,7 +405,7 @@ function checkMouseMovement() {
       return
     }
 
-    const currentPos = robotjs.getMousePos()
+    const currentPos = screen.getCursorScreenPoint()
     if (currentPos.x !== lastMousePosition.x || currentPos.y !== lastMousePosition.y) {
       lastInputTime = Date.now()
       lastMousePosition = currentPos

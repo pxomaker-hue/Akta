@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import type { Category } from '../../shared/types'
 import { Icon, confirmDialog } from './UI'
+import { useTranslation } from '../hooks/useTranslation'
+
+function tf(text: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
+}
 
 interface CategoryListProps {
   categories: Category[]
@@ -18,6 +23,7 @@ const PREDEFINED_COLORS = [
 ]
 
 function CategoryList({ categories, onUpdate }: CategoryListProps) {
+  const { t } = useTranslation()
   const [editingId, setEditingId] = useState<number | null>(null)
   const [draftName, setDraftName] = useState('')
   const [draftColor, setDraftColor] = useState('')
@@ -76,7 +82,7 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
   }
 
   const handleDelete = async (category: Category) => {
-    if (!(await confirmDialog(`Supprimer la catégorie "${category.name}" ?`, { danger: true }))) return
+    if (!(await confirmDialog(tf(t('categoryList.confirmDelete', 'Supprimer la catégorie "{{name}}" ?'), { name: category.name }), { danger: true }))) return
     setIsDeleting(category.id)
     try {
       await window.electron.ipc.invoke('delete-category', category.id)
@@ -112,7 +118,7 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
       <div className="flex items-center justify-between mb-4 gap-3">
         <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <Icon name="folder" size={18} className="accent-text" />
-          Catégories existantes
+          {t('categoryList.title', 'Catégories existantes')}
         </h3>
         <button
           onClick={handleApplyAutoCategorization}
@@ -120,14 +126,19 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
           className="flex items-center gap-1.5 text-xs px-3 py-1.5 accent-gradient-bg hover:brightness-110 disabled:opacity-50 text-white rounded-lg font-medium transition-all flex-shrink-0"
         >
           <Icon name="refresh" size={13} className={isApplying ? 'animate-spin' : ''} />
-          {isApplying ? 'Application...' : 'Recatégoriser'}
+          {isApplying ? t('categoryList.applying', 'Application...') : t('categoryList.recategorize', 'Recatégoriser')}
         </button>
       </div>
 
       {applyResult !== null && (
         <p className="text-sm text-emerald-600 dark:text-emerald-400 mb-4 flex items-center gap-1.5">
           <Icon name="check" size={14} />
-          {applyResult} activité{applyResult !== 1 ? 's' : ''} catégorisée{applyResult !== 1 ? 's' : ''} automatiquement.
+          {tf(
+            applyResult === 1
+              ? t('categoryList.applyResultSingular', '{{n}} activité catégorisée automatiquement.')
+              : t('categoryList.applyResultPlural', '{{n}} activités catégorisées automatiquement.'),
+            { n: applyResult }
+          )}
         </p>
       )}
 
@@ -137,7 +148,7 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
             {editingId === category.id ? (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Nom</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{t('categoryList.name', 'Nom')}</label>
                   <input
                     type="text"
                     value={draftName}
@@ -148,7 +159,7 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Couleur</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">{t('categoryForm.colorLabel', 'Couleur')}</label>
                   <div className="flex gap-2 flex-wrap">
                     {PREDEFINED_COLORS.map((c) => (
                       <button
@@ -173,7 +184,7 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
                     disabled={isSaving}
                   />
                   <label htmlFor={`billable-${category.id}`} className="text-sm text-gray-700 dark:text-gray-300">
-                    Facturable par défaut
+                    {t('categoryList.billableDefault', 'Facturable par défaut')}
                   </label>
                 </div>
 
@@ -187,12 +198,12 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
                     disabled={isSaving}
                   />
                   <label htmlFor={`distraction-${category.id}`} className="text-sm text-gray-700 dark:text-gray-300">
-                    Distraction — jamais facturable
+                    {t('categoryList.distractionShort', 'Distraction — jamais facturable')}
                   </label>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Mots-clés (auto-catégorisation)</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">{t('categoryForm.keywordsLabel', 'Mots-clés (auto-catégorisation)')}</label>
                   <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
                       <input
@@ -205,7 +216,7 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
                             handleAddKeyword()
                           }
                         }}
-                        placeholder="ex : vscode, figma, slack"
+                        placeholder={t('categoryForm.keywordsPlaceholder', 'ex : vscode, figma, slack')}
                         className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                         disabled={isSaving}
                       />
@@ -214,7 +225,7 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
                         disabled={!newKeyword.trim() || isSaving}
                         className="px-2 py-1 text-xs bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white rounded font-medium disabled:opacity-50 transition-colors"
                       >
-                        Ajouter
+                        {t('categoryForm.add', 'Ajouter')}
                       </button>
                     </div>
                     {draftKeywords.length > 0 && (
@@ -245,7 +256,7 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
                     disabled={isSaving}
                     className="flex-1 px-3 py-2 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded font-medium disabled:opacity-50 transition-colors"
                   >
-                    {isSaving ? 'Enregistrement...' : 'Enregistrer'}
+                    {isSaving ? t('categoryList.saving', 'Enregistrement...') : t('projectManager.save', 'Enregistrer')}
                   </button>
                   <button
                     onClick={() => handleDelete(category)}
@@ -253,14 +264,14 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
                     className="px-3 py-2 text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded font-medium hover:bg-red-200 dark:hover:bg-red-900/50 disabled:opacity-50 transition-colors"
                   >
                     <Icon name="trash" size={12} className="mr-1 inline" />
-                    Supprimer
+                    {t('activityListItem.delete', 'Supprimer')}
                   </button>
                   <button
                     onClick={cancelEditing}
                     disabled={isSaving}
                     className="px-3 py-2 text-xs bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white rounded font-medium hover:bg-gray-200 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors"
                   >
-                    Annuler
+                    {t('projectManager.cancel', 'Annuler')}
                   </button>
                 </div>
               </div>
@@ -273,13 +284,13 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
                     {category.is_distraction && (
                       <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 flex-shrink-0">
                         <Icon name="alert" size={9} />
-                        Distraction
+                        {t('liveSession.distractionOverride', 'Distraction')}
                       </span>
                     )}
                     {category.billable_default && !category.is_distraction && (
                       <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex-shrink-0">
                         💰
-                        Facturable
+                        {t('sessionsList.billable', 'Facturable')}
                       </span>
                     )}
                   </div>
@@ -287,7 +298,7 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
                     <button
                       onClick={() => startEditing(category)}
                       className="p-1.5 text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded transition-colors"
-                      title="Éditer"
+                      title={t('categoryList.editTitle', 'Éditer')}
                     >
                       <Icon name="edit" size={14} />
                     </button>

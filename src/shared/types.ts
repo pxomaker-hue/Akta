@@ -32,6 +32,10 @@ export interface FocusSession {
   blocked_apps: string[] // JSON array of app names
   project_id?: number | null
   phase_id?: number | null
+  mode?: 'simple' | 'chained'
+  num_sessions?: number
+  session_duration?: number
+  pause_duration?: number
 }
 
 export interface ActivityWithCategory extends Activity {
@@ -62,6 +66,9 @@ export interface ProjectPhase {
   color: string
   keywords?: string | null
   status: 'active' | 'archived'
+  budget_hours: number | null
+  budget_amount: number | null
+  deadline: number | null
   created_at: number
 }
 

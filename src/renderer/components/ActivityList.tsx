@@ -2,6 +2,11 @@ import { useState, useEffect, useCallback } from 'react'
 import type { Activity, Category } from '../../shared/types'
 import ActivityListItem from './ActivityListItem'
 import { Icon, confirmDialog } from './UI'
+import { useTranslation } from '../hooks/useTranslation'
+
+function tf(text: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
+}
 
 interface Tag {
   id: number
@@ -17,6 +22,7 @@ interface ActivityListProps {
 }
 
 function ActivityList({ activities, categories, loading, onActivityUpdate }: ActivityListProps) {
+  const { t } = useTranslation()
   const [isCleaning, setIsCleaning] = useState(false)
   const [cleanResult, setCleanResult] = useState<number | null>(null)
   const [isDeletingUncategorized, setIsDeletingUncategorized] = useState(false)
@@ -92,7 +98,13 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
   }
 
   const handleDeleteUncategorized = async () => {
-    if (!(await confirmDialog(`Supprimer les ${uncategorizedCount} activité${uncategorizedCount !== 1 ? 's' : ''} non catégorisée${uncategorizedCount !== 1 ? 's' : ''} ?`, { danger: true }))) return
+    const confirmMsg = tf(
+      uncategorizedCount === 1
+        ? t('activityList.confirmDeleteUncategorizedSingular', 'Supprimer {{n}} activité non catégorisée ?')
+        : t('activityList.confirmDeleteUncategorizedPlural', 'Supprimer les {{n}} activités non catégorisées ?'),
+      { n: uncategorizedCount }
+    )
+    if (!(await confirmDialog(confirmMsg, { danger: true }))) return
     setIsDeletingUncategorized(true)
     try {
       await window.electron.ipc.invoke('delete-uncategorized-activities')
@@ -103,7 +115,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
   }
 
   const handleDeleteToday = async () => {
-    if (!(await confirmDialog('Supprimer toutes les activités enregistrées aujourd\'hui ? Cette action est irréversible.', { danger: true }))) return
+    if (!(await confirmDialog(t('activityList.confirmDeleteToday', "Supprimer toutes les activités enregistrées aujourd'hui ? Cette action est irréversible."), { danger: true }))) return
     setIsDeletingToday(true)
     try {
       await window.electron.ipc.invoke('delete-today-activities')
@@ -118,7 +130,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
       <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6">
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Chargement des activités...</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">{t('activityList.loading', 'Chargement des activités...')}</p>
         </div>
       </div>
     )
@@ -128,7 +140,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
     return (
       <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6">
         <div className="text-center py-12">
-          <p className="text-gray-600 dark:text-gray-400">Aucune activité pour le moment. Utilise ton ordinateur pour démarrer le suivi !</p>
+          <p className="text-gray-600 dark:text-gray-400">{t('activityList.empty', 'Aucune activité pour le moment. Utilise ton ordinateur pour démarrer le suivi !')}</p>
         </div>
       </div>
     )
@@ -167,9 +179,9 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Activités récentes</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('activityList.title', 'Activités récentes')}</h2>
         <span className="text-sm text-gray-600 dark:text-gray-400">
-          {isFiltered ? `${filteredActivities.length} / ${activities.length}` : activities.length} activités
+          {isFiltered ? `${filteredActivities.length} / ${activities.length}` : activities.length} {t('activityList.activitiesWord', 'activités')}
         </span>
       </div>
 
@@ -183,7 +195,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
               className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 disabled:opacity-50 transition-colors"
             >
               <Icon name="alert" size={12} />
-              {isCleaning ? 'Nettoyage...' : 'Nettoyer'}
+              {isCleaning ? t('activityList.cleaning', 'Nettoyage...') : t('activityList.clean', 'Nettoyer')}
             </button>
           )}
 
@@ -194,7 +206,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
               className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
             >
               <Icon name="trash" size={12} />
-              {isDeletingUncategorized ? 'Suppression...' : `Non catég. (${uncategorizedCount})`}
+              {isDeletingUncategorized ? t('activityList.deleting', 'Suppression...') : tf(t('activityList.uncategorizedCount', 'Non catég. ({{n}})'), { n: uncategorizedCount })}
             </button>
           )}
 
@@ -204,13 +216,18 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
             className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 disabled:opacity-50 transition-colors"
           >
             <Icon name="trash" size={12} />
-            {isDeletingToday ? 'Suppression...' : 'Effacer du jour'}
+            {isDeletingToday ? t('activityList.deleting', 'Suppression...') : t('activityList.clearToday', 'Effacer du jour')}
           </button>
 
           {cleanResult !== null && (
             <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
               <Icon name="check" size={12} />
-              {cleanResult} supprimée{cleanResult !== 1 ? 's' : ''}.
+              {tf(
+                cleanResult === 1
+                  ? t('activityList.deletedResultSingular', '{{n}} supprimée.')
+                  : t('activityList.deletedResultPlural', '{{n}} supprimées.'),
+                { n: cleanResult }
+              )}
             </p>
           )}
         </div>
@@ -222,7 +239,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Rechercher par application ou titre de fenêtre..."
+          placeholder={t('activityList.searchPlaceholder', 'Rechercher par application ou titre de fenêtre...')}
           className="w-full pl-9 pr-9 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
         />
         <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -241,7 +258,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
 
       {/* Pills de filtres */}
       <div className="flex gap-1.5 flex-wrap items-center">
-        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Filtres :</span>
+        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('activityList.filters', 'Filtres :')}</span>
 
         {/* Date */}
         <button
@@ -253,7 +270,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
           }`}
         >
           <Icon name="calendar" size={12} />
-          Plage {(selectedDateStart || selectedDateEnd) && '✓'}
+          {t('activityList.dateRange', 'Plage')} {(selectedDateStart || selectedDateEnd) && '✓'}
         </button>
 
         {/* Catégories */}
@@ -266,7 +283,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
                 : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'
             }`}
           >
-            Catégories {selectedCategoryFilter && '✓'}
+            {t('activityList.categoriesFilter', 'Catégories')} {selectedCategoryFilter && '✓'}
           </button>
         )}
 
@@ -280,7 +297,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
                 : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'
             }`}
           >
-            Tags {selectedTagFilter && '✓'}
+            {t('activityList.tagsFilter', 'Tags')} {selectedTagFilter && '✓'}
           </button>
         )}
 
@@ -293,7 +310,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
               : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'
           }`}
         >
-          Facturation {selectedBillableFilter && '✓'}
+          {t('activityList.billableFilter', 'Facturation')} {selectedBillableFilter && '✓'}
         </button>
       </div>
 
@@ -301,7 +318,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
       {showFilters === 'date' && (
         <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-slate-800/50 rounded-lg flex-wrap">
           <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-600 dark:text-gray-400">De:</span>
+            <span className="text-xs text-gray-600 dark:text-gray-400">{t('activityList.dateFrom', 'De:')}</span>
             <input
               type="date"
               value={selectedDateStart}
@@ -318,7 +335,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
             )}
           </div>
           <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-600 dark:text-gray-400">À:</span>
+            <span className="text-xs text-gray-600 dark:text-gray-400">{t('activityList.dateTo', 'À:')}</span>
             <input
               type="date"
               value={selectedDateEnd}
@@ -347,7 +364,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
                 : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'
             }`}
           >
-            Tous
+            {t('activityList.all', 'Tous')}
           </button>
           {categories.map((cat) => (
             <button
@@ -370,7 +387,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
                 : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'
             }`}
           >
-            Non catégorisées
+            {t('activityList.uncategorizedOption', 'Non catégorisées')}
           </button>
         </div>
       )}
@@ -385,7 +402,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
                 : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'
             }`}
           >
-            Tous
+            {t('activityList.all', 'Tous')}
           </button>
           {allTags.map((tag) => (
             <button
@@ -412,7 +429,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
                 : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'
             }`}
           >
-            Tous
+            {t('activityList.all', 'Tous')}
           </button>
           <button
             onClick={() => setSelectedBillableFilter('professional')}
@@ -422,7 +439,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
                 : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'
             }`}
           >
-            Professionnel
+            {t('activityList.professionalOption', 'Professionnel')}
           </button>
           <button
             onClick={() => setSelectedBillableFilter('personal')}
@@ -432,14 +449,14 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
                 : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'
             }`}
           >
-            Personnel
+            {t('activityList.personalOption', 'Personnel')}
           </button>
         </div>
       )}
 
       <div className="space-y-2">
         {filteredActivities.length === 0 && isFiltered ? (
-          <p className="text-center text-gray-500 dark:text-gray-400 py-8">Aucune activité ne correspond à ce filtre</p>
+          <p className="text-center text-gray-500 dark:text-gray-400 py-8">{t('activityList.noMatch', 'Aucune activité ne correspond à ce filtre')}</p>
         ) : (
           filteredActivities.slice(0, visibleCount).map((activity) => (
           <ActivityListItem
@@ -461,7 +478,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
             onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
           >
-            Voir plus ({filteredActivities.length - visibleCount} restantes)
+            {t('activityList.seeMore', 'Voir plus')} ({filteredActivities.length - visibleCount} {t('activityList.remaining', 'restantes')})
           </button>
         </div>
       )}

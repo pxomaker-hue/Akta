@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Icon } from './UI'
+import { useTranslation } from '../hooks/useTranslation'
+
+function tf(text: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
+}
 
 type UpdateStatus =
   | { status: 'idle' }
@@ -12,6 +17,7 @@ type UpdateStatus =
   | { status: 'dev-mode' }
 
 function UpdateSettings() {
+  const { t } = useTranslation()
   const [version, setVersion] = useState('')
   const [update, setUpdate] = useState<UpdateStatus>({ status: 'idle' })
   const [checking, setChecking] = useState(false)
@@ -46,19 +52,19 @@ function UpdateSettings() {
   const statusText = (() => {
     switch (update.status) {
       case 'checking':
-        return 'Vérification en cours...'
+        return t('updateSettings.checking', 'Vérification en cours...')
       case 'available':
-        return `Version ${update.version} disponible, téléchargement en cours...`
+        return tf(t('updateSettings.available', 'Version {{version}} disponible, téléchargement en cours...'), { version: update.version })
       case 'not-available':
-        return 'Tu as déjà la dernière version.'
+        return t('updateSettings.notAvailable', 'Tu as déjà la dernière version.')
       case 'downloading':
-        return `Téléchargement... ${update.percent}%`
+        return tf(t('updateSettings.downloading', 'Téléchargement... {{percent}}%'), { percent: update.percent })
       case 'downloaded':
-        return `Version ${update.version} téléchargée — redémarre l'appli pour l'installer.`
+        return tf(t('updateSettings.downloaded', "Version {{version}} téléchargée — redémarre l'appli pour l'installer."), { version: update.version })
       case 'error':
-        return "Erreur lors de la vérification des mises à jour."
+        return t('updateSettings.error', 'Erreur lors de la vérification des mises à jour.')
       case 'dev-mode':
-        return 'Les mises à jour ne sont vérifiées que sur une version installée (pas en dev).'
+        return t('updateSettings.devMode', 'Les mises à jour ne sont vérifiées que sur une version installée (pas en dev).')
       default:
         return null
     }
@@ -68,10 +74,10 @@ function UpdateSettings() {
     <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
       <h3 className="text-lg font-bold accent-gradient-text mb-1 flex items-center gap-2">
         <Icon name="download" size={18} className="accent-text" />
-        Mises à jour
+        {t('updateSettings.title', 'Mises à jour')}
       </h3>
       <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-        Version installée : <span className="font-mono">{version || '…'}</span>
+        {t('updateSettings.installedVersion', 'Version installée :')} <span className="font-mono">{version || '…'}</span>
       </p>
 
       <button
@@ -80,7 +86,7 @@ function UpdateSettings() {
         className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 text-sm font-medium hover:bg-gray-200 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors"
       >
         <Icon name="refresh" size={16} className={checking ? 'animate-spin' : ''} />
-        Vérifier les mises à jour
+        {t('updateSettings.checkButton', 'Vérifier les mises à jour')}
       </button>
 
       {statusText && <p className="mt-3 text-sm text-gray-600 dark:text-slate-300">{statusText}</p>}

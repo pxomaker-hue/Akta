@@ -5,6 +5,11 @@ import { computeDeepWorkSessions } from '../../shared/deepwork'
 import CategoryIcon from './CategoryIcon'
 import { Card, CardHeader, Stat, Icon } from './UI'
 import { downloadBase64File, downloadTextFile } from '../utils/download'
+import { useTranslation, localeTag } from '../hooks/useTranslation'
+
+function tf(text: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
+}
 
 interface ReportsProps {
   categories: Category[]
@@ -27,6 +32,7 @@ interface ProjectBreakdown {
 }
 
 function Reports({ categories }: ReportsProps) {
+  const { t, language } = useTranslation()
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
   const [dayRefresh, setDayRefresh] = useState(0)
@@ -118,11 +124,10 @@ function Reports({ categories }: ReportsProps) {
   )
 
   const sumTotal = (list: Activity[]) => list.reduce((s, a) => s + a.duration_seconds, 0)
-  const sumBillable = (list: Activity[]) =>
-    list.reduce((s, a) => {
-      if (a.category_id && categoryMap.get(a.category_id)?.billable_default) return s + a.duration_seconds
-      return s
-    }, 0)
+  // Le statut facturable réel d'une activité (activity.billable) peut être surchargé manuellement
+  // par session et ne correspond pas forcément au réglage par défaut de sa catégorie — c'est
+  // activity.billable qui fait foi partout ailleurs dans l'app (Activités, facturation par projet).
+  const sumBillable = (list: Activity[]) => list.reduce((s, a) => (a.billable ? s + a.duration_seconds : s), 0)
   const sumDeepWork = (list: Activity[]) => computeDeepWorkSessions(list).reduce((s, sess) => s + sess.duration_seconds, 0)
 
   const totalThisWeek = sumTotal(thisWeek)
@@ -150,11 +155,11 @@ function Reports({ categories }: ReportsProps) {
       const dayEndMs = dayStartMs + DAY_MS
       const dayActivities = activities.filter((a) => a.start_time >= dayStartMs && a.start_time < dayEndMs)
       const totalSeconds = sumTotal(dayActivities)
-      const label = new Date(dayStartMs).toLocaleDateString('fr-FR', { weekday: 'short' })
+      const label = new Date(dayStartMs).toLocaleDateString(localeTag(language), { weekday: 'short' })
       days.push({ label, hours: Math.round((totalSeconds / 3600) * 10) / 10 })
     }
     return days
-  }, [activities, todayStart])
+  }, [activities, todayStart, language])
 
   const topCategories = useMemo(() => {
     const stats = new Map<number, { name: string; color: string; seconds: number }>()
@@ -187,36 +192,36 @@ function Reports({ categories }: ReportsProps) {
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Stat
-          label="Temps cette semaine"
+          label={t('reports.timeThisWeek', 'Temps cette semaine')}
           value={formatTime(totalThisWeek)}
           icon={<Icon name="chart-bar" size={18} />}
           gradient="from-indigo-50/80 to-indigo-100/60 dark:from-indigo-900/20 dark:to-indigo-800/10"
-          subtext={`${timeTrend >= 0 ? '▲' : '▼'} ${Math.abs(timeTrend)}% vs semaine dernière`}
+          subtext={`${timeTrend >= 0 ? '▲' : '▼'} ${tf(t('reports.vsLastWeek', '{{pct}}% vs semaine dernière'), { pct: Math.abs(timeTrend) })}`}
         />
         <Stat
-          label="Deep Work"
+          label={t('reports.deepWork', 'Deep Work')}
           value={formatTime(deepWorkThisWeek)}
           icon={<Icon name="target" size={18} />}
           gradient="from-rose-50/80 to-rose-100/60 dark:from-rose-900/20 dark:to-rose-800/10"
-          subtext={`${deepWorkTrend >= 0 ? '▲' : '▼'} ${Math.abs(deepWorkTrend)}% vs semaine dernière`}
+          subtext={`${deepWorkTrend >= 0 ? '▲' : '▼'} ${tf(t('reports.vsLastWeek', '{{pct}}% vs semaine dernière'), { pct: Math.abs(deepWorkTrend) })}`}
         />
         <Stat
-          label="Temps facturable"
+          label={t('reports.billableTime', 'Temps facturable')}
           value={formatTime(billableThisWeek)}
           icon={<Icon name="briefcase" size={18} />}
           gradient="from-cyan-50/80 to-cyan-100/60 dark:from-cyan-900/20 dark:to-cyan-800/10"
-          subtext={`${totalThisWeek > 0 ? Math.round((billableThisWeek / totalThisWeek) * 100) : 0}% du temps`}
+          subtext={tf(t('reports.percentOfTime', '{{pct}}% du temps'), { pct: totalThisWeek > 0 ? Math.round((billableThisWeek / totalThisWeek) * 100) : 0 })}
         />
       </div>
 
       {/* Répartition hebdomadaire */}
       <Card>
-        <CardHeader title="Répartition des 7 derniers jours" icon={<Icon name="chart-line" size={18} />} />
+        <CardHeader title={t('reports.last7DaysBreakdown', 'Répartition des 7 derniers jours')} icon={<Icon name="chart-line" size={18} />} />
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={dailyData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.3} />
             <XAxis dataKey="label" stroke="#9ca3af" style={{ fontSize: '12px' }} />
-            <YAxis stroke="#9ca3af" style={{ fontSize: '12px' }} label={{ value: 'Heures', angle: -90, position: 'insideLeft' }} />
+            <YAxis stroke="#9ca3af" style={{ fontSize: '12px' }} label={{ value: t('reports.hoursAxis', 'Heures'), angle: -90, position: 'insideLeft' }} />
             <Tooltip
               contentStyle={{
                 backgroundColor: 'rgba(15, 23, 42, 0.95)',
@@ -234,7 +239,7 @@ function Reports({ categories }: ReportsProps) {
       {/* Top catégories */}
       {topCategories.length > 0 && (
         <Card>
-          <CardHeader title="Top catégories de la semaine" icon={<Icon name="trophy" size={18} />} />
+          <CardHeader title={t('reports.topCategoriesWeek', 'Top catégories de la semaine')} icon={<Icon name="trophy" size={18} />} />
           <div className="space-y-3">
             {topCategories.map((cat, idx) => (
               <div key={cat.name} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
@@ -243,7 +248,7 @@ function Reports({ categories }: ReportsProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 dark:text-white">{cat.name}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">#{idx + 1} catégorie</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{tf(t('reports.categoryRank', '#{{n}} catégorie'), { n: idx + 1 })}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-sm font-bold text-gray-900 dark:text-white">{formatTime(cat.seconds)}</p>
@@ -257,7 +262,7 @@ function Reports({ categories }: ReportsProps) {
       {/* Top projets */}
       {projectBreakdown.length > 0 && (
         <Card>
-          <CardHeader title="Temps par projet cette semaine" icon={<Icon name="folder" size={18} />} />
+          <CardHeader title={t('reports.timeByProjectWeek', 'Temps par projet cette semaine')} icon={<Icon name="folder" size={18} />} />
           <div className="space-y-3">
             {projectBreakdown.slice(0, 5).map((proj) => {
               const share = projectBreakdown[0].seconds > 0 ? (proj.seconds / projectBreakdown[0].seconds) * 100 : 0
@@ -287,14 +292,14 @@ function Reports({ categories }: ReportsProps) {
       {thisWeek.length === 0 && (
         <Card>
           <div className="text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400">Pas encore assez de données pour générer un rapport.</p>
+            <p className="text-gray-500 dark:text-gray-400">{t('reports.notEnoughData', 'Pas encore assez de données pour générer un rapport.')}</p>
           </div>
         </Card>
       )}
 
       {/* Export comptable mensuel */}
       <Card>
-        <CardHeader title="Export mensuel" icon={<Icon name="download" size={18} />} subtitle="Toutes sessions, tous projets confondus" />
+        <CardHeader title={t('reports.monthlyExport', 'Export mensuel')} icon={<Icon name="download" size={18} />} subtitle={t('reports.monthlyExportSubtitle', 'Toutes sessions, tous projets confondus')} />
         <div className="flex items-center gap-2 flex-wrap">
           <input
             type="month"
