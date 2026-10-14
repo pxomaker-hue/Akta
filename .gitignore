@@ -8,3 +8,6 @@ out/
 
 # Binaires de build (publiés via GitHub Releases, > 100 Mo)
 release/
+
+# Config locale Claude Code (permissions propres à la machine)
+.claude/settings.local.json
