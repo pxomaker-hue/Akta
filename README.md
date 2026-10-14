@@ -88,3 +88,7 @@ Le texte de l'interface passe par `t('clé', 'texte par défaut')` (`src/rendere
 ## Confidentialité
 
 Toutes les données restent sur ta machine. Aucune télémétrie : le seul accès réseau est la vérification des mises à jour.
+
+## Licence
+
+Akta est distribué sous licence [GNU GPL v3](LICENSE). Tu peux utiliser, modifier et redistribuer le code, à condition que toute version redistribuée reste elle aussi sous GPL v3 avec son code source disponible.
