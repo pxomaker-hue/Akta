@@ -54,7 +54,7 @@
     "productName": "Akta",
     "publish": {
       "provider": "generic",
-      "url": "https://akta.atelier-oni.fr/updates/"
+      "url": "http://easywork.kairos-app.website/akta/updates/"
     },
     "files": [
       "dist/**/*",
