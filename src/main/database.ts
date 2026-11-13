@@ -15,7 +15,60 @@ export function initDatabase(): Database.Database {
   db.pragma('journal_mode = WAL')
 
   createTables()
+  closeOrphanedRecords()
   return db
+}
+
+// Après un crash, une coupure de courant ou un arrêt de Windows sans fermeture propre, des sessions,
+// pauses et activités restent ouvertes (end_time NULL). Les totaux traitent une session ouverte comme
+// "en cours jusqu'à maintenant" : elle absorbait donc tout le temps facturable des jours suivants.
+// Au démarrage (aucune session ne peut encore être en cours), on les referme à la dernière trace
+// d'activité réelle.
+function closeOrphanedRecords() {
+  if (!db) return
+  const d = db
+  const now = Date.now()
+
+  d.transaction(() => {
+    // Activités : leur durée est persistée à chaque poll, la fin s'en déduit
+    d.prepare(`UPDATE activities SET end_time = start_time + duration_seconds * 1000 WHERE end_time IS NULL`).run()
+
+    const orphans = d.prepare('SELECT id, start_time FROM work_sessions WHERE end_time IS NULL ORDER BY start_time ASC').all() as any[]
+    for (const session of orphans) {
+      const next = d.prepare('SELECT MIN(start_time) AS t FROM work_sessions WHERE start_time > ?').get(session.start_time) as any
+      const limit = next?.t ?? now
+      const last = d
+        .prepare(`SELECT MAX(end_time) AS t FROM activities WHERE start_time >= ? AND start_time < ?`)
+        .get(session.start_time, limit) as any
+      const endTime = Math.min(Math.max(last?.t ?? session.start_time, session.start_time), limit)
+
+      // Pauses restées ouvertes : closes à la fin de session (ou à leur propre début si postérieur)
+      const openPauses = d.prepare('SELECT id, start_time FROM session_pauses WHERE session_id = ? AND end_time IS NULL').all(session.id) as any[]
+      for (const p of openPauses) {
+        const pauseEnd = Math.max(endTime, p.start_time)
+        d.prepare('UPDATE session_pauses SET end_time = ?, duration_seconds = ? WHERE id = ?').run(
+          pauseEnd,
+          Math.floor((pauseEnd - p.start_time) / 1000),
+          p.id
+        )
+      }
+
+      const paused = d
+        .prepare(`SELECT COALESCE(SUM(MAX(MIN(end_time, ?) - start_time, 0)), 0) AS ms FROM session_pauses WHERE session_id = ?`)
+        .get(endTime, session.id) as any
+      const durationSeconds = Math.max(Math.floor((endTime - session.start_time - (paused?.ms ?? 0)) / 1000), 0)
+      d.prepare('UPDATE work_sessions SET end_time = ?, duration_seconds = ?, updated_at = ? WHERE id = ?').run(endTime, durationSeconds, now, session.id)
+      console.log(`[Recovery] Session orpheline ${session.id} close à ${new Date(endTime).toISOString()}`)
+    }
+
+    // Pauses orphelines de sessions déjà closes
+    d.prepare(`
+      UPDATE session_pauses
+      SET end_time = MAX(start_time, (SELECT end_time FROM work_sessions ws WHERE ws.id = session_pauses.session_id)),
+          duration_seconds = MAX(0, ((SELECT end_time FROM work_sessions ws WHERE ws.id = session_pauses.session_id) - start_time) / 1000)
+      WHERE end_time IS NULL
+    `).run()
+  })()
 }
 
 export function getDatabase(): Database.Database {
@@ -975,8 +1028,19 @@ export function updateWorkSessionBillable(sessionId: number, billable: boolean):
   const stmt = db.prepare('UPDATE work_sessions SET billable = ?, updated_at = ? WHERE id = ?')
   stmt.run(billable ? 1 : 0, Date.now(), sessionId)
 
-  const rangeEnd = session.end_time ?? Date.now()
+  const now = Date.now()
+  const rangeEnd = session.end_time ?? now
   setActivitiesBillableInRange(session.start_time, rangeEnd, billable)
+
+  // Le temps passé pendant les pauses de la session n'est jamais facturable, même si la session l'est
+  db.prepare(`
+    UPDATE activities SET billable = 0
+    WHERE id IN (
+      SELECT a.id FROM activities a
+      JOIN session_pauses sp ON sp.session_id = ?
+      WHERE a.start_time >= sp.start_time AND a.start_time < COALESCE(sp.end_time, ?)
+    )
+  `).run(sessionId, now)
 }
 
 export function getWorkSessions(sinceMs: number): any[] {

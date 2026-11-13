@@ -1,8 +1,8 @@
-import { app, BrowserWindow, ipcMain, Menu, Tray, nativeImage, nativeTheme, globalShortcut, Notification, screen } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, Tray, nativeImage, nativeTheme, globalShortcut, Notification, screen, powerMonitor } from 'electron'
 import path from 'path'
 import { initDatabase, closeDatabase, getDatabase, getSetting, setSetting, getAllSettings, createTag, getTags, getTagsByActivity, addTagToActivity, removeTagFromActivity, deleteTag, exportData, importData, exportActivitiesCSV, updateWorkSessionBillable, getWorkSessionById, getActivitiesInRange, deleteWorkSession, createProject, getProjects, deleteProject, updateProject, updateSessionDetails, createClient, getClients, deleteClient, getProjectBillableSeconds, getSessionBillableSeconds, getSessionsForProject, getSessionPauses, getSessionPausedSeconds, getPausesInRange, createProjectPhase, getProjectPhases, updateProjectPhase, deleteProjectPhase, getPhaseBillableSeconds, getProjectTimeBreakdown, exportProjectSessionsCSV, exportMonthlyCSV, getWorkSessionsWithProjectInRange, recordSyncTombstone, getSessionsWithoutProjectToday, getProjectsWithBudgetOrDeadlineIssues, getBudgetPredictions } from './database'
 import { generateProjectPDF, generateMonthlyPDF } from './pdf-export'
-import { startTracker, stopTracker, getRecentActivities, getCurrentActivityId, getTrackingStatus, startSession, pauseSession, resumeSession, stopSession, setSessionBillable, listWorkSessions, setSessionCategoryOverrides, setSessionProject, getCurrentWorkSessionDetails } from './tracker'
+import { startTracker, stopTracker, handleSystemAway, refreshIdleTimeout, flushForShutdown, getRecentActivities, getCurrentActivityId, getTrackingStatus, startSession, pauseSession, resumeSession, stopSession, setSessionBillable, listWorkSessions, setSessionCategoryOverrides, setSessionProject, getCurrentWorkSessionDetails } from './tracker'
 import { startFocusSession, endFocusSession, getFocusSessions, getCurrentFocusSession, deleteFocusSession, checkAutoCompleteFocusSession } from './focus-mode'
 import { analyzeFocusQuality, getProductivityPattern, getCoachingRecommendations, getOptimalCycleDuration } from './coach'
 import { setMainWindow, activateBlocking, deactivateBlocking } from './blocker'
@@ -155,8 +155,23 @@ function createWindow() {
     mainWindow = null
   })
 
+  // Arrêt / déconnexion Windows : l'événement 'quit' n'est pas garanti, on clôt proprement la
+  // session et les activités en cours avant que le process ne soit tué.
+  mainWindow.on('session-end', () => {
+    flushForShutdown()
+  })
+
   setMainWindow(mainWindow)
   setUpdaterWindow(mainWindow)
+}
+
+// Prévient TOUTES les fenêtres (principale + widget tray) qu'une session a changé d'état, quelle
+// que soit l'origine de l'action (fenêtre, widget, menu du tray, raccourci global). Sans ça, l'autre
+// fenêtre gardait un état périmé jusqu'à 5 s et pouvait relancer une session déjà démarrée.
+function broadcastTrackingStatus() {
+  for (const win of [mainWindow, trayWidgetWindow]) {
+    if (win && !win.isDestroyed()) win.webContents.send('tracking-status-changed')
+  }
 }
 
 // Raccourcis clavier globaux : permettent de piloter une session sans faire remonter la fenêtre
@@ -179,7 +194,7 @@ function handleGlobalToggle() {
     resumeSession()
     notifyGlobalAction(mt('tray', 'sessionResumed'))
   }
-  mainWindow?.webContents.send('tracking-status-changed')
+  broadcastTrackingStatus()
 }
 
 function handleGlobalStop() {
@@ -187,7 +202,7 @@ function handleGlobalStop() {
   if (status.sessionState === 'stopped') return
   stopSession()
   notifyGlobalAction(mt('tray', 'sessionStopped'))
-  mainWindow?.webContents.send('tracking-status-changed')
+  broadcastTrackingStatus()
 }
 
 function registerGlobalShortcuts() {
@@ -231,18 +246,27 @@ function updateTrayMenu() {
     if (session.isRunning) {
       menuItems.push({
         label: mt('tray', 'pause'),
-        click: () => pauseSession(),
+        click: () => {
+          pauseSession()
+          broadcastTrackingStatus()
+        },
       })
     } else if (session.isPaused) {
       menuItems.push({
         label: mt('tray', 'resume'),
-        click: () => resumeSession(),
+        click: () => {
+          resumeSession()
+          broadcastTrackingStatus()
+        },
       })
     }
 
     menuItems.push({
       label: mt('tray', 'stop'),
-      click: () => stopSession(),
+      click: () => {
+        stopSession()
+        broadcastTrackingStatus()
+      },
     })
 
     menuItems.push({ type: 'separator' })
@@ -495,6 +519,13 @@ app.on('ready', () => {
 
   // Démarrer le tracker d'activité
   startTracker()
+
+  // Veille et verrouillage : l'utilisateur est absent, la session passe en pause d'inactivité tout
+  // de suite (sinon la durée de la veille était comptée au réveil). Arrêt système (macOS/Linux) :
+  // clôture propre comme pour 'session-end' sur Windows.
+  powerMonitor.on('suspend', handleSystemAway)
+  powerMonitor.on('lock-screen', handleSystemAway)
+  powerMonitor.on('shutdown', () => flushForShutdown())
 
   // Créer la fenêtre (continue even if it fails on headless systems)
   try {
@@ -979,21 +1010,25 @@ function setupIpcHandlers() {
   // Contrôle de la session active : démarrer / mettre en pause / reprendre / arrêter
   ipcMain.handle('start-session', async () => {
     startSession()
+    broadcastTrackingStatus()
     return getTrackingStatus()
   })
 
   ipcMain.handle('pause-session', async () => {
     pauseSession()
+    broadcastTrackingStatus()
     return getTrackingStatus()
   })
 
   ipcMain.handle('resume-session', async () => {
     resumeSession()
+    broadcastTrackingStatus()
     return getTrackingStatus()
   })
 
   ipcMain.handle('stop-session', async () => {
     stopSession()
+    broadcastTrackingStatus()
     return getTrackingStatus()
   })
 
@@ -1339,6 +1374,7 @@ function setupIpcHandlers() {
         if (createWorkSession && !hasActiveWorkSession) {
           console.log('[FocusMode] Creating work session for focus mode')
           startSession()
+          broadcastTrackingStatus()
           didCreateWorkSession = true
         }
 
@@ -1376,6 +1412,7 @@ function setupIpcHandlers() {
       if (didCreateWorkSession) {
         console.log('[FocusMode] Ending work session that was created by focus mode')
         stopSession()
+        broadcastTrackingStatus()
       }
 
       // Clean up the map
@@ -1431,6 +1468,7 @@ function setupIpcHandlers() {
   ipcMain.handle('set-setting', async (event, key: string, value: string) => {
     try {
       setSetting(key, value)
+      if (key === 'idle_timeout') refreshIdleTimeout()
       // Notify renderer of setting change
       if (mainWindow) {
         mainWindow.webContents.send('setting-changed', { key, value })
