@@ -36,6 +36,10 @@ const EVENT_CHANNELS = new Set<string>([
   'tracking-status-changed', 'update-status', 'window-maximized-changed',
 ])
 
+// Chaque composant qui utilise useTranslation() écoute 'setting-changed' : au-delà de 10 écouteurs,
+// Node affichait un faux avertissement de fuite mémoire. Les écouteurs sont bien retirés au démontage.
+ipcRenderer.setMaxListeners(100)
+
 function assertChannel(allowed: Set<string>, channel: string) {
   if (!allowed.has(channel)) throw new Error(`Canal IPC non autorisé : ${channel}`)
 }
