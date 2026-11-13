@@ -1,5 +1,5 @@
 import activeWin from 'active-win'
-import { screen } from 'electron'
+import { screen, powerMonitor } from 'electron'
 import { getDatabase, createWorkSession, endWorkSession, updateWorkSessionBillable, getWorkSessions, setActivitiesBillableInRange, createSessionPause, endSessionPause, updateSessionCategoryOverrides, updateSessionProject, getSetting, isAppExcludedFromInactivityDetection } from './database'
 import { checkBlocking, isBlockingActive } from './blocker'
 import { findMatchingCategory, findMatchingProject } from './categorizer'
@@ -9,13 +9,21 @@ import type { Activity } from '../shared/types'
 
 const POLL_INTERVAL = 2000 // ms
 const DEFAULT_IDLE_TIMEOUT = 3 * 60 * 1000 // 3 minutes default
-const MIN_ACTIVITY_DURATION = 5000 // 5 secondes minimum pour enregistrer
 const DEEP_WORK_MILESTONE_MINUTES = 25
 // Revenir sur une appli quittée depuis moins de 2 minutes prolonge son activité au lieu d'en créer une nouvelle
 const APP_CONTINUITY_GRACE_MS = 2 * 60 * 1000
+// Écart maximal crédité entre deux polls. Au-delà (mise en veille, process gelé…), l'écart n'est pas
+// du temps passé sur l'appli : sans ce plafond, une activité reprenait toute la durée de la veille.
+const MAX_POLL_GAP_MS = 10 * 1000
 
 // Idle timeout configuration
 let idleTimeoutMs = DEFAULT_IDLE_TIMEOUT
+
+// Relit le délai d'inactivité depuis les paramètres — appelé quand l'utilisateur le modifie, pour
+// qu'il s'applique immédiatement au lieu d'attendre le prochain redémarrage de l'app.
+export function refreshIdleTimeout() {
+  idleTimeoutMs = getIdleTimeout()
+}
 
 // Get idle timeout from settings (in seconds)
 function getIdleTimeout(): number {
@@ -187,10 +195,17 @@ export function stopTracker() {
   console.log('Activity tracker stopped')
 }
 
+// Arrêt / déconnexion du système : clôt la session et les activités en cours sans arrêter le
+// polling — si l'arrêt est annulé, le suivi reprend normalement au poll suivant.
+export function flushForShutdown() {
+  stopSession()
+  closeAllActivitiesNow(Date.now())
+  currentWindow = null
+}
+
 // Calcule la durée active (hors pauses) et clôture la session de travail en base
-function finalizeCurrentWorkSession() {
+function finalizeCurrentWorkSession(now: number = Date.now()) {
   if (currentWorkSessionId === null || currentSessionStartTime === null) return
-  const now = Date.now()
   let pausedMsSoFar = totalPausedMs
   if (sessionState === 'paused' && pausedAt !== null) {
     pausedMsSoFar += now - pausedAt
@@ -205,8 +220,8 @@ async function pollWindowActivity() {
   // Le suivi général (temps par application, avec la stratégie de continuité de 2 min) tourne
   // toujours en arrière-plan, indépendamment de l'état d'une "session active" (start/pause/stop).
 
-  // Check for mouse movement first (real inactivity detection)
-  checkMouseMovement()
+  // Détection d'activité réelle (clavier + souris) avant toute chose
+  refreshInputActivity()
 
   try {
     const window = await activeWin()
@@ -270,8 +285,7 @@ async function pollWindowActivity() {
       handleAppSwitch(newWindow, now)
     } else if (currentOpenActivity) {
       // Même application : on continue d'accumuler le temps réellement passé dessus
-      currentOpenActivity.accumulatedSeconds += (now - currentOpenActivity.lastActiveAt) / 1000
-      currentOpenActivity.lastActiveAt = now
+      accumulateUntil(currentOpenActivity, now)
 
       // Vérifier si le titre a changé (onglet différent dans un navigateur)
       console.log(`[TitleChangeCheck] Old title: "${currentOpenActivity.windowTitle}", New title: "${newWindow.title}", Same? ${currentOpenActivity.windowTitle === newWindow.title}`)
@@ -364,13 +378,19 @@ function handleAppSwitch(newWindow: { app: string; title: string }, now: number)
 }
 
 // Clôture définitivement toute activité (au premier plan et en attente de grâce) — utilisé pour pause/stop/idle/quit
+// `now` peut être dans le passé (début réel d'une inactivité) : le temps crédité après cet instant
+// est alors retiré, pour ne pas compter le délai d'inactivité comme du temps passé sur l'appli.
 function closeAllActivitiesNow(now: number) {
   if (currentOpenActivity) {
+    if (currentOpenActivity.lastActiveAt > now) {
+      const overshoot = (currentOpenActivity.lastActiveAt - now) / 1000
+      currentOpenActivity.accumulatedSeconds = Math.max(currentOpenActivity.accumulatedSeconds - overshoot, 0)
+    }
     finalizeActivity(currentOpenActivity, now)
     currentOpenActivity = null
   }
   for (const activity of backgroundedActivities.values()) {
-    finalizeActivity(activity, activity.backgroundedAt ?? now)
+    finalizeActivity(activity, Math.min(activity.backgroundedAt ?? now, now))
   }
   backgroundedActivities.clear()
 }
@@ -395,19 +415,39 @@ function checkDeepWorkStreak() {
   }
 }
 
-// Check for mouse movement to detect real inactivity
-function checkMouseMovement() {
-  if (!mouseTrackingEnabled) return
+// Ajoute à l'activité le temps écoulé depuis le dernier poll, plafonné (voir MAX_POLL_GAP_MS)
+function accumulateUntil(activity: OpenActivity, now: number) {
+  const delta = Math.min(Math.max(now - activity.lastActiveAt, 0), MAX_POLL_GAP_MS)
+  activity.accumulatedSeconds += delta / 1000
+  activity.lastActiveAt = now
+}
+
+// Rafraîchit lastInputTime à partir des vrais signaux d'activité de l'utilisateur.
+// powerMonitor.getSystemIdleTime() couvre clavier ET souris au niveau de l'OS : avec la seule
+// position du curseur, quelqu'un qui tapait sans toucher la souris passait inactif au bout du délai.
+// Les exclusions d'inactivité (vidéo, tuto…) maintiennent l'utilisateur actif tant que la fenêtre
+// exclue est au premier plan.
+function refreshInputActivity() {
+  const now = Date.now()
+
+  if (currentWindow && isAppExcludedFromInactivityDetection(currentWindow.app, currentWindow.title)) {
+    lastInputTime = now
+    return
+  }
 
   try {
-    // Skip mouse tracking for excluded apps/windows
-    if (currentWindow && isAppExcludedFromInactivityDetection(currentWindow.app, currentWindow.title)) {
-      return
-    }
+    const idleMs = powerMonitor.getSystemIdleTime() * 1000
+    lastInputTime = Math.max(lastInputTime, now - idleMs)
+    return
+  } catch (error) {
+    // Repli sur la position de la souris si l'API système n'est pas disponible
+  }
 
+  if (!mouseTrackingEnabled) return
+  try {
     const currentPos = screen.getCursorScreenPoint()
     if (currentPos.x !== lastMousePosition.x || currentPos.y !== lastMousePosition.y) {
-      lastInputTime = Date.now()
+      lastInputTime = now
       lastMousePosition = currentPos
     }
   } catch (error) {
@@ -416,41 +456,56 @@ function checkMouseMovement() {
   }
 }
 
-// Unique source de vérité pour isIdle, dans les deux sens. lastInputTime n'est rafraîchi que par
-// de vrais signaux (mouvement de souris, changement d'appli) — donc le simple fait qu'une fenêtre
-// garde le focus sans bouger n'empêche plus l'inactivité de se déclencher, et ne la fait plus sortir
-// en boucle non plus.
-function checkIdleStatus() {
-  const timeSinceLastActivity = Date.now() - lastInputTime
-  const shouldBeIdle = timeSinceLastActivity > idleTimeoutMs
-  const now = Date.now()
+// Passe en inactif à l'instant `at` (dernière action réelle de l'utilisateur, pas l'instant de la
+// détection) : la pause de session et la clôture des activités démarrent là, pour ne pas facturer
+// le délai d'inactivité lui-même.
+function enterIdle(at: number) {
+  if (isIdle) return
+  isIdle = true
+  if (sessionState === 'running') {
+    sessionState = 'paused'
+    pausedAt = Math.max(at, currentSessionStartTime ?? at)
+    pausedByIdle = true
+    enterPause(pausedAt)
+  }
+  closeAllActivitiesNow(at)
+  currentWindow = null
+}
 
-  if (shouldBeIdle && !isIdle) {
-    isIdle = true
-    if (sessionState === 'running') {
-      sessionState = 'paused'
-      pausedAt = now
-      pausedByIdle = true
-      enterPause(pausedAt)
-    }
-    if (currentWindow) {
-      closeAllActivitiesNow(now)
-      currentWindow = null
-    }
-  } else if (!shouldBeIdle && isIdle) {
-    isIdle = false
-    if (sessionState === 'paused' && pausedByIdle) {
-      totalPausedMs += now - (pausedAt ?? now)
-      pausedAt = null
-      pausedByIdle = false
-      sessionState = 'running'
-      exitPause(now)
-    }
+function exitIdle(now: number) {
+  if (!isIdle) return
+  isIdle = false
+  if (sessionState === 'paused' && pausedByIdle) {
+    totalPausedMs += now - (pausedAt ?? now)
+    pausedAt = null
+    pausedByIdle = false
+    sessionState = 'running'
+    exitPause(now)
   }
 }
 
+// Unique source de vérité pour isIdle, dans les deux sens. lastInputTime n'est rafraîchi que par
+// de vrais signaux (clavier/souris via l'OS, changement d'appli) — donc le simple fait qu'une
+// fenêtre garde le focus n'empêche pas l'inactivité de se déclencher, ni ne la fait sortir en boucle.
+function checkIdleStatus() {
+  const now = Date.now()
+  const shouldBeIdle = now - lastInputTime > idleTimeoutMs
+  if (shouldBeIdle && !isIdle) enterIdle(lastInputTime)
+  else if (!shouldBeIdle && isIdle) exitIdle(now)
+}
+
+// Mise en veille / verrouillage de session : l'utilisateur est parti, on passe immédiatement en
+// inactif (sinon le temps de veille était compté au réveil, faute de poll pendant la veille).
+export function handleSystemAway() {
+  const now = Date.now()
+  if (currentOpenActivity) accumulateUntil(currentOpenActivity, now)
+  enterIdle(now)
+  // Le retour ne sera détecté que sur une nouvelle action réelle
+  lastInputTime = now - idleTimeoutMs - 1
+}
+
 // Ouvre une nouvelle activité (nouvelle appli jamais vue récemment, ou grâce de 2 min expirée)
-function openNewActivity(appName: string, windowTitle: string, startTime: number): OpenActivity {
+function openNewActivity(appName: string, windowTitle: string, startTime: number, isBoundarySplit = false): OpenActivity {
   const db = getDatabase()
   const match = findMatchingCategory(appName, windowTitle)
 
@@ -468,9 +523,12 @@ function openNewActivity(appName: string, windowTitle: string, startTime: number
   }
 
   // Coaching anti-zapping (désactivé pendant une session focus, déjà gérée par le blocage)
-  recordSwitch()
-  if (!isBlockingActive()) {
-    maybeNudgeDistraction()
+  // (une simple découpe à une borne de session n'est pas un changement d'appli)
+  if (!isBoundarySplit) {
+    recordSwitch()
+    if (!isBlockingActive()) {
+      maybeNudgeDistraction()
+    }
   }
 
   // La surcharge de la session en cours (focus/distraction ponctuel pour ce dossier) prime sur la règle globale
@@ -507,9 +565,16 @@ function persistActivityProgress(activity: OpenActivity) {
 }
 
 // Clôture définitivement une activité avec sa durée réellement accumulée (hors gaps)
+// La durée enregistrée est le temps réellement accumulé : l'ancien plancher de 5 s gonflait chaque
+// passage éclair sur une appli (et donc le temps facturable). Une activité restée sous la seconde
+// (ex : découpe pile à une borne de session) est simplement supprimée.
 function finalizeActivity(activity: OpenActivity, endTime: number) {
   const db = getDatabase()
-  const durationSeconds = Math.max(Math.floor(activity.accumulatedSeconds), Math.floor(MIN_ACTIVITY_DURATION / 1000))
+  if (activity.accumulatedSeconds < 1) {
+    db.prepare('DELETE FROM activities WHERE id = ?').run(activity.id)
+    return
+  }
+  const durationSeconds = Math.floor(activity.accumulatedSeconds)
   const stmt = db.prepare('UPDATE activities SET end_time = ?, duration_seconds = ?, window_title = ? WHERE id = ?')
   stmt.run(endTime, durationSeconds, activity.windowTitle, activity.id)
 }
@@ -578,13 +643,35 @@ export function setSessionBillable(billable: boolean) {
   }
 }
 
+// Coupe l'activité en cours à une borne de session (démarrage, pause, reprise, arrêt) : la partie
+// avant la borne est close, et une nouvelle activité repart à `reopenAt` avec le statut facturable
+// du nouvel état. Sans ça, une activité ouverte continuait d'accumuler du temps (facturable) pendant
+// les pauses et après l'arrêt, et le temps d'une activité commencée avant le démarrage était perdu.
+// Les activités en délai de grâce sont closes aussi, pour qu'un retour dessus ne traverse pas la borne.
+function splitActivitiesAtBoundary(now: number, reopenAt: number = now) {
+  for (const activity of backgroundedActivities.values()) {
+    finalizeActivity(activity, activity.backgroundedAt ?? now)
+  }
+  backgroundedActivities.clear()
+
+  if (!currentOpenActivity || isIdle) return
+  const { appName, windowTitle } = currentOpenActivity
+  accumulateUntil(currentOpenActivity, now)
+  finalizeActivity(currentOpenActivity, now)
+  currentOpenActivity = openNewActivity(appName, windowTitle, reopenAt, true)
+}
+
 // Démarre une nouvelle session de suivi (repart de zéro)
 // Map to track project detection per work session
 const workSessionDetectionMap = new Map<number, { interval: NodeJS.Timeout; detected: boolean }>()
 
 export function startSession() {
+  // Une seule session à la fois : un second démarrage (double clic, fenêtre/tray pas encore à jour)
+  // créait une session de plus sans clore la première, et le temps était compté deux fois.
+  if (sessionState !== 'stopped') return
+  const now = Date.now()
   sessionState = 'running'
-  currentSessionStartTime = Date.now()
+  currentSessionStartTime = now
   pausedAt = null
   pausedByIdle = false
   totalPausedMs = 0
@@ -596,6 +683,7 @@ export function startSession() {
   currentProjectId = null
   currentPhaseId = null
   currentWorkSessionId = createWorkSession(currentSessionStartTime)
+  splitActivitiesAtBoundary(now)
 
   // Start continuous project detection for work sessions
   startWorkSessionDetection(currentWorkSessionId)
@@ -609,6 +697,7 @@ export function pauseSession() {
   pausedAt = Date.now()
   pausedByIdle = false
   enterPause(pausedAt)
+  splitActivitiesAtBoundary(pausedAt)
 }
 
 // Reprend la session après une pause manuelle (le chrono continue où il s'était arrêté)
@@ -622,6 +711,7 @@ export function resumeSession() {
   isIdle = false
   lastInputTime = now
   exitPause(now)
+  splitActivitiesAtBoundary(now)
 }
 
 // Start continuous project detection for work sessions
@@ -683,11 +773,13 @@ export function stopWorkSessionDetection(workSessionId: number) {
 // Arrête complètement la session en cours (le prochain démarrage repartira à zéro).
 // Ne coupe pas le suivi général des activités : celui-ci continue en arrière-plan comme toujours.
 export function stopSession() {
+  if (sessionState === 'stopped') return
   // Stop work session detection before finalizing
   if (currentWorkSessionId) {
     stopWorkSessionDetection(currentWorkSessionId)
   }
-  finalizeCurrentWorkSession()
+  const now = Date.now()
+  finalizeCurrentWorkSession(now)
   sessionState = 'stopped'
   currentSessionStartTime = null
   pausedAt = null
@@ -697,6 +789,9 @@ export function stopSession() {
   currentCategoryOverrides = {}
   currentProjectId = null
   currentPhaseId = null
+  // La suite repart 1 ms après la fin de session (et avec les règles hors session) : les totaux
+  // incluent les activités dont start_time <= end_time, la partie après l'arrêt n'en fait pas partie.
+  splitActivitiesAtBoundary(now, now + 1)
 }
 
 // Liste les sessions de travail persistées depuis une date donnée
