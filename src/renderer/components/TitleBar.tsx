@@ -14,8 +14,7 @@ function TitleBar() {
   useEffect(() => {
     window.electron.ipc.invoke('window-is-maximized').then(setIsMaximized).catch(() => {})
     const handler = (maximized: boolean) => setIsMaximized(maximized)
-    window.electron.ipc.on('window-maximized-changed', handler)
-    return () => window.electron.ipc.off('window-maximized-changed', handler)
+    return window.electron.ipc.on('window-maximized-changed', handler)
   }, [])
 
   const dragStyle = { WebkitAppRegion: 'drag' } as React.CSSProperties

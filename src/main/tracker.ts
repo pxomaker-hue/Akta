@@ -314,7 +314,10 @@ async function pollWindowActivity() {
           } else {
             // 20+ secondes : créer une nouvelle activité
             console.log(`[TitleChange] >= 20s, créant une nouvelle activité`)
-            backgroundCurrentActivity(now)
+            // Même appli : l'ancienne activité ne peut pas être "reprise", on la clôt directement
+            // (la mettre en attente l'aurait fait écraser dans la Map, indexée par nom d'appli)
+            finalizeActivity(currentOpenActivity, now)
+            currentOpenActivity = null
             const newActivity = openNewActivity(newWindow.app, newWindow.title, now)
             currentOpenActivity = newActivity
           }
@@ -352,6 +355,12 @@ async function pollWindowActivity() {
 // Passe l'activité au premier plan en arrière-plan (grâce de 2 min avant clôture définitive)
 function backgroundCurrentActivity(now: number) {
   if (!currentOpenActivity) return
+  // Une seule activité en attente par appli : une éventuelle précédente est close, sinon elle
+  // était écrasée dans la Map et restait ouverte en base (end_time NULL)
+  const previous = backgroundedActivities.get(currentOpenActivity.appName)
+  if (previous && previous !== currentOpenActivity) {
+    finalizeActivity(previous, previous.backgroundedAt ?? now)
+  }
   currentOpenActivity.backgroundedAt = now
   backgroundedActivities.set(currentOpenActivity.appName, currentOpenActivity)
   currentOpenActivity = null

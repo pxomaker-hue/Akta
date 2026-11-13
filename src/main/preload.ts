@@ -36,21 +36,18 @@ const EVENT_CHANNELS = new Set<string>([
   'tracking-status-changed', 'update-status', 'window-maximized-changed',
 ])
 
-// Chaque composant qui utilise useTranslation() écoute 'setting-changed' : au-delà de 10 écouteurs,
-// Node affichait un faux avertissement de fuite mémoire. Les écouteurs sont bien retirés au démontage.
-ipcRenderer.setMaxListeners(100)
+// Plusieurs composants montés en même temps écoutent 'setting-changed' (useTranslation, useTheme…) :
+// au-delà de 10, Node affiche un avertissement de fuite alors que c'est légitime.
+ipcRenderer.setMaxListeners(50)
 
 function assertChannel(allowed: Set<string>, channel: string) {
   if (!allowed.has(channel)) throw new Error(`Canal IPC non autorisé : ${channel}`)
 }
 
-// Map du listener "public" (celui passé par le code renderer) vers le wrapper réellement
-// enregistré auprès d'ipcRenderer (qui strip le premier argument `event`) — indispensable pour que
-// off() retire le bon listener : sans ça, off(listener) ne matchait jamais rien puisque le wrapper
-// enregistré par on() était une closure différente à chaque appel, et les listeners s'accumulaient
-// indéfiniment à chaque montage de composant (fuite mémoire + MaxListenersExceededWarning).
-const listenerWrappers = new WeakMap<(...args: any[]) => void, (event: unknown, ...args: any[]) => void>()
-
+// on() renvoie une fonction de désabonnement qui capture directement le wrapper enregistré.
+// Retrouver le wrapper à partir de la fonction passée par le renderer (ancienne approche par WeakMap)
+// ne fonctionnait pas : contextBridge livre un nouveau proxy de cette fonction à chaque appel, donc
+// off() ne retrouvait jamais rien et les écouteurs s'accumulaient à chaque montage de composant.
 contextBridge.exposeInMainWorld('electron', {
   ipc: {
     invoke: (channel: string, ...args: any[]) => {
@@ -59,20 +56,15 @@ contextBridge.exposeInMainWorld('electron', {
     },
     on: (channel: string, listener: (...args: any[]) => void) => {
       assertChannel(EVENT_CHANNELS, channel)
-      const wrapper = (event: unknown, ...args: any[]) => listener(...args)
-      listenerWrappers.set(listener, wrapper)
+      const wrapper = (_event: unknown, ...args: any[]) => listener(...args)
       ipcRenderer.on(channel, wrapper)
+      return () => {
+        ipcRenderer.off(channel, wrapper)
+      }
     },
     once: (channel: string, listener: (...args: any[]) => void) => {
       assertChannel(EVENT_CHANNELS, channel)
       ipcRenderer.once(channel, (event, ...args) => listener(...args))
-    },
-    off: (channel: string, listener: (...args: any[]) => void) => {
-      const wrapper = listenerWrappers.get(listener)
-      if (wrapper) {
-        ipcRenderer.off(channel, wrapper)
-        listenerWrappers.delete(listener)
-      }
     },
   },
 })

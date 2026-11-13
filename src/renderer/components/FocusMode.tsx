@@ -157,11 +157,11 @@ function FocusMode({ onBack }: FocusModeProps) {
       completingRef.current = false
     }
 
-    window.electron.ipc.on('focus-session-completed', handleAutoCompleted)
-    window.electron.ipc.on('focus-session-started', handleSessionStarted)
+    const offCompleted = window.electron.ipc.on('focus-session-completed', handleAutoCompleted)
+    const offStarted = window.electron.ipc.on('focus-session-started', handleSessionStarted)
     return () => {
-      window.electron.ipc.off('focus-session-completed', handleAutoCompleted)
-      window.electron.ipc.off('focus-session-started', handleSessionStarted)
+      offCompleted()
+      offStarted()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

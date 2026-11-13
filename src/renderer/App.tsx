@@ -34,9 +34,8 @@ declare global {
     electron: {
       ipc: {
         invoke: (channel: string, ...args: any[]) => Promise<any>
-        on: (channel: string, listener: (...args: any[]) => void) => void
+        on: (channel: string, listener: (...args: any[]) => void) => () => void
         once: (channel: string, listener: (...args: any[]) => void) => void
-        off: (channel: string, listener: (...args: any[]) => void) => void
       }
     }
   }
@@ -97,10 +96,10 @@ function App() {
     // Focus n'est pas ouvert) — on écoute cet événement pour éteindre l'icône tout de suite plutôt
     // que d'attendre jusqu'à 3s le prochain sondage.
     const handleCompleted = () => fetchFocusStatus()
-    window.electron.ipc.on('focus-session-completed', handleCompleted)
+    const unsubscribe = window.electron.ipc.on('focus-session-completed', handleCompleted)
     return () => {
       clearInterval(interval)
-      window.electron.ipc.off('focus-session-completed', handleCompleted)
+      unsubscribe()
     }
   }, [])
 

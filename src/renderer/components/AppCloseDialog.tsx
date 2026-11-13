@@ -16,8 +16,7 @@ function AppCloseDialog() {
       setRemember(false)
       setVisible(true)
     }
-    window.electron.ipc.on('request-close-confirmation', handler)
-    return () => window.electron.ipc.off('request-close-confirmation', handler)
+    return window.electron.ipc.on('request-close-confirmation', handler)
   }, [])
 
   const respond = (action: CloseAction) => {
