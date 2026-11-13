@@ -38,7 +38,7 @@ Télécharge `Akta.Setup.<version>.exe` depuis la page [Releases](https://github
 ## Développement
 
 ### Prérequis
-Node.js, et les outils de compilation Windows nécessaires à `better-sqlite3` / `active-win`.
+Node.js 22 ou plus. Les modules natifs (`better-sqlite3`, `active-win`) sont fournis précompilés (N-API) : aucun outil de compilation (Python, Visual Studio) n’est nécessaire.
 
 ### Lancer le projet
 
