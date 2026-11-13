@@ -507,6 +507,17 @@ function checkSmartNotifications() {
   }
 }
 
+// Durcissement de toutes les fenêtres : aucune navigation hors de l'app (un lien ou une redirection
+// ne doit jamais charger une page distante qui hériterait du preload et de l'accès IPC), et aucune
+// nouvelle fenêtre ouverte depuis le renderer.
+app.on('web-contents-created', (_event, contents) => {
+  contents.on('will-navigate', (event, url) => {
+    const isAppUrl = url.startsWith('file://') || (process.env.NODE_ENV === 'development' && url.startsWith('http://localhost:3000'))
+    if (!isAppUrl) event.preventDefault()
+  })
+  contents.setWindowOpenHandler(() => ({ action: 'deny' }))
+})
+
 app.on('ready', () => {
   // Supprime la barre de menu native (File/Edit/View...)
   Menu.setApplicationMenu(null)
