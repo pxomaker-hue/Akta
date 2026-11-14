@@ -97,11 +97,11 @@ export function LiveSessionProvider({ children }: { children: ReactNode }) {
 
     // Rafraîchit immédiatement si la session a été pilotée via le raccourci clavier global
     // (sinon il faudrait attendre jusqu'à 5s pour voir l'état à jour)
-    window.electron.ipc.on('tracking-status-changed', fetchStatus)
+    const unsubscribe = window.electron.ipc.on('tracking-status-changed', fetchStatus)
 
     return () => {
       clearInterval(interval)
-      window.electron.ipc.off('tracking-status-changed', fetchStatus)
+      unsubscribe()
     }
   }, [])
 

@@ -110,7 +110,7 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     // Lancée automatiquement au démarrage de Windows : reste réduite dans le tray plutôt que
     // d'afficher la fenêtre immédiatement — c'est le comportement attendu d'un lancement au boot.
-    if (!app.getLoginItemSettings().wasOpenedAtLogin) {
+    if (!wasLaunchedAtLogin()) {
       mainWindow?.show()
     }
   })
@@ -172,6 +172,24 @@ function broadcastTrackingStatus() {
   for (const win of [mainWindow, trayWidgetWindow]) {
     if (win && !win.isDestroyed()) win.webContents.send('tracking-status-changed')
   }
+}
+
+// Lancement au démarrage. `wasOpenedAtLogin` n'existe que sur macOS : sous Windows il valait toujours
+// false et la fenêtre s'ouvrait à chaque démarrage du PC. On passe donc un argument au lancement
+// automatique pour le reconnaître. Sous Windows, l'entrée de démarrage est identifiée par ses
+// arguments : il faut les fournir aussi pour la lire.
+const LOGIN_ARGS = ['--hidden']
+
+function wasLaunchedAtLogin(): boolean {
+  return process.argv.includes('--hidden') || app.getLoginItemSettings().wasOpenedAtLogin
+}
+
+function isLaunchAtStartupEnabled(): boolean {
+  return app.getLoginItemSettings({ args: LOGIN_ARGS }).openAtLogin || app.getLoginItemSettings().openAtLogin
+}
+
+function setLaunchAtStartup(enabled: boolean) {
+  app.setLoginItemSettings({ openAtLogin: enabled, args: LOGIN_ARGS })
 }
 
 // Raccourcis clavier globaux : permettent de piloter une session sans faire remonter la fenêtre
@@ -530,6 +548,16 @@ app.on('ready', () => {
 
   // Démarrer le tracker d'activité
   startTracker()
+
+  // Migration : une entrée de démarrage créée par une ancienne version n'a pas l'argument --hidden
+  // (fenêtre affichée à chaque démarrage du PC) — on la réécrit avec.
+  try {
+    if (app.isPackaged && app.getLoginItemSettings().openAtLogin && !app.getLoginItemSettings({ args: LOGIN_ARGS }).openAtLogin) {
+      setLaunchAtStartup(true)
+    }
+  } catch (error) {
+    console.warn('Could not migrate login item:', error)
+  }
 
   // Veille et verrouillage : l'utilisateur est absent, la session passe en pause d'inactivité tout
   // de suite (sinon la durée de la veille était comptée au réveil). Arrêt système (macOS/Linux) :
@@ -1506,7 +1534,7 @@ function setupIpcHandlers() {
   // manuellement depuis le Gestionnaire des tâches > Démarrage).
   ipcMain.handle('get-launch-at-startup', async () => {
     try {
-      return app.getLoginItemSettings().openAtLogin
+      return isLaunchAtStartupEnabled()
     } catch (error) {
       console.error('Error getting launch-at-startup setting:', error)
       return false
@@ -1515,7 +1543,7 @@ function setupIpcHandlers() {
 
   ipcMain.handle('set-launch-at-startup', async (event, enabled: boolean) => {
     try {
-      app.setLoginItemSettings({ openAtLogin: enabled })
+      setLaunchAtStartup(enabled)
       return true
     } catch (error) {
       console.error('Error setting launch-at-startup:', error)

@@ -41,10 +41,10 @@ export function useTranslation() {
       }
     }
 
-    window.electron?.ipc?.on('setting-changed', handleSettingChange)
+    const unsubscribe = window.electron?.ipc?.on('setting-changed', handleSettingChange)
 
     return () => {
-      window.electron?.ipc?.off('setting-changed', handleSettingChange)
+      unsubscribe?.()
     }
   }, [])
 

@@ -17,12 +17,12 @@ export function useTheme() {
       }
     }
 
-    window.electron?.ipc?.on('setting-changed', (data: { key: string; value: string }) => {
+    const unsubscribe = window.electron?.ipc?.on('setting-changed', (data: { key: string; value: string }) => {
       handleSettingChange(data.key, data.value)
     })
 
     return () => {
-      window.electron?.ipc?.off('setting-changed', handleSettingChange)
+      unsubscribe?.()
     }
   }, [])
 

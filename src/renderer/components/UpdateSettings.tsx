@@ -29,8 +29,7 @@ function UpdateSettings() {
       setUpdate(payload)
       if (payload.status !== 'checking') setChecking(false)
     }
-    window.electron.ipc.on('update-status', handler)
-    return () => window.electron.ipc.off('update-status', handler)
+    return window.electron.ipc.on('update-status', handler)
   }, [])
 
   const handleCheck = async () => {
