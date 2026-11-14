@@ -1,5 +1,10 @@
 import { BrowserWindow } from 'electron'
 import { getProjectById, getSessionsForProject, getSessionBillableSeconds } from './database'
+import { mt, mtf, mainLocaleTag } from './i18n'
+
+function formatAmount(amount: number, locale: string): string {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR' }).format(amount)
+}
 
 interface ReportRow {
   date: string
@@ -50,8 +55,8 @@ function buildReportHtml(title: string, subtitle: string, rows: ReportRow[], tot
   <h1>${escapeHtml(title)}</h1>
   <div class="subtitle">${escapeHtml(subtitle)}</div>
   <table>
-    <thead><tr><th>Date</th><th>Heure</th><th>Session</th><th class="num">Durée</th><th class="num">Montant</th></tr></thead>
-    <tbody>${rowsHtml || '<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:20px">Aucune session sur cette période.</td></tr>'}</tbody>
+    <thead><tr><th>${escapeHtml(mt('ui', 'pdfDate'))}</th><th>${escapeHtml(mt('ui', 'pdfTime'))}</th><th>${escapeHtml(mt('ui', 'pdfSession'))}</th><th class="num">${escapeHtml(mt('ui', 'pdfDuration'))}</th><th class="num">${escapeHtml(mt('ui', 'pdfAmount'))}</th></tr></thead>
+    <tbody>${rowsHtml || `<tr><td colspan="5" style="text-align:center;color:#9ca3af;padding:20px">${escapeHtml(mt('ui', 'pdfEmpty'))}</td></tr>`}</tbody>
     <tfoot><tr><td colspan="3"></td><td class="num">${escapeHtml(totalHours)} h</td><td class="num">${totalAmount ? escapeHtml(totalAmount) : ''}</td></tr></tfoot>
   </table>
 </body>
@@ -70,8 +75,9 @@ async function htmlToPdfBuffer(html: string): Promise<Buffer> {
 
 export async function generateProjectPDF(projectId: number): Promise<Buffer> {
   const project = getProjectById(projectId)
-  if (!project) throw new Error('Projet introuvable')
+  if (!project) throw new Error(mt('ui', 'pdfProjectNotFound'))
 
+  const locale = mainLocaleTag()
   const sessions = getSessionsForProject(projectId)
   let totalSeconds = 0
   let totalAmount = 0
@@ -82,20 +88,21 @@ export async function generateProjectPDF(projectId: number): Promise<Buffer> {
     totalAmount += amount
     const start = new Date(s.start_time)
     return {
-      date: start.toLocaleDateString('fr-FR'),
-      time: start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+      date: start.toLocaleDateString(locale),
+      time: start.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
       label: s.label || s.phase_name || '—',
       hours: formatHours(billableSeconds),
-      amount: project.hourly_rate ? `${amount.toFixed(2)} €` : '',
+      amount: project.hourly_rate ? formatAmount(amount, locale) : '',
     }
   })
 
-  const subtitle = `${project.client_name ? project.client_name + ' • ' : ''}Export généré le ${new Date().toLocaleDateString('fr-FR')}`
-  const html = buildReportHtml(project.name, subtitle, rows, formatHours(totalSeconds), project.hourly_rate ? `${totalAmount.toFixed(2)} €` : null)
+  const subtitle = `${project.client_name ? project.client_name + ' • ' : ''}${mtf('ui', 'pdfGenerated', { date: new Date().toLocaleDateString(locale) })}`
+  const html = buildReportHtml(project.name, subtitle, rows, formatHours(totalSeconds), project.hourly_rate ? formatAmount(totalAmount, locale) : null)
   return htmlToPdfBuffer(html)
 }
 
 export async function generateMonthlyPDF(monthStartMs: number, monthEndMs: number, sessions: any[]): Promise<Buffer> {
+  const locale = mainLocaleTag()
   let totalSeconds = 0
   let totalAmount = 0
   const rows: ReportRow[] = sessions.map((s: any) => {
@@ -105,16 +112,16 @@ export async function generateMonthlyPDF(monthStartMs: number, monthEndMs: numbe
     totalAmount += amount
     const start = new Date(s.start_time)
     return {
-      date: start.toLocaleDateString('fr-FR'),
-      time: start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-      label: `${s.project_name || 'Sans projet'}${s.label ? ' — ' + s.label : ''}`,
+      date: start.toLocaleDateString(locale),
+      time: start.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
+      label: `${s.project_name || mt('ui', 'pdfNoProject')}${s.label ? ' — ' + s.label : ''}`,
       hours: formatHours(billableSeconds),
-      amount: amount ? `${amount.toFixed(2)} €` : '',
+      amount: amount ? formatAmount(amount, locale) : '',
     }
   })
 
-  const monthLabel = new Date(monthStartMs).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
-  const subtitle = `Export généré le ${new Date().toLocaleDateString('fr-FR')}`
-  const html = buildReportHtml(`Rapport — ${monthLabel}`, subtitle, rows, formatHours(totalSeconds), totalAmount ? `${totalAmount.toFixed(2)} €` : null)
+  const monthLabel = new Date(monthStartMs).toLocaleDateString(locale, { month: 'long', year: 'numeric' })
+  const subtitle = mtf('ui', 'pdfGenerated', { date: new Date().toLocaleDateString(locale) })
+  const html = buildReportHtml(mtf('ui', 'pdfReport', { month: monthLabel }), subtitle, rows, formatHours(totalSeconds), totalAmount ? formatAmount(totalAmount, locale) : null)
   return htmlToPdfBuffer(html)
 }

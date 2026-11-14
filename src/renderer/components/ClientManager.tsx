@@ -226,7 +226,7 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
                     <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: client.color }} />
                     <span className="text-sm font-medium text-gray-900 dark:text-white truncate">{client.name}</span>
                     {stats && stats.projects.length > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-slate-300 flex-shrink-0">
+                      <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-slate-300 flex-shrink-0">
                         {tf(
                           stats.projects.length === 1 ? t('clientManager.projectCountSingular', '{{n}} projet') : t('clientManager.projectCountPlural', '{{n}} projets'),
                           { n: stats.projects.length }

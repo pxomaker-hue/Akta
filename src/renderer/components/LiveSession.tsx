@@ -97,7 +97,7 @@ function LiveSession() {
 
       <div className="flex items-center gap-1 ml-auto relative">
         {!isStopped && (
-          <button
+          <button aria-label={t('liveSession.configureTitle', 'Configurer le projet et les catégories focus / distraction de cette session')}
             ref={categoryToggleRef}
             onClick={() => setShowCategoryPanel((v) => !v)}
             disabled={busy}
@@ -156,7 +156,7 @@ function LiveSession() {
                       <button
                         onClick={() => setCategoryOverride(cat.id, override === 'focus' ? null : 'focus')}
                         disabled={busy}
-                        className={`text-[10px] px-2 py-1 rounded-full font-medium transition-colors disabled:opacity-50 ${
+                        className={`text-[11px] px-2 py-1 rounded-full font-medium transition-colors disabled:opacity-50 ${
                           override === 'focus'
                             ? 'bg-emerald-500 text-white'
                             : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-600'
@@ -167,7 +167,7 @@ function LiveSession() {
                       <button
                         onClick={() => setCategoryOverride(cat.id, override === 'distraction' ? null : 'distraction')}
                         disabled={busy}
-                        className={`text-[10px] px-2 py-1 rounded-full font-medium transition-colors disabled:opacity-50 ${
+                        className={`text-[11px] px-2 py-1 rounded-full font-medium transition-colors disabled:opacity-50 ${
                           override === 'distraction'
                             ? 'bg-red-500 text-white'
                             : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-600'
@@ -184,7 +184,7 @@ function LiveSession() {
         )}
 
         {!isStopped && (
-          <button
+          <button aria-label={status.billableOverride ? t('liveSession.billableToggleOn', 'Session facturable — cliquer pour marquer non facturable') : t('liveSession.billableToggleOff', 'Marquer cette session comme facturable')}
             onClick={() => toggleBillable(!status.billableOverride)}
             disabled={busy}
             title={status.billableOverride ? t('liveSession.billableToggleOn', 'Session facturable — cliquer pour marquer non facturable') : t('liveSession.billableToggleOff', 'Marquer cette session comme facturable')}
@@ -202,7 +202,7 @@ function LiveSession() {
         )}
 
         {isStopped && (
-          <button
+          <button aria-label={t('liveSession.startSession', 'Démarrer une session')}
             onClick={() => runAction('start-session')}
             disabled={busy}
             title={t('liveSession.startSession', 'Démarrer une session')}
@@ -235,7 +235,7 @@ function LiveSession() {
         )}
 
         {!isStopped && (
-          <button
+          <button aria-label={t('liveSession.stopSession', 'Arrêter la session')}
             onClick={() => runAction('stop-session')}
             disabled={busy}
             title={t('liveSession.stopSession', 'Arrêter la session')}

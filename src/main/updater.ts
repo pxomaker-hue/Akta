@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog } from 'electron'
+import { mt, mtf } from './i18n'
 import { autoUpdater } from 'electron-updater'
 
 let mainWindowRef: BrowserWindow | null = null
@@ -43,10 +44,10 @@ export function initAutoUpdater() {
     dialog
       .showMessageBox(mainWindowRef ?? (undefined as any), {
         type: 'info',
-        title: 'Mise à jour prête',
-        message: `Akta ${info.version} a été téléchargée.`,
-        detail: "Redémarrer maintenant pour l'installer ?",
-        buttons: ['Redémarrer maintenant', 'Plus tard'],
+        title: mt('ui', 'updateTitle'),
+        message: mtf('ui', 'updateMessage', { version: info.version }),
+        detail: mt('ui', 'updateDetail'),
+        buttons: [mt('ui', 'updateRestart'), mt('ui', 'updateLater')],
         defaultId: 0,
         cancelId: 1,
       })

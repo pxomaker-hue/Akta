@@ -639,5 +639,9 @@
   "manualSession.errorOverlap": "This range overlaps an existing session.",
   "manualSession.errorGeneric": "The session could not be saved.",
   "app.unclassified": "Uncategorized",
-  "app.unclassifiedHint": "Activities without a category: billed only if the session is billable."
+  "app.unclassifiedHint": "Activities without a category: billed only if the session is billable.",
+  "common.clear": "Clear",
+  "common.remove": "Remove",
+  "common.decrease": "Decrease",
+  "common.increase": "Increase"
 }

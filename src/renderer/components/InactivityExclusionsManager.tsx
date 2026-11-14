@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Icon, confirmDialog } from './UI'
+import { Icon, confirmDialog, alertDialog } from './UI'
 import { useTranslation } from '../hooks/useTranslation'
 
 interface Exclusion {
@@ -38,7 +38,7 @@ function InactivityExclusionsManager() {
 
   async function handleAdd() {
     if (!appPattern && !titlePattern) {
-      alert(t('inactivityExclusions.patternRequired', 'Au moins un pattern (app ou titre) est requis'))
+      alertDialog(t('inactivityExclusions.patternRequired', 'Au moins un pattern (app ou titre) est requis'))
       return
     }
 
@@ -56,7 +56,7 @@ function InactivityExclusionsManager() {
       await loadExclusions()
     } catch (error) {
       console.error('Error adding exclusion:', error)
-      alert(t('inactivityExclusions.addError', "Erreur lors de l'ajout de l'exclusion"))
+      alertDialog(t('inactivityExclusions.addError', "Erreur lors de l'ajout de l'exclusion"))
     } finally {
       setIsAdding(false)
     }
@@ -70,7 +70,7 @@ function InactivityExclusionsManager() {
       await loadExclusions()
     } catch (error) {
       console.error('Error deleting exclusion:', error)
-      alert(t('inactivityExclusions.deleteError', 'Erreur lors de la suppression'))
+      alertDialog(t('inactivityExclusions.deleteError', 'Erreur lors de la suppression'))
     }
   }
 
@@ -189,7 +189,7 @@ function InactivityExclusionsManager() {
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{exclusion.description}</p>
                 )}
               </div>
-              <button
+              <button aria-label={t('common.delete', 'Supprimer')}
                 onClick={() => handleDelete(exclusion.id)}
                 className="ml-3 p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex-shrink-0"
                 title={t('common.delete', 'Supprimer')}

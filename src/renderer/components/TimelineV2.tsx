@@ -491,7 +491,7 @@ function TimelineV2({ activities, categories, onUpdate, dayStart, onDayChange }:
             <span className="accent-gradient-text">{t('timeline.yourFlow', 'Ton flow')}</span>
           </h3>
           <div className="flex items-center gap-1">
-            <button
+            <button aria-label={t('timeline.previousDay', 'Jour précédent')}
               onClick={goToPreviousDay}
               title={t('timeline.previousDay', 'Jour précédent')}
               className="p-1.5 rounded-full text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700 hover:text-gray-800 dark:hover:text-slate-200 transition-colors"
@@ -501,7 +501,7 @@ function TimelineV2({ activities, categories, onUpdate, dayStart, onDayChange }:
               </svg>
             </button>
             <span className="text-sm font-medium text-gray-600 dark:text-slate-300 min-w-[7rem] text-center capitalize">{formatDayLabel(dayStart, t, language)}</span>
-            <button
+            <button aria-label={t('timeline.nextDay', 'Jour suivant')}
               onClick={goToNextDay}
               disabled={isViewingToday}
               title={t('timeline.nextDay', 'Jour suivant')}

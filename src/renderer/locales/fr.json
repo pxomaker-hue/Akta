@@ -639,5 +639,9 @@
   "manualSession.errorOverlap": "Cette plage chevauche une session existante.",
   "manualSession.errorGeneric": "La session n'a pas pu être enregistrée.",
   "app.unclassified": "Non classé",
-  "app.unclassifiedHint": "Activités sans catégorie : facturées seulement si la session est facturable."
+  "app.unclassifiedHint": "Activités sans catégorie : facturées seulement si la session est facturable.",
+  "common.clear": "Effacer",
+  "common.remove": "Retirer",
+  "common.decrease": "Diminuer",
+  "common.increase": "Augmenter"
 }

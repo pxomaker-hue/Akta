@@ -327,7 +327,7 @@ function SessionsList() {
                   {session.label || `${formatSessionTime(session.start_time)}${!isOpen && session.end_time ? ` → ${formatTime(session.end_time)}` : ` (${t('sessionsList.inProgress', 'en cours')})`}`}
                   {session.project_name && (
                     <span
-                      className="text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0"
+                      className="text-[11px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0"
                       style={{ backgroundColor: `${session.project_color}20`, color: session.project_color || undefined }}
                     >
                       {session.project_name}
@@ -348,7 +348,7 @@ function SessionsList() {
               </Badge>
             </button>
             {!isOpen && (
-              <button
+              <button aria-label={t('sessionsList.deleteTitle', 'Supprimer cette session')}
                 onClick={() => handleDelete(session)}
                 disabled={deletingId === session.id}
                 title={t('sessionsList.deleteTitle', 'Supprimer cette session')}

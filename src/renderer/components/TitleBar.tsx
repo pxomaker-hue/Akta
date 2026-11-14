@@ -40,21 +40,21 @@ function TitleBar() {
       </div>
 
       <div className="flex items-center justify-self-end" style={noDragStyle}>
-        <button
+        <button aria-label={t('titleBar.minimize', 'Réduire')}
           onClick={minimize}
           title={t('titleBar.minimize', 'Réduire')}
           className="w-11 h-9 flex items-center justify-center text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
         >
           <Icon name="minimize" size={12} />
         </button>
-        <button
+        <button aria-label={isMaximized ? t('titleBar.restore', 'Restaurer') : t('titleBar.maximize', 'Agrandir')}
           onClick={toggleMaximize}
           title={isMaximized ? t('titleBar.restore', 'Restaurer') : t('titleBar.maximize', 'Agrandir')}
           className="w-11 h-9 flex items-center justify-center text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
         >
           <Icon name={isMaximized ? 'restore' : 'maximize'} size={11} />
         </button>
-        <button
+        <button aria-label={t('common.close', 'Fermer')}
           onClick={close}
           title={t('common.close', 'Fermer')}
           className="w-11 h-9 flex items-center justify-center text-gray-500 dark:text-slate-400 hover:bg-red-500 hover:text-white transition-colors"

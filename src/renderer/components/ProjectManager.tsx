@@ -602,13 +602,13 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                           <p className="text-sm font-medium text-gray-900 dark:text-white truncate flex items-center gap-1.5">
                             {project.name}
                             {project.status === 'archived' && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-slate-300 flex-shrink-0">
+                              <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-slate-300 flex-shrink-0">
                                 {t('projectManager.statusArchived', 'Archivé')}
                               </span>
                             )}
                             {project.deadline && project.status === 'active' && (
                               <span
-                                className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                                className={`text-[11px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${
                                   project.deadline < Date.now()
                                     ? 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400'
                                     : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-300'
@@ -626,24 +626,24 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <button
+                        <button aria-label={t('projectManager.projectPhases', 'Phases du projet')}
                           onClick={() => togglePhasesExpand(project)}
                           title={t('projectManager.projectPhases', 'Phases du projet')}
                           className={`text-gray-400 hover:accent-text transition-colors ${expandedPhasesId === project.id ? 'accent-text' : ''}`}
                         >
                           <Icon name="tag" size={13} />
                         </button>
-                        <button
+                        <button aria-label={project.status === 'active' ? t('projectManager.archive', 'Archiver') : t('projectManager.reactivate', 'Réactiver')}
                           onClick={() => toggleArchive(project)}
                           title={project.status === 'active' ? t('projectManager.archive', 'Archiver') : t('projectManager.reactivate', 'Réactiver')}
                           className="text-gray-400 hover:accent-text transition-colors"
                         >
                           <Icon name="layers" size={13} />
                         </button>
-                        <button onClick={() => startEditing(project)} className="text-gray-400 hover:accent-text transition-colors">
+                        <button aria-label={t('common.edit', 'Modifier')} title={t('common.edit', 'Modifier')} onClick={() => startEditing(project)} className="text-gray-400 hover:accent-text transition-colors">
                           <Icon name="edit" size={13} />
                         </button>
-                        <button onClick={() => deleteProject(project.id)} className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors">
+                        <button aria-label={t('common.delete', 'Supprimer')} title={t('common.delete', 'Supprimer')} onClick={() => deleteProject(project.id)} className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors">
                           <Icon name="x" size={13} />
                         </button>
                       </div>
@@ -829,14 +829,14 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                       />
                                     ))}
                                   </div>
-                                  <button
+                                  <button aria-label={t('projectManager.save', 'Enregistrer')}
                                     onClick={() => savePhase(phase, project.id)}
                                     className="text-emerald-600 dark:text-emerald-400 hover:opacity-80 flex-shrink-0"
                                     title={t('projectManager.save', 'Enregistrer')}
                                   >
                                     <Icon name="check" size={13} />
                                   </button>
-                                  <button
+                                  <button aria-label={t('projectManager.cancel', 'Annuler')}
                                     onClick={() => setEditingPhaseId(null)}
                                     className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
                                     title={t('projectManager.cancel', 'Annuler')}
@@ -862,13 +862,13 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                           <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: phase.color }} />
                                           <span className="truncate">{phase.name}</span>
                                           {phase.status === 'archived' && (
-                                            <span className="text-[9px] px-1 py-0.5 rounded-full bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-slate-300 flex-shrink-0">
+                                            <span className="text-[10px] px-1 py-0.5 rounded-full bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-slate-300 flex-shrink-0">
                                               {t('projectManager.statusArchived', 'Archivé')}
                                             </span>
                                           )}
                                           {phase.deadline && phase.status === 'active' && (
                                             <span
-                                              className={`text-[9px] px-1 py-0.5 rounded-full flex-shrink-0 ${
+                                              className={`text-[10px] px-1 py-0.5 rounded-full flex-shrink-0 ${
                                                 phase.deadline < Date.now()
                                                   ? 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400'
                                                   : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-300'
@@ -881,17 +881,17 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                         </span>
                                         <span className="flex items-center gap-2 flex-shrink-0 text-gray-500 dark:text-slate-400">
                                           {formatHours(phase.billable_seconds)}h
-                                          <button
+                                          <button aria-label={phase.status === 'active' ? t('projectManager.archive', 'Archiver') : t('projectManager.reactivate', 'Réactiver')}
                                             onClick={() => togglePhaseArchive(phase, project.id)}
                                             title={phase.status === 'active' ? t('projectManager.archive', 'Archiver') : t('projectManager.reactivate', 'Réactiver')}
                                             className="text-gray-400 hover:accent-text transition-colors"
                                           >
                                             <Icon name="layers" size={12} />
                                           </button>
-                                          <button onClick={() => startEditingPhase(phase)} className="text-gray-400 hover:accent-text transition-colors">
+                                          <button aria-label={t('common.edit', 'Modifier')} title={t('common.edit', 'Modifier')} onClick={() => startEditingPhase(phase)} className="text-gray-400 hover:accent-text transition-colors">
                                             <Icon name="edit" size={12} />
                                           </button>
-                                          <button
+                                          <button aria-label={t('common.delete', 'Supprimer')} title={t('common.delete', 'Supprimer')}
                                             onClick={() => deletePhase(phase.id, project.id)}
                                             className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                                           >
@@ -903,7 +903,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                       {phaseBudgetHoursProgress !== null && (
                                         <div className="mt-1.5">
                                           <div
-                                            className={`flex items-center justify-between text-[10px] mb-0.5 ${
+                                            className={`flex items-center justify-between text-[11px] mb-0.5 ${
                                               phaseBudgetHoursOver ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-gray-400'
                                             }`}
                                           >
@@ -927,7 +927,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                       {phaseBudgetAmountProgress !== null && (
                                         <div className="mt-1.5">
                                           <div
-                                            className={`flex items-center justify-between text-[10px] mb-0.5 ${
+                                            className={`flex items-center justify-between text-[11px] mb-0.5 ${
                                               phaseBudgetAmountOver ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-gray-400'
                                             }`}
                                           >

@@ -258,7 +258,7 @@ function Analytics() {
                     <p className="text-lg font-bold accent-text">
                       {Math.round(time.avgDuration / 60)}min
                     </p>
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500">{t('analytics.onAverage', 'en moyenne')}</p>
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500">{t('analytics.onAverage', 'en moyenne')}</p>
                   </div>
                 </div>
                 <div className="w-full h-2 bg-gray-200 dark:bg-slate-700/50 rounded-full overflow-hidden">

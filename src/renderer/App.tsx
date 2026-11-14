@@ -265,9 +265,7 @@ function App() {
                       : t('app.themeAuto', 'auto'),
               })}
             >
-              {theme === 'light' && '☀️'}
-              {theme === 'dark' && '🌙'}
-              {theme === 'auto' && '🔄'}
+              <Icon name={theme === 'light' ? 'sun' : theme === 'dark' ? 'moon' : 'refresh'} size={16} />
             </button>
 
             <SyncButton />
@@ -303,7 +301,7 @@ function App() {
               <ActivityList activities={activities} categories={categories} loading={loading} onActivityUpdate={() => loadData(false)} />
             </div>
             <div className="lg:col-span-1">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-gray-200/50 dark:border-slate-700/50 p-6">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('app.activitiesSummary', 'Résumé de la journée')}</h2>
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-4">

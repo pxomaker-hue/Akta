@@ -157,7 +157,7 @@ function TrayWidgetInner() {
       <div ref={headerRef} className="flex items-center gap-2.5 px-3.5 py-3 border-b border-gray-100 dark:border-slate-800 flex-shrink-0" style={dragStyle}>
         <Logo size={26} />
         <span className="text-sm font-bold accent-gradient-text flex-1">Akta</span>
-        <button
+        <button aria-label={pinned ? t('trayWidget.unpin', 'Désépingler (se referme au clic ailleurs)') : t('trayWidget.pin', 'Épingler (widget flottant permanent)')}
           onClick={togglePin}
           title={pinned ? t('trayWidget.unpin', 'Désépingler (se referme au clic ailleurs)') : t('trayWidget.pin', 'Épingler (widget flottant permanent)')}
           style={{ ...noDragStyle, ...(pinned ? { color: 'var(--accent-primary)', backgroundColor: 'color-mix(in srgb, var(--accent-primary) 15%, transparent)' } : undefined) }}
@@ -165,7 +165,7 @@ function TrayWidgetInner() {
         >
           <Icon name="pin" size={14} />
         </button>
-        <button
+        <button aria-label={t('common.close', 'Fermer')}
           onClick={hideWidget}
           title={t('common.close', 'Fermer')}
           style={noDragStyle}
@@ -190,7 +190,7 @@ function TrayWidgetInner() {
               </span>
               {!isStopped && (
                 <div className="flex items-center gap-1">
-                  <button
+                  <button aria-label={t('trayWidget.configureSession', 'Configurer le projet et les catégories focus / distraction de cette session')}
                     onClick={() => setShowOverridePanel((v) => !v)}
                     title={t('trayWidget.configureSession', 'Configurer le projet et les catégories focus / distraction de cette session')}
                     style={hasOverrides ? { backgroundColor: 'var(--accent-primary)' } : undefined}
@@ -204,7 +204,7 @@ function TrayWidgetInner() {
                   >
                     <Icon name="target" size={12} />
                   </button>
-                  <button
+                  <button aria-label={status?.billableOverride ? t('trayWidget.billableOverrideOn', 'Facturable — cliquer pour marquer non facturable') : t('trayWidget.billableOverrideOff', 'Marquer cette session comme facturable')}
                     onClick={() => toggleBillable(!status?.billableOverride)}
                     disabled={busy}
                     title={status?.billableOverride ? t('trayWidget.billableOverrideOn', 'Facturable — cliquer pour marquer non facturable') : t('trayWidget.billableOverrideOff', 'Marquer cette session comme facturable')}
@@ -268,7 +268,7 @@ function TrayWidgetInner() {
             {!isStopped && showOverridePanel && (
               <div className="mt-3 pt-3 border-t border-gray-200/70 dark:border-slate-700/50 space-y-2.5 animate-fade-in-scale">
                 <div>
-                  <p className="text-[10px] font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">{t('trayWidget.project', 'Projet')}</p>
+                  <p className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">{t('trayWidget.project', 'Projet')}</p>
                   <div className="flex gap-1.5">
                     <Dropdown
                       value={status?.projectId ? String(status.projectId) : ''}
@@ -293,7 +293,7 @@ function TrayWidgetInner() {
 
                 {categories.length > 0 && (
                   <div>
-                    <p className="text-[10px] font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+                    <p className="text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
                       {t('trayWidget.categoriesForSession', 'Catégories (pour cette session)')}
                     </p>
                     <div className="space-y-1 max-h-32 overflow-y-auto">
@@ -309,7 +309,7 @@ function TrayWidgetInner() {
                               <button
                                 onClick={() => setCategoryOverride(cat.id, override === 'focus' ? null : 'focus')}
                                 disabled={busy}
-                                className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium transition-colors disabled:opacity-50 ${
+                                className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium transition-colors disabled:opacity-50 ${
                                   override === 'focus'
                                     ? 'bg-emerald-500 text-white'
                                     : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400'
@@ -320,7 +320,7 @@ function TrayWidgetInner() {
                               <button
                                 onClick={() => setCategoryOverride(cat.id, override === 'distraction' ? null : 'distraction')}
                                 disabled={busy}
-                                className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium transition-colors disabled:opacity-50 ${
+                                className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium transition-colors disabled:opacity-50 ${
                                   override === 'distraction'
                                     ? 'bg-red-500 text-white'
                                     : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400'
@@ -366,11 +366,11 @@ function TrayWidgetInner() {
           <div className="grid grid-cols-2 gap-2">
             <div className={`${CARD_CLASS} py-2.5 text-center`}>
               <p className="text-base font-bold text-gray-900 dark:text-white">{formatShort(todayTotals.total)}</p>
-              <p className="text-[10px] text-gray-500 dark:text-slate-400 mt-0.5">{t('trayWidget.trackedToday', "Suivi aujourd'hui")}</p>
+              <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">{t('trayWidget.trackedToday', "Suivi aujourd'hui")}</p>
             </div>
             <div className={`${CARD_CLASS} py-2.5 text-center`}>
               <p className="text-base font-bold accent-text">{formatShort(todayTotals.billable)}</p>
-              <p className="text-[10px] text-gray-500 dark:text-slate-400 mt-0.5">{t('trayWidget.billable', 'Facturable')}</p>
+              <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">{t('trayWidget.billable', 'Facturable')}</p>
             </div>
           </div>
         </div>

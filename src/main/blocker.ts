@@ -1,6 +1,7 @@
 import { BrowserWindow, Notification } from 'electron'
 import { execFile } from 'child_process'
 import { isFocusSessionOnBreak } from './focus-mode'
+import { mt, mtf } from './i18n'
 import { debugLog } from './log'
 
 let mainWindow: BrowserWindow | null = null
@@ -92,8 +93,8 @@ export function checkBlocking(appName: string, windowTitle: string = '') {
 
   if (lastNotifiedApp !== appName && Notification.isSupported()) {
     new Notification({
-      title: 'Mode focus',
-      body: `${appName} est bloqué pendant ta session de concentration.`,
+      title: mt('ui', 'blockedTitle'),
+      body: mtf('ui', 'blockedBody', { app: appName }),
     }).show()
     lastNotifiedApp = appName
   }

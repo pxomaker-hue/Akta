@@ -116,7 +116,7 @@ function FocusChallenges() {
                     <h3 className="font-semibold text-gray-900 dark:text-white">{item.challenge.name}</h3>
                     <p className="text-xs text-gray-600 dark:text-gray-400">{item.challenge.description}</p>
                   </div>
-                  {item.progress?.completed && <span className="text-lg">✅</span>}
+                  {item.progress?.completed && <Icon name="check" size={18} className="text-emerald-500 flex-shrink-0" />}
                 </div>
 
                 {item.progress && (
@@ -198,7 +198,7 @@ function FocusChallenges() {
 
                   <div className="flex items-center justify-between cursor-help">
                     <div className="flex items-center gap-3 flex-1">
-                      <span className="text-lg">{milestone.unlocked_at ? '🏆' : '🔒'}</span>
+                      <Icon name={milestone.unlocked_at ? 'trophy' : 'award'} size={18} className={milestone.unlocked_at ? 'text-amber-500 flex-shrink-0' : 'text-gray-300 dark:text-slate-600 flex-shrink-0'} />
                       <div className="flex-1">
                         <p className={`font-medium text-sm ${milestone.unlocked_at ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'}`}>
                           {milestone.name}

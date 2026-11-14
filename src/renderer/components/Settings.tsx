@@ -109,7 +109,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
 
   if (loading || !settings) {
     return (
-      <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6 text-center py-12">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-gray-200/50 dark:border-slate-700/50 p-6 text-center py-12">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
       </div>
     )
@@ -443,7 +443,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
           </div>
 
           {/* Exclusions d'inactivité */}
-          <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6 border border-gray-200 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md p-6 border border-gray-200/50 dark:border-slate-700/50">
             <InactivityExclusionsManager />
           </div>
         </div>

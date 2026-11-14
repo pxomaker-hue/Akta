@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Icon, Card, CardHeader } from './UI'
+
+const dotClass = (level: 'high' | 'medium' | 'low') =>
+  `inline-block w-2 h-2 rounded-full flex-shrink-0 ${level === 'high' ? 'bg-red-500' : level === 'medium' ? 'bg-amber-400' : 'bg-emerald-500'}`
 import { useTranslation } from '../hooks/useTranslation'
 
 function tf(text: string, values: Record<string, string | number>): string {
@@ -57,7 +60,7 @@ function PredictionEstimates({ preds, t }: { preds: Prediction[]; t: (key: strin
       {preds.map((pred) => {
         if (pred.daysUntilBudget < 0 || pred.estimatedDate === 'Atteint') return null
 
-        const icon = pred.daysUntilBudget <= 7 ? '🔴' : pred.daysUntilBudget <= 30 ? '🟡' : '🟢'
+        const level = pred.daysUntilBudget <= 7 ? 'high' : pred.daysUntilBudget <= 30 ? 'medium' : 'low'
         const velocityLabel =
           pred.type === 'hours'
             ? tf(t('budgetPredictions.velocityHours', '{{n}}h/jour'), { n: pred.velocityPerDay.toFixed(1) })
@@ -65,8 +68,8 @@ function PredictionEstimates({ preds, t }: { preds: Prediction[]; t: (key: strin
 
         return (
           <div key={`est-${pred.type}`} className="text-xs text-gray-600 dark:text-slate-400 flex items-center justify-between">
-            <span>
-              {icon} {tf(t('budgetPredictions.daysUntil', '{{n}} j'), { n: pred.daysUntilBudget.toFixed(0) })} • {pred.estimatedDate}
+            <span className="flex items-center gap-1.5">
+              <span aria-hidden="true" className={dotClass(level)} /> {tf(t('budgetPredictions.daysUntil', '{{n}} j'), { n: pred.daysUntilBudget.toFixed(0) })} • {pred.estimatedDate}
             </span>
             <span>{velocityLabel}</span>
           </div>
