@@ -236,7 +236,7 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
                             className="flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-200 px-2 py-0.5 rounded-full text-xs"
                           >
                             {keyword}
-                            <button
+                            <button aria-label={t('common.remove', 'Retirer')} title={t('common.remove', 'Retirer')}
                               onClick={() => setDraftKeywords(draftKeywords.filter((k) => k !== keyword))}
                               className="text-indigo-500 hover:text-indigo-700 dark:text-indigo-400"
                               disabled={isSaving}
@@ -282,20 +282,20 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
                     <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: category.color }} />
                     <span className="font-medium text-gray-900 dark:text-white truncate">{category.name}</span>
                     {category.is_distraction && (
-                      <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 flex-shrink-0">
+                      <span className="flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 flex-shrink-0">
                         <Icon name="alert" size={9} />
                         {t('liveSession.distractionOverride', 'Distraction')}
                       </span>
                     )}
                     {category.billable_default && !category.is_distraction && (
-                      <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex-shrink-0">
-                        💰
+                      <span className="flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex-shrink-0">
+                        <Icon name="dollar" size={9} />
                         {t('sessionsList.billable', 'Facturable')}
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <button
+                    <button aria-label={t('categoryList.editTitle', 'Éditer')}
                       onClick={() => startEditing(category)}
                       className="p-1.5 text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded transition-colors"
                       title={t('categoryList.editTitle', 'Éditer')}

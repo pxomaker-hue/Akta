@@ -127,7 +127,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-gray-200/50 dark:border-slate-700/50 p-6">
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
           <p className="text-gray-600 dark:text-gray-400 mt-2">{t('activityList.loading', 'Chargement des activités...')}</p>
@@ -138,7 +138,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
 
   if (activities.length === 0) {
     return (
-      <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-gray-200/50 dark:border-slate-700/50 p-6">
         <div className="text-center py-12">
           <p className="text-gray-600 dark:text-gray-400">{t('activityList.empty', 'Aucune activité pour le moment. Utilise ton ordinateur pour démarrer le suivi !')}</p>
         </div>
@@ -247,7 +247,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
           <path d="M21 21l-4.35-4.35" />
         </svg>
         {searchQuery && (
-          <button
+          <button aria-label={t('common.clear', 'Effacer')} title={t('common.clear', 'Effacer')}
             onClick={() => setSearchQuery('')}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition-colors"
           >
@@ -326,7 +326,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
               className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
             />
             {selectedDateStart && (
-              <button
+              <button aria-label={t('common.clear', 'Effacer')} title={t('common.clear', 'Effacer')}
                 onClick={() => setSelectedDateStart('')}
                 className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300"
               >
@@ -343,7 +343,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
               className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
             />
             {selectedDateEnd && (
-              <button
+              <button aria-label={t('common.clear', 'Effacer')} title={t('common.clear', 'Effacer')}
                 onClick={() => setSelectedDateEnd('')}
                 className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300"
               >

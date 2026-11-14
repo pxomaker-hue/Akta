@@ -69,7 +69,7 @@ function TagBadges({ activityId, tags = [], allTags = [], onTagsChange, editable
         >
           {tag.name}
           {editable && (
-            <button
+            <button aria-label={t('tagBadges.removeTag', 'Retirer le tag')}
               onClick={() => removeTag(tag.id)}
               className="ml-1 hover:opacity-70 font-bold"
               title={t('tagBadges.removeTag', 'Retirer le tag')}

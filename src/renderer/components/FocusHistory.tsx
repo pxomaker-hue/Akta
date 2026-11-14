@@ -132,7 +132,7 @@ function FocusHistory({ sessions, onDelete }: FocusHistoryProps) {
                   </td>
                   <td className="py-3 px-6 text-right">
                     {!session.end_time ? null : (
-                      <button
+                      <button aria-label={t('focusHistory.deleteTitle', 'Supprimer cette session')}
                         onClick={() => handleDelete(session)}
                         disabled={deletingId === session.id}
                         title={t('focusHistory.deleteTitle', 'Supprimer cette session')}

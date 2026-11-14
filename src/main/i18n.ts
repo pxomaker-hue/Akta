@@ -415,17 +415,49 @@ export function mainLocaleTag(lang: Language = getMainLanguage()): string {
 }
 
 const misc: Record<Language, Dict> = {
-  fr: { you: '🎮 Toi' },
-  en: { you: '🎮 You' },
-  de: { you: '🎮 Du' },
+  fr: { you: '🎮 Toi', manualEntry: 'Saisie manuelle' },
+  en: { you: '🎮 You', manualEntry: 'Manual entry' },
+  de: { you: '🎮 Du', manualEntry: 'Manueller Eintrag' },
 }
 
-export function mt(dict: 'tray' | 'notifications' | 'coach' | 'csv' | 'misc', key: string, lang: Language = getMainLanguage()): string {
-  const table = { tray, notifications, coach, csv, misc }[dict]
+const ui: Record<Language, Dict> = {
+  fr: {
+    pdfDate: 'Date', pdfTime: 'Heure', pdfSession: 'Session', pdfDuration: 'Durée', pdfAmount: 'Montant',
+    pdfEmpty: 'Aucune session sur cette période.', pdfGenerated: 'Export généré le {{date}}', pdfReport: 'Rapport — {{month}}',
+    pdfNoProject: 'Sans projet', pdfProjectNotFound: 'Projet introuvable',
+    blockedTitle: 'Mode focus', blockedBody: '{{app}} est bloqué pendant ta session de concentration.',
+    updateTitle: 'Mise à jour prête', updateMessage: 'Akta {{version}} a été téléchargée.', updateDetail: "Redémarrer maintenant pour l'installer ?",
+    updateRestart: 'Redémarrer maintenant', updateLater: 'Plus tard',
+    syncPickExisting: 'Sélectionner le fichier de synchronisation existant', syncPickNew: 'Créer un nouveau fichier de synchronisation', syncFilter: 'Fichier de synchronisation Akta',
+  },
+  en: {
+    pdfDate: 'Date', pdfTime: 'Time', pdfSession: 'Session', pdfDuration: 'Duration', pdfAmount: 'Amount',
+    pdfEmpty: 'No sessions in this period.', pdfGenerated: 'Exported on {{date}}', pdfReport: 'Report — {{month}}',
+    pdfNoProject: 'No project', pdfProjectNotFound: 'Project not found',
+    blockedTitle: 'Focus mode', blockedBody: '{{app}} is blocked during your focus session.',
+    updateTitle: 'Update ready', updateMessage: 'Akta {{version}} has been downloaded.', updateDetail: 'Restart now to install it?',
+    updateRestart: 'Restart now', updateLater: 'Later',
+    syncPickExisting: 'Select the existing sync file', syncPickNew: 'Create a new sync file', syncFilter: 'Akta sync file',
+  },
+  de: {
+    pdfDate: 'Datum', pdfTime: 'Uhrzeit', pdfSession: 'Sitzung', pdfDuration: 'Dauer', pdfAmount: 'Betrag',
+    pdfEmpty: 'Keine Sitzungen in diesem Zeitraum.', pdfGenerated: 'Exportiert am {{date}}', pdfReport: 'Bericht — {{month}}',
+    pdfNoProject: 'Kein Projekt', pdfProjectNotFound: 'Projekt nicht gefunden',
+    blockedTitle: 'Fokusmodus', blockedBody: '{{app}} ist während deiner Fokussitzung blockiert.',
+    updateTitle: 'Update bereit', updateMessage: 'Akta {{version}} wurde heruntergeladen.', updateDetail: 'Jetzt neu starten, um es zu installieren?',
+    updateRestart: 'Jetzt neu starten', updateLater: 'Später',
+    syncPickExisting: 'Vorhandene Synchronisationsdatei auswählen', syncPickNew: 'Neue Synchronisationsdatei erstellen', syncFilter: 'Akta-Synchronisationsdatei',
+  },
+}
+
+type DictName = 'tray' | 'notifications' | 'coach' | 'csv' | 'misc' | 'ui'
+
+export function mt(dict: DictName, key: string, lang: Language = getMainLanguage()): string {
+  const table = { tray, notifications, coach, csv, misc, ui }[dict]
   return table[lang][key] ?? table.fr[key] ?? key
 }
 
-export function mtf(dict: 'tray' | 'notifications' | 'coach' | 'csv' | 'misc', key: string, values: Record<string, string | number>, lang: Language = getMainLanguage()): string {
+export function mtf(dict: DictName, key: string, values: Record<string, string | number>, lang: Language = getMainLanguage()): string {
   const text = mt(dict, key, lang)
   return Object.entries(values).reduce((acc, [k, v]) => acc.split(`{{${k}}}`).join(String(v)), text)
 }

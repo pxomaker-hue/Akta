@@ -7,6 +7,8 @@ interface ConfirmOptions {
   confirmLabel?: string
   cancelLabel?: string
   danger?: boolean
+  // Simple information (remplace alert()) : un seul bouton
+  alertOnly?: boolean
 }
 
 interface PendingConfirm extends ConfirmOptions {
@@ -26,6 +28,18 @@ export function confirmDialog(message: string, options: ConfirmOptions = {}): Pr
       return
     }
     currentSetter({ message, resolve, ...options })
+  })
+}
+
+// Remplace window.alert() : même modale, un seul bouton OK
+export function alertDialog(message: string, options: Omit<ConfirmOptions, 'alertOnly'> = {}): Promise<void> {
+  return new Promise((resolve) => {
+    if (!currentSetter) {
+      window.alert(message)
+      resolve()
+      return
+    }
+    currentSetter({ message, resolve: () => resolve(), alertOnly: true, ...options })
   })
 }
 
@@ -64,13 +78,17 @@ export function ConfirmDialogHost() {
       onMouseDown={() => handle(false)}
     >
       <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={pending.title ? 'confirm-dialog-title' : 'confirm-dialog-message'}
+        aria-describedby={pending.title ? 'confirm-dialog-message' : undefined}
         className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-700 w-full max-w-sm p-5 animate-fade-in-scale"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-start gap-3 mb-5">
           <div
             className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
-              pending.danger
+              pending.danger || pending.alertOnly
                 ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                 : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
             }`}
@@ -78,24 +96,27 @@ export function ConfirmDialogHost() {
             <Icon name="alert" size={16} />
           </div>
           <div className="min-w-0 pt-1">
-            {pending.title && <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{pending.title}</p>}
-            <p className="text-sm text-gray-600 dark:text-slate-300 leading-relaxed">{pending.message}</p>
+            {pending.title && <p id="confirm-dialog-title" className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{pending.title}</p>}
+            <p id="confirm-dialog-message" className="text-sm text-gray-600 dark:text-slate-300 leading-relaxed">{pending.message}</p>
           </div>
         </div>
         <div className="flex justify-end gap-2">
+          {!pending.alertOnly && (
           <button
             onClick={() => handle(false)}
             className="px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 font-medium hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
           >
             {pending.cancelLabel || t('common.cancel', 'Annuler')}
           </button>
+          )}
           <button
+            autoFocus
             onClick={() => handle(true)}
             className={`px-4 py-2 text-sm rounded-lg text-white font-medium transition-colors ${
               pending.danger ? 'bg-red-500 hover:bg-red-600' : 'accent-gradient-bg hover:brightness-110'
             }`}
           >
-            {pending.confirmLabel || t('common.confirm', 'Confirmer')}
+            {pending.confirmLabel || (pending.alertOnly ? 'OK' : t('common.confirm', 'Confirmer'))}
           </button>
         </div>
       </div>

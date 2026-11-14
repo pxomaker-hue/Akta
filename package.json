@@ -51,8 +51,10 @@
     "appId": "com.akta.app",
     "productName": "Akta",
     "publish": {
-      "provider": "generic",
-      "url": "http://easywork.kairos-app.website/akta/updates/"
+      "provider": "github",
+      "owner": "pxomaker-hue",
+      "repo": "Akta",
+      "releaseType": "release"
     },
     "files": [
       "dist/**/*",

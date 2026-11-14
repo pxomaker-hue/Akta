@@ -1,5 +1,6 @@
 import { dialog, BrowserWindow } from 'electron'
 import fs from 'fs'
+import { mt } from './i18n'
 import { getSetting, setSetting, exportSyncData, importSyncDataMerge } from './database'
 
 const SYNC_SETTING_KEY = 'sync_file_path'
@@ -31,8 +32,8 @@ function describeExisting(filePath: string): PickSyncFileResult {
 // qui rejoint un partage NAS déjà en place).
 export async function pickExistingSyncFile(win: BrowserWindow | null): Promise<PickSyncFileResult | null> {
   const result = await dialog.showOpenDialog(win ?? (undefined as any), {
-    title: 'Sélectionner le fichier de synchronisation existant',
-    filters: [{ name: 'Fichier de synchronisation Akta', extensions: ['json'] }],
+    title: mt('ui', 'syncPickExisting'),
+    filters: [{ name: mt('ui', 'syncFilter'), extensions: ['json'] }],
     properties: ['openFile'],
   })
   if (result.canceled || result.filePaths.length === 0) return null
@@ -44,9 +45,9 @@ export async function pickExistingSyncFile(win: BrowserWindow | null): Promise<P
 // createNewSyncFile() qui écrase réellement, seulement après confirmation côté renderer.
 export async function pickNewSyncFile(win: BrowserWindow | null): Promise<PickSyncFileResult | null> {
   const result = await dialog.showSaveDialog(win ?? (undefined as any), {
-    title: 'Créer un nouveau fichier de synchronisation',
+    title: mt('ui', 'syncPickNew'),
     defaultPath: 'akta-sync.json',
-    filters: [{ name: 'Fichier de synchronisation Akta', extensions: ['json'] }],
+    filters: [{ name: mt('ui', 'syncFilter'), extensions: ['json'] }],
     properties: ['createDirectory'],
   })
   if (result.canceled || !result.filePath) return null

@@ -99,10 +99,10 @@ function FocusCoaching() {
     }
   }
 
-  const priorityIcon = {
-    high: '🔴',
-    medium: '🟡',
-    low: '🟢',
+  const priorityDot = {
+    high: 'bg-red-500',
+    medium: 'bg-amber-400',
+    low: 'bg-emerald-500',
   }
 
   const modeStyles = {
@@ -246,7 +246,7 @@ function FocusCoaching() {
                   }}
                 >
                   <div className="flex gap-2.5 items-start mb-2">
-                    <span className="text-base flex-shrink-0 mt-0.5">{priorityIcon[rec.priority]}</span>
+                    <span aria-hidden="true" className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${priorityDot[rec.priority as keyof typeof priorityDot]}`} />
                     <span className="text-gray-900 dark:text-white flex-1 leading-snug">{rec.message}</span>
                   </div>
                   {rec.action && (rec.action === 'start-session' || rec.action === 'start-18min-cycle') && (

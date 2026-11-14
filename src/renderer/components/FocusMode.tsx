@@ -3,7 +3,7 @@ import Mascot, { type MascotMood } from './Mascot'
 import FocusHistory from './FocusHistory'
 import FocusCoaching from './FocusCoaching'
 import FocusChallenges from './FocusChallenges'
-import { Icon, Card } from './UI'
+import { Icon, Card, alertDialog } from './UI'
 import { useTranslation } from '../hooks/useTranslation'
 import type { FocusSession } from '../../shared/types'
 
@@ -357,7 +357,7 @@ function FocusMode({ onBack }: FocusModeProps) {
       }
     } catch (error) {
       console.error('Error starting focus session:', error)
-      alert(t('focusMode.startError', 'Erreur au démarrage de la session. Réessaye ?'))
+      alertDialog(t('focusMode.startError', 'Erreur au démarrage de la session. Réessaye ?'))
     } finally {
       setBusy(false)
     }
@@ -520,7 +520,7 @@ function FocusMode({ onBack }: FocusModeProps) {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('focusMode.sessionsCountLabel', 'Sessions')}</label>
                     <div className="flex items-center gap-2">
-                      <button
+                      <button aria-label={t('common.decrease', 'Diminuer')} title={t('common.decrease', 'Diminuer')}
                         onClick={() => setNumSessions(Math.max(1, numSessions - 1))}
                         className="px-2 py-1 bg-gray-200 dark:bg-slate-700 rounded hover:bg-gray-300 dark:hover:bg-slate-600 transition-transform duration-100 active:scale-90"
                       >
@@ -529,7 +529,7 @@ function FocusMode({ onBack }: FocusModeProps) {
                       <span key={numSessions} className="text-xl font-bold text-center flex-1 animate-pop-in">
                         {numSessions}
                       </span>
-                      <button
+                      <button aria-label={t('common.increase', 'Augmenter')} title={t('common.increase', 'Augmenter')}
                         onClick={() => setNumSessions(Math.min(10, numSessions + 1))}
                         className="px-2 py-1 bg-gray-200 dark:bg-slate-700 rounded hover:bg-gray-300 dark:hover:bg-slate-600 transition-transform duration-100 active:scale-90"
                       >
@@ -542,7 +542,7 @@ function FocusMode({ onBack }: FocusModeProps) {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('focusMode.focusMinutesLabel', 'Focus (min)')}</label>
                     <div className="flex items-center gap-2">
-                      <button
+                      <button aria-label={t('common.decrease', 'Diminuer')} title={t('common.decrease', 'Diminuer')}
                         onClick={() => setSessionDuration(Math.max(5, sessionDuration - 5))}
                         className="px-2 py-1 bg-gray-200 dark:bg-slate-700 rounded hover:bg-gray-300 dark:hover:bg-slate-600 transition-transform duration-100 active:scale-90"
                       >
@@ -551,7 +551,7 @@ function FocusMode({ onBack }: FocusModeProps) {
                       <span key={sessionDuration} className="text-xl font-bold text-center flex-1 animate-pop-in">
                         {sessionDuration}
                       </span>
-                      <button
+                      <button aria-label={t('common.increase', 'Augmenter')} title={t('common.increase', 'Augmenter')}
                         onClick={() => setSessionDuration(Math.min(60, sessionDuration + 5))}
                         className="px-2 py-1 bg-gray-200 dark:bg-slate-700 rounded hover:bg-gray-300 dark:hover:bg-slate-600 transition-transform duration-100 active:scale-90"
                       >
@@ -564,7 +564,7 @@ function FocusMode({ onBack }: FocusModeProps) {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('focusMode.pauseMinutesLabel', 'Pause (min)')}</label>
                     <div className="flex items-center gap-2">
-                      <button
+                      <button aria-label={t('common.decrease', 'Diminuer')} title={t('common.decrease', 'Diminuer')}
                         onClick={() => setPauseDuration(Math.max(1, pauseDuration - 1))}
                         className="px-2 py-1 bg-gray-200 dark:bg-slate-700 rounded hover:bg-gray-300 dark:hover:bg-slate-600 transition-transform duration-100 active:scale-90"
                       >
@@ -573,7 +573,7 @@ function FocusMode({ onBack }: FocusModeProps) {
                       <span key={pauseDuration} className="text-xl font-bold text-center flex-1 animate-pop-in">
                         {pauseDuration}
                       </span>
-                      <button
+                      <button aria-label={t('common.increase', 'Augmenter')} title={t('common.increase', 'Augmenter')}
                         onClick={() => setPauseDuration(Math.min(30, pauseDuration + 1))}
                         className="px-2 py-1 bg-gray-200 dark:bg-slate-700 rounded hover:bg-gray-300 dark:hover:bg-slate-600 transition-transform duration-100 active:scale-90"
                       >
@@ -649,7 +649,7 @@ function FocusMode({ onBack }: FocusModeProps) {
                 >
                   {app}
                   {!isActive && (
-                    <button
+                    <button aria-label={t('common.remove', 'Retirer')} title={t('common.remove', 'Retirer')}
                       onClick={() => handleRemoveBlockedApp(app)}
                       className="text-red-400 hover:text-red-600 dark:hover:text-red-200 transition-colors"
                     >

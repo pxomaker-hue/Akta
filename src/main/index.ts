@@ -1,13 +1,13 @@
 import { app, BrowserWindow, ipcMain, Menu, Tray, nativeImage, nativeTheme, globalShortcut, Notification, screen, powerMonitor } from 'electron'
 import path from 'path'
-import { initDatabase, closeDatabase, getDatabase, getSetting, setSetting, getAllSettings, createTag, getTags, getTagsByActivity, addTagToActivity, removeTagFromActivity, deleteTag, exportData, importData, exportActivitiesCSV, updateWorkSessionBillable, getWorkSessionById, getActivitiesInRange, deleteWorkSession, createProject, getProjects, deleteProject, updateProject, updateSessionDetails, createClient, getClients, deleteClient, getProjectBillableSeconds, getSessionBillableSeconds, getSessionsForProject, getSessionPauses, getSessionPausedSeconds, getPausesInRange, createProjectPhase, getProjectPhases, updateProjectPhase, deleteProjectPhase, getPhaseBillableSeconds, getProjectTimeBreakdown, exportProjectSessionsCSV, exportMonthlyCSV, getWorkSessionsWithProjectInRange, recordSyncTombstone, getSessionsWithoutProjectToday, getProjectsWithBudgetOrDeadlineIssues, getBudgetPredictions } from './database'
+import { initDatabase, closeDatabase, getDatabase, getSetting, setSetting, getAllSettings, createTag, getTags, addTagToActivity, removeTagFromActivity, deleteTag, exportData, importData, exportActivitiesCSV, updateWorkSessionBillable, getWorkSessionById, getActivitiesInRange, deleteWorkSession, createProject, getProjects, deleteProject, updateProject, updateSessionDetails, createClient, getClients, deleteClient, getProjectBillableSeconds, getSessionBillableSeconds, getSessionsForProject, getSessionPauses, getSessionPausedSeconds, getPausesInRange, createProjectPhase, getProjectPhases, updateProjectPhase, deleteProjectPhase, getPhaseBillableSeconds, getProjectTimeBreakdown, exportProjectSessionsCSV, exportMonthlyCSV, getWorkSessionsWithProjectInRange, recordSyncTombstone, getSessionsWithoutProjectToday, getProjectsWithBudgetOrDeadlineIssues, getBudgetPredictions, createManualSession, updateSessionTimes, SessionOverlapError, updateClient } from './database'
 import { generateProjectPDF, generateMonthlyPDF } from './pdf-export'
-import { startTracker, stopTracker, handleSystemAway, refreshIdleTimeout, flushForShutdown, getRecentActivities, getCurrentActivityId, getTrackingStatus, startSession, pauseSession, resumeSession, stopSession, setSessionBillable, listWorkSessions, setSessionCategoryOverrides, setSessionProject, getCurrentWorkSessionDetails } from './tracker'
+import { startTracker, stopTracker, handleSystemAway, refreshIdleTimeout, flushForShutdown, getCurrentWorkSessionId, getRecentActivities, getTrackingStatus, startSession, pauseSession, resumeSession, stopSession, setSessionBillable, listWorkSessions, setSessionCategoryOverrides, setSessionProject, getCurrentWorkSessionDetails } from './tracker'
 import { startFocusSession, endFocusSession, getFocusSessions, getCurrentFocusSession, deleteFocusSession, checkAutoCompleteFocusSession } from './focus-mode'
 import { analyzeFocusQuality, getProductivityPattern, getCoachingRecommendations, getOptimalCycleDuration } from './coach'
 import { setMainWindow, activateBlocking, deactivateBlocking } from './blocker'
 import { findMatchingCategory } from './categorizer'
-import { initializeChallenges, getActiveChallenges, getChallengeProgress, getCurrentStreak, getMilestones, unlockMilestone, getLeaderboard } from './challenges'
+import { initializeChallenges, getActiveChallenges, getChallengeProgress, getCurrentStreak, getMilestones, unlockMilestone } from './challenges'
 import { getProductivityScore, getOptimalTimes, getMonthComparison, getWeekTrends } from './analytics'
 import { getSyncFilePath, setSyncFilePath, pickExistingSyncFile, pickNewSyncFile, createNewSyncFile, runSync } from './sync'
 import { setUpdaterWindow, initAutoUpdater, checkForUpdatesManually } from './updater'
@@ -165,6 +165,18 @@ function createWindow() {
   setUpdaterWindow(mainWindow)
 }
 
+// Fin d'une session Focus (manuelle ou à échéance) : coupe le blocage d'applis et arrête la session
+// de travail qu'elle avait démarrée — seulement si c'est toujours celle en cours (l'utilisateur a pu
+// en relancer une autre entre-temps, ou l'app a redémarré).
+function finishFocusSideEffects(focusSession: { work_session_id?: number | null }) {
+  deactivateBlocking()
+  const workSessionId = focusSession.work_session_id ?? null
+  if (workSessionId !== null && getCurrentWorkSessionId() === workSessionId) {
+    stopSession()
+    broadcastTrackingStatus()
+  }
+}
+
 // Prévient TOUTES les fenêtres (principale + widget tray) qu'une session a changé d'état, quelle
 // que soit l'origine de l'action (fenêtre, widget, menu du tray, raccourci global). Sans ça, l'autre
 // fenêtre gardait un état périmé jusqu'à 5 s et pouvait relancer une session déjà démarrée.
@@ -172,6 +184,7 @@ function broadcastTrackingStatus() {
   for (const win of [mainWindow, trayWidgetWindow]) {
     if (win && !win.isDestroyed()) win.webContents.send('tracking-status-changed')
   }
+  updateTrayMenu()
 }
 
 // Lancement au démarrage. `wasOpenedAtLogin` n'existe que sur macOS : sous Windows il valait toujours
@@ -224,8 +237,12 @@ function handleGlobalStop() {
 }
 
 function registerGlobalShortcuts() {
-  globalShortcut.register('Alt+Shift+S', handleGlobalToggle)
-  globalShortcut.register('Alt+Shift+X', handleGlobalStop)
+  // register() renvoie false si une autre application a déjà pris le raccourci
+  const failed = [
+    ['Alt+Shift+S', handleGlobalToggle],
+    ['Alt+Shift+X', handleGlobalStop],
+  ].filter(([accelerator, handler]) => !globalShortcut.register(accelerator as string, handler as () => void))
+  if (failed.length > 0) console.warn('Global shortcuts unavailable:', failed.map(([a]) => a).join(', '))
 }
 
 function formatSessionTime(seconds: number): string {
@@ -238,6 +255,17 @@ function formatSessionTime(seconds: number): string {
   return `${minutes}m ${secs}s`
 }
 
+// Signature du dernier menu construit : on ne reconstruit le menu natif que s'il a changé. Le
+// reconstruire chaque seconde coûtait inutilement et pouvait refermer le menu pendant qu'on s'en
+// servait. Le menu affiche donc la durée à la minute ; l'infobulle garde les secondes.
+let lastTrayMenuSignature = ''
+
+function formatMenuSessionTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+}
+
 function updateTrayMenu() {
   if (!tray) return
 
@@ -245,7 +273,7 @@ function updateTrayMenu() {
   const menuItems: any[] = []
 
   if (session) {
-    const timeStr = formatSessionTime(session.elapsedSeconds)
+    const timeStr = formatMenuSessionTime(session.elapsedSeconds)
     const statusIcon = session.isRunning ? '▶' : session.isPaused ? '⏸' : '⏹'
     menuItems.push({
       label: `${statusIcon} Session: ${timeStr}`,
@@ -308,8 +336,11 @@ function updateTrayMenu() {
     },
   })
 
-  const contextMenu = Menu.buildFromTemplate(menuItems)
-  tray.setContextMenu(contextMenu)
+  const signature = JSON.stringify(menuItems.map((item) => [item.label, item.type, item.enabled]))
+  if (signature !== lastTrayMenuSignature) {
+    lastTrayMenuSignature = signature
+    tray.setContextMenu(Menu.buildFromTemplate(menuItems))
+  }
 
   // Mettre à jour le tooltip
   const tooltip = session
@@ -443,83 +474,84 @@ function toggleTrayWidget() {
   trayWidgetWindow.focus()
 }
 
+// Rappels (projets sans session, budgets, échéances) : chacun n'est envoyé qu'une fois par jour.
+// Avant, la vérification horaire renvoyait les mêmes alertes toutes les heures, y compris pour la
+// session en cours. Les rappels déjà envoyés sont mémorisés en base (survivent au redémarrage).
+function notifyOncePerDay(key: string, title: string, body: string, sent: Record<string, string>, today: string) {
+  if (sent[key] === today) return
+  sent[key] = today
+  new Notification({ title, body, icon: ICON_PATH }).show()
+}
+
 function checkSmartNotifications() {
   try {
     if (!Notification.isSupported()) return
+    if ((getSetting('notifications_reminders') ?? 'true') !== 'true') return
 
-    // 1. Sessions without project
-    const sessionsWithoutProject = getSessionsWithoutProjectToday()
-    if (sessionsWithoutProject.length > 0) {
-      new Notification({
-        title: mt('notifications', 'noProjectTitle'),
-        body: mtf('notifications', 'noProjectBody', { count: sessionsWithoutProject.length }),
-        icon: ICON_PATH,
-      }).show()
+    const today = new Date().toDateString()
+    let sent: Record<string, string> = {}
+    try {
+      sent = JSON.parse(getSetting('smart_notifications_sent') || '{}')
+    } catch {
+      sent = {}
+    }
+    // Ne garde que les clés du jour (sinon la liste grossirait indéfiniment)
+    for (const key of Object.keys(sent)) if (sent[key] !== today) delete sent[key]
+
+    // 1. Sessions terminées sans projet (la session en cours n'est pas concernée : on peut encore
+    // lui attribuer un projet). Un nouveau rappel seulement si leur nombre a augmenté.
+    const currentId = getCurrentWorkSessionId()
+    const withoutProject = getSessionsWithoutProjectToday().filter((ws: any) => ws.id !== currentId && ws.end_time !== null)
+    if (withoutProject.length > 0) {
+      notifyOncePerDay(
+        `no_project:${withoutProject.length}`,
+        mt('notifications', 'noProjectTitle'),
+        mtf('notifications', 'noProjectBody', { count: withoutProject.length }),
+        sent,
+        today
+      )
     }
 
-    // 2. Budget exceeded (projet ou phase)
+    // 2 & 3. Budgets et échéances (projet ou phase), au plus 2 de chaque par vérification
     const issues = getProjectsWithBudgetOrDeadlineIssues()
-    const budgetIssues = issues.filter(i => i.type.includes('budget'))
-    const deadlineIssues = issues.filter(i => i.type.includes('deadline'))
+    const budgetIssues = issues.filter((i) => i.type.includes('budget')).slice(0, 2)
+    const deadlineIssues = issues.filter((i) => i.type.includes('deadline')).slice(0, 2)
+    const daysLeft = (deadline: number | string | Date) => Math.ceil((new Date(deadline).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
 
-    for (const issue of budgetIssues.slice(0, 2)) {
-      if (issue.type === 'budget_hours') {
-        new Notification({
-          title: mt('notifications', 'budgetExceededTitle'),
-          body: mtf('notifications', 'budgetExceededHoursBody', { project: issue.projectName }),
-          icon: ICON_PATH,
-        }).show()
-      } else if (issue.type === 'budget_amount') {
-        new Notification({
-          title: mt('notifications', 'budgetExceededTitle'),
-          body: mtf('notifications', 'budgetExceededAmountBody', { project: issue.projectName }),
-          icon: ICON_PATH,
-        }).show()
-      } else if (issue.type === 'phase_budget_hours') {
-        new Notification({
-          title: mt('notifications', 'budgetExceededTitle'),
-          body: mtf('notifications', 'phaseBudgetExceededHoursBody', { phase: issue.phaseName, project: issue.projectName }),
-          icon: ICON_PATH,
-        }).show()
-      } else if (issue.type === 'phase_budget_amount') {
-        new Notification({
-          title: mt('notifications', 'budgetExceededTitle'),
-          body: mtf('notifications', 'phaseBudgetExceededAmountBody', { phase: issue.phaseName, project: issue.projectName }),
-          icon: ICON_PATH,
-        }).show()
+    for (const issue of [...budgetIssues, ...deadlineIssues]) {
+      const key = `${issue.type}:${issue.projectName}:${issue.phaseName ?? ''}`
+      const vars = { project: issue.projectName, phase: issue.phaseName }
+      switch (issue.type) {
+        case 'budget_hours':
+          notifyOncePerDay(key, mt('notifications', 'budgetExceededTitle'), mtf('notifications', 'budgetExceededHoursBody', vars), sent, today)
+          break
+        case 'budget_amount':
+          notifyOncePerDay(key, mt('notifications', 'budgetExceededTitle'), mtf('notifications', 'budgetExceededAmountBody', vars), sent, today)
+          break
+        case 'phase_budget_hours':
+          notifyOncePerDay(key, mt('notifications', 'budgetExceededTitle'), mtf('notifications', 'phaseBudgetExceededHoursBody', vars), sent, today)
+          break
+        case 'phase_budget_amount':
+          notifyOncePerDay(key, mt('notifications', 'budgetExceededTitle'), mtf('notifications', 'phaseBudgetExceededAmountBody', vars), sent, today)
+          break
+        case 'deadline_passed':
+          if (issue.deadline) notifyOncePerDay(key, mt('notifications', 'deadlinePassedTitle'), mtf('notifications', 'deadlinePassedBody', vars), sent, today)
+          break
+        case 'deadline_soon':
+          if (issue.deadline)
+            notifyOncePerDay(key, mt('notifications', 'deadlineApproachingTitle'), mtf('notifications', 'deadlineApproachingBody', { ...vars, days: daysLeft(issue.deadline) }), sent, today)
+          break
+        case 'phase_deadline_passed':
+          if (issue.deadline) notifyOncePerDay(key, mt('notifications', 'deadlinePassedTitle'), mtf('notifications', 'phaseDeadlinePassedBody', vars), sent, today)
+          break
+        case 'phase_deadline_soon':
+          if (issue.deadline)
+            notifyOncePerDay(key, mt('notifications', 'deadlineApproachingTitle'), mtf('notifications', 'phaseDeadlineApproachingBody', { ...vars, days: daysLeft(issue.deadline) }), sent, today)
+          break
       }
     }
 
-    // 3. Deadline issues (projet ou phase)
-    for (const issue of deadlineIssues.slice(0, 2)) {
-      if (issue.type === 'deadline_passed' && issue.deadline) {
-        new Notification({
-          title: mt('notifications', 'deadlinePassedTitle'),
-          body: mtf('notifications', 'deadlinePassedBody', { project: issue.projectName }),
-          icon: ICON_PATH,
-        }).show()
-      } else if (issue.type === 'deadline_soon' && issue.deadline) {
-        const daysLeft = Math.ceil((new Date(issue.deadline).getTime() - new Date().getTime()) / (24 * 60 * 60 * 1000))
-        new Notification({
-          title: mt('notifications', 'deadlineApproachingTitle'),
-          body: mtf('notifications', 'deadlineApproachingBody', { project: issue.projectName, days: daysLeft }),
-          icon: ICON_PATH,
-        }).show()
-      } else if (issue.type === 'phase_deadline_passed' && issue.deadline) {
-        new Notification({
-          title: mt('notifications', 'deadlinePassedTitle'),
-          body: mtf('notifications', 'phaseDeadlinePassedBody', { phase: issue.phaseName, project: issue.projectName }),
-          icon: ICON_PATH,
-        }).show()
-      } else if (issue.type === 'phase_deadline_soon' && issue.deadline) {
-        const daysLeft = Math.ceil((new Date(issue.deadline).getTime() - new Date().getTime()) / (24 * 60 * 60 * 1000))
-        new Notification({
-          title: mt('notifications', 'deadlineApproachingTitle'),
-          body: mtf('notifications', 'phaseDeadlineApproachingBody', { phase: issue.phaseName, project: issue.projectName, days: daysLeft }),
-          icon: ICON_PATH,
-        }).show()
-      }
-    }
+    setSetting('smart_notifications_sent', JSON.stringify(sent))
   } catch (error) {
     console.error('Error in checkSmartNotifications:', error)
   }
@@ -545,6 +577,17 @@ app.on('ready', () => {
 
   // Initialiser les défis focus
   initializeChallenges()
+
+  // Session Focus encore en cours au redémarrage (crash, mise à jour…) : le blocage d'applis ne
+  // vivait qu'en mémoire, on le réactive tant que la session n'est pas arrivée à échéance.
+  try {
+    const ongoingFocus = getCurrentFocusSession()
+    if (ongoingFocus && !checkAutoCompleteFocusSession()) {
+      activateBlocking(JSON.parse((ongoingFocus as any).blocked_apps || '[]'))
+    }
+  } catch (error) {
+    console.warn('Could not restore focus blocking:', error)
+  }
 
   // Démarrer le tracker d'activité
   startTracker()
@@ -596,7 +639,7 @@ app.on('ready', () => {
     const completed = checkAutoCompleteFocusSession()
     if (!completed) return
 
-    deactivateBlocking()
+    finishFocusSideEffects(completed as any)
 
     if (Notification.isSupported()) {
       new Notification({
@@ -816,9 +859,10 @@ function setupIpcHandlers() {
            OR LOWER(app_name) LIKE '%akta%'
            OR LOWER(window_title) LIKE '%akta%'
       `).all() as any[]
-      for (const act of invalid) {
-        recordSyncTombstone('activity', String(act.start_time))
-      }
+      // Une seule transaction : sinon chaque tombstone était une écriture disque séparée
+      db.transaction(() => {
+        for (const act of invalid) recordSyncTombstone('activity', String(act.start_time))
+      })()
       const stmt = db.prepare(`
         DELETE FROM activities
         WHERE app_name = 'Unknown'
@@ -840,9 +884,10 @@ function setupIpcHandlers() {
       const db = getDatabase()
       // Record tombstones before deletion for sync
       const uncategorized = db.prepare('SELECT start_time FROM activities WHERE category_id IS NULL').all() as any[]
-      for (const act of uncategorized) {
-        recordSyncTombstone('activity', String(act.start_time))
-      }
+      // Une seule transaction : sinon chaque tombstone était une écriture disque séparée
+      db.transaction(() => {
+        for (const act of uncategorized) recordSyncTombstone('activity', String(act.start_time))
+      })()
       const stmt = db.prepare('DELETE FROM activities WHERE category_id IS NULL')
       const result = stmt.run()
       return result.changes
@@ -861,9 +906,10 @@ function setupIpcHandlers() {
       todayStart.setHours(0, 0, 0, 0)
       // Record tombstones before deletion for sync
       const today = db.prepare('SELECT start_time FROM activities WHERE start_time >= ?').all(todayStart.getTime()) as any[]
-      for (const act of today) {
-        recordSyncTombstone('activity', String(act.start_time))
-      }
+      // Une seule transaction : sinon chaque tombstone était une écriture disque séparée
+      db.transaction(() => {
+        for (const act of today) recordSyncTombstone('activity', String(act.start_time))
+      })()
       const stmt = db.prepare('DELETE FROM activities WHERE start_time >= ?')
       const result = stmt.run(todayStart.getTime())
       return result.changes
@@ -880,9 +926,10 @@ function setupIpcHandlers() {
       const db = getDatabase()
       // Record tombstones before deletion for sync
       const all = db.prepare('SELECT start_time FROM activities').all() as any[]
-      for (const act of all) {
-        recordSyncTombstone('activity', String(act.start_time))
-      }
+      // Une seule transaction : sinon chaque tombstone était une écriture disque séparée
+      db.transaction(() => {
+        for (const act of all) recordSyncTombstone('activity', String(act.start_time))
+      })()
       const result = db.prepare('DELETE FROM activities').run()
       return result.changes
     } catch (error) {
@@ -955,11 +1002,6 @@ function setupIpcHandlers() {
       console.error('Error updating activities billable status:', error)
       throw error
     }
-  })
-
-  // Get current activity
-  ipcMain.handle('get-current-activity', async () => {
-    return getCurrentActivityId()
   })
 
   // Get live tracking status (session en cours, idle ou non)
@@ -1171,6 +1213,33 @@ function setupIpcHandlers() {
   })
 
   // Supprime une session de travail terminée (garde ses activités intactes)
+  // Saisie manuelle d'une session oubliée. Renvoie { ok } ou { error: 'overlap' | 'invalid' } pour
+  // que le renderer affiche un message clair plutôt qu'une exception.
+  ipcMain.handle(
+    'create-manual-session',
+    async (event, startMs: number, endMs: number, label: string | null, projectId: number | null, phaseId: number | null, billable: boolean) => {
+      try {
+        const id = createManualSession(startMs, endMs, label, projectId, phaseId, billable, mt('misc', 'manualEntry'))
+        return { ok: true, id }
+      } catch (error) {
+        if (error instanceof SessionOverlapError) return { ok: false, error: 'overlap' }
+        console.error('Error creating manual session:', error)
+        return { ok: false, error: 'invalid' }
+      }
+    }
+  )
+
+  ipcMain.handle('update-session-times', async (event, sessionId: number, startMs: number, endMs: number) => {
+    try {
+      updateSessionTimes(sessionId, startMs, endMs)
+      return { ok: true }
+    } catch (error) {
+      if (error instanceof SessionOverlapError) return { ok: false, error: 'overlap' }
+      console.error('Error updating session times:', error)
+      return { ok: false, error: 'invalid' }
+    }
+  })
+
   ipcMain.handle('delete-session', async (event, sessionId: number) => {
     try {
       deleteWorkSession(sessionId)
@@ -1375,6 +1444,16 @@ function setupIpcHandlers() {
     }
   })
 
+  ipcMain.handle('update-client', async (event, clientId: number, name: string, color: string) => {
+    try {
+      updateClient(clientId, name, color)
+      return true
+    } catch (error) {
+      console.error('Error updating client:', error)
+      throw error
+    }
+  })
+
   ipcMain.handle('delete-client', async (event, clientId: number) => {
     try {
       deleteClient(clientId)
@@ -1387,7 +1466,6 @@ function setupIpcHandlers() {
 
   // Focus Mode handlers
   // Map to track which Focus Sessions created their own Work Sessions
-  const focusSessionWorkSessionMap = new Map<number, boolean>()
 
   ipcMain.handle(
     'start-focus-session',
@@ -1421,7 +1499,7 @@ function setupIpcHandlers() {
 
         // Remember that this focus session created a work session
         if (didCreateWorkSession) {
-          focusSessionWorkSessionMap.set(session.id, true)
+          getDatabase().prepare('UPDATE focus_sessions SET work_session_id = ? WHERE id = ?').run(getCurrentWorkSessionId(), session.id)
         }
 
         try {
@@ -1444,21 +1522,9 @@ function setupIpcHandlers() {
 
   ipcMain.handle('end-focus-session', async (event, sessionId: number) => {
     try {
-      // Check if this focus session created a work session
-      const didCreateWorkSession = focusSessionWorkSessionMap.get(sessionId)
-
-      // If we created a work session, end it too
-      if (didCreateWorkSession) {
-        console.log('[FocusMode] Ending work session that was created by focus mode')
-        stopSession()
-        broadcastTrackingStatus()
-      }
-
-      // Clean up the map
-      focusSessionWorkSessionMap.delete(sessionId)
-
+      const session = getDatabase().prepare('SELECT * FROM focus_sessions WHERE id = ?').get(sessionId) as any
       const result = endFocusSession(sessionId)
-      deactivateBlocking()
+      if (session) finishFocusSideEffects(session)
       return result
     } catch (error) {
       console.error('Error ending focus session:', error)
@@ -1610,15 +1676,6 @@ function setupIpcHandlers() {
       return getTags()
     } catch (error) {
       console.error('Error getting tags:', error)
-      throw error
-    }
-  })
-
-  ipcMain.handle('get-tags-by-activity', async (event, activityId: number) => {
-    try {
-      return getTagsByActivity(activityId)
-    } catch (error) {
-      console.error('Error getting tags by activity:', error)
       throw error
     }
   })
@@ -1886,15 +1943,6 @@ function setupIpcHandlers() {
       return getMilestones()
     } catch (error) {
       console.error('Error getting milestones:', error)
-      throw error
-    }
-  })
-
-  ipcMain.handle('get-leaderboard', async (event, duration: 'weekly' | 'monthly' | 'all_time' = 'weekly') => {
-    try {
-      return getLeaderboard(duration)
-    } catch (error) {
-      console.error('Error getting leaderboard:', error)
       throw error
     }
   })

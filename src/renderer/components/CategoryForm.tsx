@@ -177,7 +177,7 @@ function CategoryForm({ onCategoryCreated }: CategoryFormProps) {
                   className="flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-200 px-3 py-1 rounded-full text-sm"
                 >
                   {keyword}
-                  <button
+                  <button aria-label={t('common.remove', 'Retirer')} title={t('common.remove', 'Retirer')}
                     type="button"
                     onClick={() => handleRemoveKeyword(keyword)}
                     className="text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-200"

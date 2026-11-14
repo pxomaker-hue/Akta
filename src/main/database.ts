@@ -15,8 +15,31 @@ export function initDatabase(): Database.Database {
   db.pragma('journal_mode = WAL')
 
   createTables()
+  try {
+    // Activité créée par une saisie manuelle de temps (et non par le suivi automatique)
+    db.exec(`ALTER TABLE activities ADD COLUMN is_manual INTEGER NOT NULL DEFAULT 0`)
+  } catch {
+    // colonne déjà présente
+  }
+  createSyncTriggers()
   closeOrphanedRecords()
   return db
+}
+
+// La synchro fusionne les activités selon updated_at, mais aucune modification d'activité (catégorie,
+// facturable, durée…) ne le mettait à jour : ces changements ne se propageaient jamais aux autres
+// machines. Un trigger le fait pour toutes les écritures, sans dépendre de chaque requête. Il ne
+// s'applique pas quand l'écriture fixe elle-même updated_at (import de synchro, qui garde la date distante).
+function createSyncTriggers() {
+  if (!db) return
+  db.exec(`
+    CREATE TRIGGER IF NOT EXISTS activities_touch_updated_at
+    AFTER UPDATE OF category_id, billable, window_title, end_time, duration_seconds ON activities
+    WHEN NEW.updated_at = OLD.updated_at
+    BEGIN
+      UPDATE activities SET updated_at = CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER) WHERE id = NEW.id;
+    END;
+  `)
 }
 
 // Après un crash, une coupure de courant ou un arrêt de Windows sans fermeture propre, des sessions,
@@ -353,6 +376,13 @@ function createTables() {
     // colonne déjà présente
   }
   try {
+    // Session de travail démarrée automatiquement par cette session Focus (à arrêter avec elle).
+    // Persisté en base : l'ancienne Map en mémoire était perdue au redémarrage de l'app.
+    db.exec(`ALTER TABLE focus_sessions ADD COLUMN work_session_id INTEGER`)
+  } catch {
+    // colonne déjà présente
+  }
+  try {
     db.exec(`ALTER TABLE focus_sessions ADD COLUMN session_duration INTEGER DEFAULT 25`)
   } catch {
     // colonne déjà présente
@@ -587,6 +617,7 @@ function seedDefaultSettings() {
     idle_timeout: '180',
     notifications_deep_work: 'true',
     notifications_distraction: 'true',
+    notifications_reminders: 'true',
     onboarding_completed: 'false',
     focus_coaching_mode: 'tdah',
   }
@@ -787,6 +818,15 @@ export function createClient(name: string, color: string = '#6366f1'): number {
 export function getClients(): any[] {
   if (!db) return []
   return db.prepare('SELECT * FROM clients ORDER BY name').all() as any[]
+}
+
+export function updateClient(clientId: number, name: string, color: string): void {
+  if (!db) return
+  const client = db.prepare('SELECT name FROM clients WHERE id = ?').get(clientId) as any
+  if (!client) return
+  // Clé de synchro = nom : un renommage enterre l'ancien nom (sinon il réapparaîtrait en doublon)
+  if (client.name !== name) recordSyncTombstone('client', client.name)
+  db.prepare('UPDATE clients SET name = ?, color = ?, updated_at = ? WHERE id = ?').run(name, color, Date.now(), clientId)
 }
 
 export function deleteClient(clientId: number): void {
@@ -1062,6 +1102,101 @@ export function getActivitiesInRange(startMs: number, endMs: number): any[] {
   if (!db) return []
   const stmt = db.prepare('SELECT * FROM activities WHERE start_time >= ? AND start_time <= ? ORDER BY start_time ASC')
   return stmt.all(startMs, endMs) as any[]
+}
+
+// ---- Saisie manuelle et correction des horaires de session ----
+// Les totaux (heures facturables, montants) sont calculés à partir des activités contenues dans la
+// plage d'une session : une session saisie à la main porte donc une activité "Saisie manuelle" qui
+// couvre toute sa durée, pour être comptée partout comme une session suivie automatiquement.
+
+export class SessionOverlapError extends Error {
+  constructor() {
+    super('SESSION_OVERLAP')
+  }
+}
+
+function assertNoSessionOverlap(startMs: number, endMs: number, ignoreSessionId: number | null) {
+  if (!db) return
+  const overlap = db
+    .prepare(
+      `SELECT id FROM work_sessions
+       WHERE id != COALESCE(?, -1) AND start_time < ? AND COALESCE(end_time, ?) > ?
+       LIMIT 1`
+    )
+    .get(ignoreSessionId, endMs, Date.now(), startMs)
+  if (overlap) throw new SessionOverlapError()
+}
+
+export function createManualSession(
+  startMs: number,
+  endMs: number,
+  label: string | null,
+  projectId: number | null,
+  phaseId: number | null,
+  billable: boolean,
+  activityName: string
+): number {
+  if (!db) throw new Error('Database not initialized')
+  if (!(endMs > startMs) || endMs > Date.now()) throw new Error('INVALID_RANGE')
+  const d = db
+  return d.transaction(() => {
+    assertNoSessionOverlap(startMs, endMs, null)
+    const now = Date.now()
+    const durationSeconds = Math.floor((endMs - startMs) / 1000)
+    const result = d
+      .prepare(
+        'INSERT INTO work_sessions (start_time, end_time, duration_seconds, billable, label, project_id, phase_id, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      )
+      .run(startMs, endMs, durationSeconds, billable ? 1 : 0, label, projectId, phaseId, now)
+    d.prepare(
+      'INSERT INTO activities (app_name, window_title, start_time, end_time, duration_seconds, category_id, billable, updated_at, is_manual) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, 1)'
+    ).run(activityName, label ?? '', startMs, endMs, durationSeconds, billable ? 1 : 0, now)
+    return Number(result.lastInsertRowid)
+  })()
+}
+
+// Corrige le début/la fin d'une session terminée (oubli d'arrêt, démarrage tardif…). La durée
+// active est recalculée en retirant les pauses comprises dans la nouvelle plage ; l'activité de
+// saisie manuelle éventuelle suit la nouvelle plage.
+export function updateSessionTimes(sessionId: number, startMs: number, endMs: number): void {
+  if (!db) throw new Error('Database not initialized')
+  if (!(endMs > startMs) || endMs > Date.now()) throw new Error('INVALID_RANGE')
+  const d = db
+  d.transaction(() => {
+    const session = d.prepare('SELECT * FROM work_sessions WHERE id = ?').get(sessionId) as any
+    if (!session) throw new Error('SESSION_NOT_FOUND')
+    if (session.end_time === null) throw new Error('SESSION_RUNNING')
+    assertNoSessionOverlap(startMs, endMs, sessionId)
+
+    const paused = d
+      .prepare(`SELECT COALESCE(SUM(MAX(MIN(COALESCE(end_time, ?), ?) - MAX(start_time, ?), 0)), 0) AS ms FROM session_pauses WHERE session_id = ?`)
+      .get(endMs, endMs, startMs, sessionId) as any
+    const durationSeconds = Math.max(Math.floor((endMs - startMs - (paused?.ms ?? 0)) / 1000), 0)
+    const now = Date.now()
+
+    // La synchro identifie une session par son heure de début : l'ancienne clé est enterrée
+    if (session.start_time !== startMs) recordSyncTombstone('work_session', String(session.start_time))
+    d.prepare('UPDATE work_sessions SET start_time = ?, end_time = ?, duration_seconds = ?, updated_at = ? WHERE id = ?').run(
+      startMs,
+      endMs,
+      durationSeconds,
+      now,
+      sessionId
+    )
+
+    const manual = d
+      .prepare('SELECT id, start_time FROM activities WHERE is_manual = 1 AND start_time = ?')
+      .get(session.start_time) as any
+    if (manual) {
+      if (manual.start_time !== startMs) recordSyncTombstone('activity', String(manual.start_time))
+      d.prepare('UPDATE activities SET start_time = ?, end_time = ?, duration_seconds = ? WHERE id = ?').run(
+        startMs,
+        endMs,
+        Math.floor((endMs - startMs) / 1000),
+        manual.id
+      )
+    }
+  })()
 }
 
 export function deleteWorkSession(sessionId: number): void {
@@ -1643,10 +1778,11 @@ export function importSyncDataMerge(jsonData: string): { imported: number; skipp
     const projectIdMap = new Map<number, number>()
     const findProject = db.prepare('SELECT id, updated_at FROM projects WHERE name = ?')
     const insertProject = db.prepare(
-      'INSERT INTO projects (name, color, created_at, client_id, hourly_rate, status, hour_goal, budget_hours, budget_amount, deadline, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO projects (name, color, created_at, client_id, hourly_rate, status, hour_goal, budget_hours, budget_amount, deadline, updated_at, keywords) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     )
+    // keywords inclus : sans eux, l'auto-détection de projet était perdue sur l'autre machine
     const updateProjectStmt = db.prepare(
-      'UPDATE projects SET color = ?, client_id = ?, hourly_rate = ?, status = ?, hour_goal = ?, budget_hours = ?, budget_amount = ?, deadline = ?, updated_at = ? WHERE id = ?'
+      'UPDATE projects SET color = ?, client_id = ?, hourly_rate = ?, status = ?, hour_goal = ?, budget_hours = ?, budget_amount = ?, deadline = ?, updated_at = ?, keywords = ? WHERE id = ?'
     )
     for (const project of backup.data.projects || []) {
       try {
@@ -1670,6 +1806,7 @@ export function importSyncDataMerge(jsonData: string): { imported: number; skipp
               project.budget_amount ?? null,
               project.deadline ?? null,
               remoteUpdatedAt,
+              project.keywords ?? null,
               existing.id
             )
             imported++
@@ -1688,7 +1825,8 @@ export function importSyncDataMerge(jsonData: string): { imported: number; skipp
             project.budget_hours ?? null,
             project.budget_amount ?? null,
             project.deadline ?? null,
-            remoteUpdatedAt
+            remoteUpdatedAt,
+            project.keywords ?? null
           )
           projectIdMap.set(project.id, Number(result.lastInsertRowid))
           imported++

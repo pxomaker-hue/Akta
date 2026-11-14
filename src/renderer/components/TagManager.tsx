@@ -144,7 +144,7 @@ function TagManager({ onTagsLoaded }: TagManagerProps) {
               >
                 <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />
                 <span className="text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap">{tag.name}</span>
-                <button
+                <button aria-label={t('tagManager.deleteTitle', 'Supprimer')}
                   onClick={() => deleteTag(tag.id)}
                   className="text-gray-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition-colors flex-shrink-0"
                   title={t('tagManager.deleteTitle', 'Supprimer')}

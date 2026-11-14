@@ -53,10 +53,24 @@ function SlidingTabs<T extends string>({ tabs, activeId, onChange, className = '
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
-      <div className="flex space-x-8">
+      <div
+        role="tablist"
+        className="flex space-x-8"
+        onKeyDown={(e) => {
+          if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+          const index = tabs.findIndex((tab) => tab.id === activeId)
+          const next = tabs[(index + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]
+          e.preventDefault()
+          onChange(next.id)
+          buttonRefs.current.get(next.id)?.focus()
+        }}
+      >
         {tabs.map((tab) => (
           <button
             key={tab.id}
+            role="tab"
+            aria-selected={activeId === tab.id}
+            tabIndex={activeId === tab.id ? 0 : -1}
             ref={(el) => {
               if (el) buttonRefs.current.set(tab.id, el)
             }}
@@ -75,6 +89,7 @@ function SlidingTabs<T extends string>({ tabs, activeId, onChange, className = '
 
       {indicator && (
         <div
+          aria-hidden="true"
           className="absolute bottom-0 h-1 accent-gradient-bg rounded-t transition-all duration-300 ease-out"
           style={{ left: indicator.left, width: indicator.width }}
         />

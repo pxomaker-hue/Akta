@@ -66,7 +66,7 @@ function SyncButton() {
 
   return (
     <div className="relative flex-shrink-0">
-      <button
+      <button aria-label={configured ? t('syncButton.syncTitle', 'Synchroniser avec le fichier partagé') : t('syncButton.notConfiguredTitle', 'Synchronisation non configurée (Paramètres)')}
         onClick={handleSync}
         disabled={busy}
         title={configured ? t('syncButton.syncTitle', 'Synchroniser avec le fichier partagé') : t('syncButton.notConfiguredTitle', 'Synchronisation non configurée (Paramètres)')}
