@@ -184,6 +184,7 @@ function broadcastTrackingStatus() {
   for (const win of [mainWindow, trayWidgetWindow]) {
     if (win && !win.isDestroyed()) win.webContents.send('tracking-status-changed')
   }
+  updateTrayMenu()
 }
 
 // Lancement au démarrage. `wasOpenedAtLogin` n'existe que sur macOS : sous Windows il valait toujours
@@ -250,6 +251,17 @@ function formatSessionTime(seconds: number): string {
   return `${minutes}m ${secs}s`
 }
 
+// Signature du dernier menu construit : on ne reconstruit le menu natif que s'il a changé. Le
+// reconstruire chaque seconde coûtait inutilement et pouvait refermer le menu pendant qu'on s'en
+// servait. Le menu affiche donc la durée à la minute ; l'infobulle garde les secondes.
+let lastTrayMenuSignature = ''
+
+function formatMenuSessionTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+}
+
 function updateTrayMenu() {
   if (!tray) return
 
@@ -257,7 +269,7 @@ function updateTrayMenu() {
   const menuItems: any[] = []
 
   if (session) {
-    const timeStr = formatSessionTime(session.elapsedSeconds)
+    const timeStr = formatMenuSessionTime(session.elapsedSeconds)
     const statusIcon = session.isRunning ? '▶' : session.isPaused ? '⏸' : '⏹'
     menuItems.push({
       label: `${statusIcon} Session: ${timeStr}`,
@@ -320,8 +332,11 @@ function updateTrayMenu() {
     },
   })
 
-  const contextMenu = Menu.buildFromTemplate(menuItems)
-  tray.setContextMenu(contextMenu)
+  const signature = JSON.stringify(menuItems.map((item) => [item.label, item.type, item.enabled]))
+  if (signature !== lastTrayMenuSignature) {
+    lastTrayMenuSignature = signature
+    tray.setContextMenu(Menu.buildFromTemplate(menuItems))
+  }
 
   // Mettre à jour le tooltip
   const tooltip = session
@@ -840,9 +855,10 @@ function setupIpcHandlers() {
            OR LOWER(app_name) LIKE '%akta%'
            OR LOWER(window_title) LIKE '%akta%'
       `).all() as any[]
-      for (const act of invalid) {
-        recordSyncTombstone('activity', String(act.start_time))
-      }
+      // Une seule transaction : sinon chaque tombstone était une écriture disque séparée
+      db.transaction(() => {
+        for (const act of invalid) recordSyncTombstone('activity', String(act.start_time))
+      })()
       const stmt = db.prepare(`
         DELETE FROM activities
         WHERE app_name = 'Unknown'
@@ -864,9 +880,10 @@ function setupIpcHandlers() {
       const db = getDatabase()
       // Record tombstones before deletion for sync
       const uncategorized = db.prepare('SELECT start_time FROM activities WHERE category_id IS NULL').all() as any[]
-      for (const act of uncategorized) {
-        recordSyncTombstone('activity', String(act.start_time))
-      }
+      // Une seule transaction : sinon chaque tombstone était une écriture disque séparée
+      db.transaction(() => {
+        for (const act of uncategorized) recordSyncTombstone('activity', String(act.start_time))
+      })()
       const stmt = db.prepare('DELETE FROM activities WHERE category_id IS NULL')
       const result = stmt.run()
       return result.changes
@@ -885,9 +902,10 @@ function setupIpcHandlers() {
       todayStart.setHours(0, 0, 0, 0)
       // Record tombstones before deletion for sync
       const today = db.prepare('SELECT start_time FROM activities WHERE start_time >= ?').all(todayStart.getTime()) as any[]
-      for (const act of today) {
-        recordSyncTombstone('activity', String(act.start_time))
-      }
+      // Une seule transaction : sinon chaque tombstone était une écriture disque séparée
+      db.transaction(() => {
+        for (const act of today) recordSyncTombstone('activity', String(act.start_time))
+      })()
       const stmt = db.prepare('DELETE FROM activities WHERE start_time >= ?')
       const result = stmt.run(todayStart.getTime())
       return result.changes
@@ -904,9 +922,10 @@ function setupIpcHandlers() {
       const db = getDatabase()
       // Record tombstones before deletion for sync
       const all = db.prepare('SELECT start_time FROM activities').all() as any[]
-      for (const act of all) {
-        recordSyncTombstone('activity', String(act.start_time))
-      }
+      // Une seule transaction : sinon chaque tombstone était une écriture disque séparée
+      db.transaction(() => {
+        for (const act of all) recordSyncTombstone('activity', String(act.start_time))
+      })()
       const result = db.prepare('DELETE FROM activities').run()
       return result.changes
     } catch (error) {

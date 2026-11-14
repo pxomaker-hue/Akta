@@ -67,11 +67,25 @@ function App() {
 
   useEffect(() => {
     loadData(true)
-
-    // Reload activities every 5 seconds
-    const interval = setInterval(() => loadData(false), 5000)
-    return () => clearInterval(interval)
   }, [])
+
+  // Rafraîchissement des activités (30 jours) toutes les 5 s, mais seulement quand c'est utile :
+  // onglet Tableau de bord ou Activités affiché ET fenêtre visible. Avant, ce rechargement complet
+  // tournait en permanence, même app réduite dans le tray ou sur un onglet qui ne s'en sert pas.
+  const needsLiveActivities = activeTab === 'dashboard' || activeTab === 'activities'
+  useEffect(() => {
+    if (!needsLiveActivities) return
+    const refreshIfVisible = () => {
+      if (document.visibilityState === 'visible') loadData(false)
+    }
+    refreshIfVisible()
+    const interval = setInterval(refreshIfVisible, 5000)
+    document.addEventListener('visibilitychange', refreshIfVisible)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', refreshIfVisible)
+    }
+  }, [needsLiveActivities])
 
   useEffect(() => {
     const handleResize = () => setIsNarrowNav(window.innerWidth < 1090)
