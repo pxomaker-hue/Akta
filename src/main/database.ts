@@ -15,6 +15,12 @@ export function initDatabase(): Database.Database {
   db.pragma('journal_mode = WAL')
 
   createTables()
+  try {
+    // Activité créée par une saisie manuelle de temps (et non par le suivi automatique)
+    db.exec(`ALTER TABLE activities ADD COLUMN is_manual INTEGER NOT NULL DEFAULT 0`)
+  } catch {
+    // colonne déjà présente
+  }
   createSyncTriggers()
   closeOrphanedRecords()
   return db
@@ -814,6 +820,15 @@ export function getClients(): any[] {
   return db.prepare('SELECT * FROM clients ORDER BY name').all() as any[]
 }
 
+export function updateClient(clientId: number, name: string, color: string): void {
+  if (!db) return
+  const client = db.prepare('SELECT name FROM clients WHERE id = ?').get(clientId) as any
+  if (!client) return
+  // Clé de synchro = nom : un renommage enterre l'ancien nom (sinon il réapparaîtrait en doublon)
+  if (client.name !== name) recordSyncTombstone('client', client.name)
+  db.prepare('UPDATE clients SET name = ?, color = ?, updated_at = ? WHERE id = ?').run(name, color, Date.now(), clientId)
+}
+
 export function deleteClient(clientId: number): void {
   if (!db) return
   const client = db.prepare('SELECT name FROM clients WHERE id = ?').get(clientId) as any
@@ -1087,6 +1102,101 @@ export function getActivitiesInRange(startMs: number, endMs: number): any[] {
   if (!db) return []
   const stmt = db.prepare('SELECT * FROM activities WHERE start_time >= ? AND start_time <= ? ORDER BY start_time ASC')
   return stmt.all(startMs, endMs) as any[]
+}
+
+// ---- Saisie manuelle et correction des horaires de session ----
+// Les totaux (heures facturables, montants) sont calculés à partir des activités contenues dans la
+// plage d'une session : une session saisie à la main porte donc une activité "Saisie manuelle" qui
+// couvre toute sa durée, pour être comptée partout comme une session suivie automatiquement.
+
+export class SessionOverlapError extends Error {
+  constructor() {
+    super('SESSION_OVERLAP')
+  }
+}
+
+function assertNoSessionOverlap(startMs: number, endMs: number, ignoreSessionId: number | null) {
+  if (!db) return
+  const overlap = db
+    .prepare(
+      `SELECT id FROM work_sessions
+       WHERE id != COALESCE(?, -1) AND start_time < ? AND COALESCE(end_time, ?) > ?
+       LIMIT 1`
+    )
+    .get(ignoreSessionId, endMs, Date.now(), startMs)
+  if (overlap) throw new SessionOverlapError()
+}
+
+export function createManualSession(
+  startMs: number,
+  endMs: number,
+  label: string | null,
+  projectId: number | null,
+  phaseId: number | null,
+  billable: boolean,
+  activityName: string
+): number {
+  if (!db) throw new Error('Database not initialized')
+  if (!(endMs > startMs) || endMs > Date.now()) throw new Error('INVALID_RANGE')
+  const d = db
+  return d.transaction(() => {
+    assertNoSessionOverlap(startMs, endMs, null)
+    const now = Date.now()
+    const durationSeconds = Math.floor((endMs - startMs) / 1000)
+    const result = d
+      .prepare(
+        'INSERT INTO work_sessions (start_time, end_time, duration_seconds, billable, label, project_id, phase_id, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      )
+      .run(startMs, endMs, durationSeconds, billable ? 1 : 0, label, projectId, phaseId, now)
+    d.prepare(
+      'INSERT INTO activities (app_name, window_title, start_time, end_time, duration_seconds, category_id, billable, updated_at, is_manual) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, 1)'
+    ).run(activityName, label ?? '', startMs, endMs, durationSeconds, billable ? 1 : 0, now)
+    return Number(result.lastInsertRowid)
+  })()
+}
+
+// Corrige le début/la fin d'une session terminée (oubli d'arrêt, démarrage tardif…). La durée
+// active est recalculée en retirant les pauses comprises dans la nouvelle plage ; l'activité de
+// saisie manuelle éventuelle suit la nouvelle plage.
+export function updateSessionTimes(sessionId: number, startMs: number, endMs: number): void {
+  if (!db) throw new Error('Database not initialized')
+  if (!(endMs > startMs) || endMs > Date.now()) throw new Error('INVALID_RANGE')
+  const d = db
+  d.transaction(() => {
+    const session = d.prepare('SELECT * FROM work_sessions WHERE id = ?').get(sessionId) as any
+    if (!session) throw new Error('SESSION_NOT_FOUND')
+    if (session.end_time === null) throw new Error('SESSION_RUNNING')
+    assertNoSessionOverlap(startMs, endMs, sessionId)
+
+    const paused = d
+      .prepare(`SELECT COALESCE(SUM(MAX(MIN(COALESCE(end_time, ?), ?) - MAX(start_time, ?), 0)), 0) AS ms FROM session_pauses WHERE session_id = ?`)
+      .get(endMs, endMs, startMs, sessionId) as any
+    const durationSeconds = Math.max(Math.floor((endMs - startMs - (paused?.ms ?? 0)) / 1000), 0)
+    const now = Date.now()
+
+    // La synchro identifie une session par son heure de début : l'ancienne clé est enterrée
+    if (session.start_time !== startMs) recordSyncTombstone('work_session', String(session.start_time))
+    d.prepare('UPDATE work_sessions SET start_time = ?, end_time = ?, duration_seconds = ?, updated_at = ? WHERE id = ?').run(
+      startMs,
+      endMs,
+      durationSeconds,
+      now,
+      sessionId
+    )
+
+    const manual = d
+      .prepare('SELECT id, start_time FROM activities WHERE is_manual = 1 AND start_time = ?')
+      .get(session.start_time) as any
+    if (manual) {
+      if (manual.start_time !== startMs) recordSyncTombstone('activity', String(manual.start_time))
+      d.prepare('UPDATE activities SET start_time = ?, end_time = ?, duration_seconds = ? WHERE id = ?').run(
+        startMs,
+        endMs,
+        Math.floor((endMs - startMs) / 1000),
+        manual.id
+      )
+    }
+  })()
 }
 
 export function deleteWorkSession(sessionId: number): void {

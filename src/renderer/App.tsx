@@ -164,6 +164,19 @@ function App() {
     return activities.filter((a) => a.start_time >= activitiesTabDayStart && a.start_time < activitiesTabDayStart + DAY_MS)
   }, [activities, activitiesTabDayStart])
 
+  // billable null = activité sans catégorie : comptée à part, elle n'est facturée que si la session l'est
+  const daySummary = useMemo(() => {
+    let pro = 0
+    let perso = 0
+    let unclassified = 0
+    for (const a of activitiesTabDayActivities) {
+      if (a.billable === null || a.billable === undefined) unclassified++
+      else if (a.billable) pro++
+      else perso++
+    }
+    return { total: activitiesTabDayActivities.length, pro, perso, unclassified }
+  }, [activitiesTabDayActivities])
+
   const tabs: { id: Tab; label: string }[] = [
     { id: 'dashboard', label: t('tabs.dashboard') },
     { id: 'activities', label: t('tabs.activities') },
@@ -291,12 +304,12 @@ function App() {
             </div>
             <div className="lg:col-span-1">
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('app.activitiesSummary', 'Résumé de vos activités')}</h2>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('app.activitiesSummary', 'Résumé de la journée')}</h2>
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">{t('activities.summary.total')}</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{activities.length}</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{daySummary.total}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">{t('activities.summary.categories')}</p>
@@ -304,21 +317,29 @@ function App() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">{t('app.professional', 'Professionnel')}</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{activities.filter((a) => a.billable).length}</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{daySummary.pro}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">{t('app.personal', 'Personnel')}</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{activities.filter((a) => !a.billable).length}</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{daySummary.perso}</p>
                     </div>
+                    {daySummary.unclassified > 0 && (
+                      <div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{t('app.unclassified', 'Non classé')}</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{daySummary.unclassified}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('app.unclassifiedHint', 'Activités sans catégorie : facturées seulement si la session est facturable.')}</p>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center justify-center">
-                    {activities.length > 0 && (
+                    {daySummary.total > 0 && (
                       <ResponsiveContainer width="100%" height={140}>
                         <PieChart>
                           <Pie
                             data={[
-                              { name: t('app.professional', 'Professionnel'), value: activities.filter((a) => a.billable).length },
-                              { name: t('app.personal', 'Personnel'), value: activities.filter((a) => !a.billable).length }
+                              { name: t('app.professional', 'Professionnel'), value: daySummary.pro },
+                              { name: t('app.personal', 'Personnel'), value: daySummary.perso },
+                              { name: t('app.unclassified', 'Non classé'), value: daySummary.unclassified }
                             ]}
                             cx="50%"
                             cy="50%"
@@ -329,6 +350,7 @@ function App() {
                           >
                             <Cell fill="#3b82f6" />
                             <Cell fill="#8b5cf6" />
+                            <Cell fill="#9ca3af" />
                           </Pie>
                           <Tooltip
                             contentStyle={{

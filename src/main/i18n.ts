@@ -415,9 +415,9 @@ export function mainLocaleTag(lang: Language = getMainLanguage()): string {
 }
 
 const misc: Record<Language, Dict> = {
-  fr: { you: '🎮 Toi' },
-  en: { you: '🎮 You' },
-  de: { you: '🎮 Du' },
+  fr: { you: '🎮 Toi', manualEntry: 'Saisie manuelle' },
+  en: { you: '🎮 You', manualEntry: 'Manual entry' },
+  de: { you: '🎮 Du', manualEntry: 'Manueller Eintrag' },
 }
 
 export function mt(dict: 'tray' | 'notifications' | 'coach' | 'csv' | 'misc', key: string, lang: Language = getMainLanguage()): string {

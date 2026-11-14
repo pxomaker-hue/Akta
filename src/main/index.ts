@@ -1,13 +1,13 @@
 import { app, BrowserWindow, ipcMain, Menu, Tray, nativeImage, nativeTheme, globalShortcut, Notification, screen, powerMonitor } from 'electron'
 import path from 'path'
-import { initDatabase, closeDatabase, getDatabase, getSetting, setSetting, getAllSettings, createTag, getTags, getTagsByActivity, addTagToActivity, removeTagFromActivity, deleteTag, exportData, importData, exportActivitiesCSV, updateWorkSessionBillable, getWorkSessionById, getActivitiesInRange, deleteWorkSession, createProject, getProjects, deleteProject, updateProject, updateSessionDetails, createClient, getClients, deleteClient, getProjectBillableSeconds, getSessionBillableSeconds, getSessionsForProject, getSessionPauses, getSessionPausedSeconds, getPausesInRange, createProjectPhase, getProjectPhases, updateProjectPhase, deleteProjectPhase, getPhaseBillableSeconds, getProjectTimeBreakdown, exportProjectSessionsCSV, exportMonthlyCSV, getWorkSessionsWithProjectInRange, recordSyncTombstone, getSessionsWithoutProjectToday, getProjectsWithBudgetOrDeadlineIssues, getBudgetPredictions } from './database'
+import { initDatabase, closeDatabase, getDatabase, getSetting, setSetting, getAllSettings, createTag, getTags, addTagToActivity, removeTagFromActivity, deleteTag, exportData, importData, exportActivitiesCSV, updateWorkSessionBillable, getWorkSessionById, getActivitiesInRange, deleteWorkSession, createProject, getProjects, deleteProject, updateProject, updateSessionDetails, createClient, getClients, deleteClient, getProjectBillableSeconds, getSessionBillableSeconds, getSessionsForProject, getSessionPauses, getSessionPausedSeconds, getPausesInRange, createProjectPhase, getProjectPhases, updateProjectPhase, deleteProjectPhase, getPhaseBillableSeconds, getProjectTimeBreakdown, exportProjectSessionsCSV, exportMonthlyCSV, getWorkSessionsWithProjectInRange, recordSyncTombstone, getSessionsWithoutProjectToday, getProjectsWithBudgetOrDeadlineIssues, getBudgetPredictions, createManualSession, updateSessionTimes, SessionOverlapError, updateClient } from './database'
 import { generateProjectPDF, generateMonthlyPDF } from './pdf-export'
-import { startTracker, stopTracker, handleSystemAway, refreshIdleTimeout, flushForShutdown, getCurrentWorkSessionId, getRecentActivities, getCurrentActivityId, getTrackingStatus, startSession, pauseSession, resumeSession, stopSession, setSessionBillable, listWorkSessions, setSessionCategoryOverrides, setSessionProject, getCurrentWorkSessionDetails } from './tracker'
+import { startTracker, stopTracker, handleSystemAway, refreshIdleTimeout, flushForShutdown, getCurrentWorkSessionId, getRecentActivities, getTrackingStatus, startSession, pauseSession, resumeSession, stopSession, setSessionBillable, listWorkSessions, setSessionCategoryOverrides, setSessionProject, getCurrentWorkSessionDetails } from './tracker'
 import { startFocusSession, endFocusSession, getFocusSessions, getCurrentFocusSession, deleteFocusSession, checkAutoCompleteFocusSession } from './focus-mode'
 import { analyzeFocusQuality, getProductivityPattern, getCoachingRecommendations, getOptimalCycleDuration } from './coach'
 import { setMainWindow, activateBlocking, deactivateBlocking } from './blocker'
 import { findMatchingCategory } from './categorizer'
-import { initializeChallenges, getActiveChallenges, getChallengeProgress, getCurrentStreak, getMilestones, unlockMilestone, getLeaderboard } from './challenges'
+import { initializeChallenges, getActiveChallenges, getChallengeProgress, getCurrentStreak, getMilestones, unlockMilestone } from './challenges'
 import { getProductivityScore, getOptimalTimes, getMonthComparison, getWeekTrends } from './analytics'
 import { getSyncFilePath, setSyncFilePath, pickExistingSyncFile, pickNewSyncFile, createNewSyncFile, runSync } from './sync'
 import { setUpdaterWindow, initAutoUpdater, checkForUpdatesManually } from './updater'
@@ -237,8 +237,12 @@ function handleGlobalStop() {
 }
 
 function registerGlobalShortcuts() {
-  globalShortcut.register('Alt+Shift+S', handleGlobalToggle)
-  globalShortcut.register('Alt+Shift+X', handleGlobalStop)
+  // register() renvoie false si une autre application a déjà pris le raccourci
+  const failed = [
+    ['Alt+Shift+S', handleGlobalToggle],
+    ['Alt+Shift+X', handleGlobalStop],
+  ].filter(([accelerator, handler]) => !globalShortcut.register(accelerator as string, handler as () => void))
+  if (failed.length > 0) console.warn('Global shortcuts unavailable:', failed.map(([a]) => a).join(', '))
 }
 
 function formatSessionTime(seconds: number): string {
@@ -1000,11 +1004,6 @@ function setupIpcHandlers() {
     }
   })
 
-  // Get current activity
-  ipcMain.handle('get-current-activity', async () => {
-    return getCurrentActivityId()
-  })
-
   // Get live tracking status (session en cours, idle ou non)
   ipcMain.handle('get-tracking-status', async () => {
     return getTrackingStatus()
@@ -1214,6 +1213,33 @@ function setupIpcHandlers() {
   })
 
   // Supprime une session de travail terminée (garde ses activités intactes)
+  // Saisie manuelle d'une session oubliée. Renvoie { ok } ou { error: 'overlap' | 'invalid' } pour
+  // que le renderer affiche un message clair plutôt qu'une exception.
+  ipcMain.handle(
+    'create-manual-session',
+    async (event, startMs: number, endMs: number, label: string | null, projectId: number | null, phaseId: number | null, billable: boolean) => {
+      try {
+        const id = createManualSession(startMs, endMs, label, projectId, phaseId, billable, mt('misc', 'manualEntry'))
+        return { ok: true, id }
+      } catch (error) {
+        if (error instanceof SessionOverlapError) return { ok: false, error: 'overlap' }
+        console.error('Error creating manual session:', error)
+        return { ok: false, error: 'invalid' }
+      }
+    }
+  )
+
+  ipcMain.handle('update-session-times', async (event, sessionId: number, startMs: number, endMs: number) => {
+    try {
+      updateSessionTimes(sessionId, startMs, endMs)
+      return { ok: true }
+    } catch (error) {
+      if (error instanceof SessionOverlapError) return { ok: false, error: 'overlap' }
+      console.error('Error updating session times:', error)
+      return { ok: false, error: 'invalid' }
+    }
+  })
+
   ipcMain.handle('delete-session', async (event, sessionId: number) => {
     try {
       deleteWorkSession(sessionId)
@@ -1414,6 +1440,16 @@ function setupIpcHandlers() {
       return getClients()
     } catch (error) {
       console.error('Error getting clients:', error)
+      throw error
+    }
+  })
+
+  ipcMain.handle('update-client', async (event, clientId: number, name: string, color: string) => {
+    try {
+      updateClient(clientId, name, color)
+      return true
+    } catch (error) {
+      console.error('Error updating client:', error)
       throw error
     }
   })
@@ -1640,15 +1676,6 @@ function setupIpcHandlers() {
       return getTags()
     } catch (error) {
       console.error('Error getting tags:', error)
-      throw error
-    }
-  })
-
-  ipcMain.handle('get-tags-by-activity', async (event, activityId: number) => {
-    try {
-      return getTagsByActivity(activityId)
-    } catch (error) {
-      console.error('Error getting tags by activity:', error)
       throw error
     }
   })
@@ -1916,15 +1943,6 @@ function setupIpcHandlers() {
       return getMilestones()
     } catch (error) {
       console.error('Error getting milestones:', error)
-      throw error
-    }
-  })
-
-  ipcMain.handle('get-leaderboard', async (event, duration: 'weekly' | 'monthly' | 'all_time' = 'weekly') => {
-    try {
-      return getLeaderboard(duration)
-    } catch (error) {
-      console.error('Error getting leaderboard:', error)
       throw error
     }
   })

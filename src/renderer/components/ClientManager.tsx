@@ -25,6 +25,9 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
   const [projects, setProjects] = useState<Project[]>([])
   const [billing, setBilling] = useState<Record<number, Billing>>({})
   const [expandedClientId, setExpandedClientId] = useState<number | null>(null)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editColor, setEditColor] = useState('#6366f1')
 
   useEffect(() => {
     loadClients()
@@ -103,6 +106,23 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
     }
   }
 
+  function startEdit(client: Client) {
+    setEditingId(client.id)
+    setEditName(client.name)
+    setEditColor(client.color)
+  }
+
+  async function saveEdit() {
+    if (editingId === null || !editName.trim()) return
+    try {
+      await window.electron.ipc.invoke('update-client', editingId, editName.trim(), editColor)
+      setEditingId(null)
+      await Promise.all([loadClients(), loadProjectsBilling()])
+    } catch (error) {
+      console.error('Error updating client:', error)
+    }
+  }
+
   function toggleExpand(clientId: number) {
     setExpandedClientId(expandedClientId === clientId ? null : clientId)
   }
@@ -165,6 +185,42 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
             const isExpanded = expandedClientId === client.id
             return (
               <div key={client.id} className="rounded-lg border" style={{ borderColor: client.color, backgroundColor: `${client.color}10` }}>
+                {editingId === client.id ? (
+                  <div className="p-2.5 space-y-2">
+                    <input
+                      type="text"
+                      value={editName}
+                      autoFocus
+                      onChange={(e) => setEditName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveEdit()
+                        if (e.key === 'Escape') setEditingId(null)
+                      }}
+                      aria-label={t('clientManager.namePlaceholder', 'Nom du client')}
+                      className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+                    />
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {colors.map((color) => (
+                        <button
+                          key={color}
+                          onClick={() => setEditColor(color)}
+                          aria-label={color}
+                          aria-pressed={editColor === color}
+                          className={`w-5 h-5 rounded-full transition-transform ${editColor === color ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'hover:scale-110'}`}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                      <div className="ml-auto flex gap-2">
+                        <button onClick={() => setEditingId(null)} className="px-3 py-1 text-xs rounded-lg text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">
+                          {t('manualSession.cancel', 'Annuler')}
+                        </button>
+                        <button onClick={saveEdit} disabled={!editName.trim()} className="px-3 py-1 text-xs rounded-lg accent-gradient-bg text-white font-medium hover:brightness-110 disabled:opacity-50 transition-all">
+                          {t('common.save', 'Enregistrer')}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
                 <div className="flex items-center justify-between p-2.5">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: client.color }} />
@@ -178,13 +234,26 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
                       </span>
                     )}
                   </div>
-                  <button
-                    onClick={() => deleteClient(client.id)}
-                    className="text-gray-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition-colors flex-shrink-0"
-                  >
-                    <Icon name="x" size={13} />
-                  </button>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => startEdit(client)}
+                      aria-label={t('common.edit', 'Modifier')}
+                      title={t('common.edit', 'Modifier')}
+                      className="text-gray-400 hover:accent-text dark:text-slate-500 transition-colors"
+                    >
+                      <Icon name="edit" size={13} />
+                    </button>
+                    <button
+                      onClick={() => deleteClient(client.id)}
+                      aria-label={t('common.delete', 'Supprimer')}
+                      title={t('common.delete', 'Supprimer')}
+                      className="text-gray-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition-colors"
+                    >
+                      <Icon name="x" size={13} />
+                    </button>
+                  </div>
                 </div>
+                )}
 
                 {stats && stats.totalSeconds > 0 && (
                   <div className="px-2.5 pb-2.5">

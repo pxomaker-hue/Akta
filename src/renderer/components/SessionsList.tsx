@@ -3,6 +3,7 @@ import type { WorkSession, Project, ProjectPhase } from '../../shared/types'
 import { Card, CardHeader, Icon, Badge, Dropdown, confirmDialog } from './UI'
 import { getTodayStart } from './TimelineV2'
 import { useTranslation, localeTag } from '../hooks/useTranslation'
+import ManualSessionForm from './ManualSessionForm'
 
 function tf(text: string, values: Record<string, string | number>): string {
   return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
@@ -51,6 +52,10 @@ function SessionsList() {
   const [bulkPhaseId, setBulkPhaseId] = useState<string>('')
   const [bulkBillable, setBulkBillable] = useState<'unchanged' | 'true' | 'false'>('unchanged')
   const [isBulkUpdating, setIsBulkUpdating] = useState(false)
+  const [showManualForm, setShowManualForm] = useState(false)
+  const [draftStart, setDraftStart] = useState('')
+  const [draftEnd, setDraftEnd] = useState('')
+  const [timesError, setTimesError] = useState<string | null>(null)
 
   const loadSessions = async () => {
     try {
@@ -137,6 +142,9 @@ function SessionsList() {
       return
     }
     setExpandedId(session.id)
+    setDraftStart(toDateTimeLocal(session.start_time))
+    setDraftEnd(session.end_time ? toDateTimeLocal(session.end_time) : '')
+    setTimesError(null)
     setDraftLabel(session.label || '')
     setDraftProjectId(session.project_id ? String(session.project_id) : '')
     setDraftPhaseId(session.phase_id ? String(session.phase_id) : '')
@@ -158,6 +166,25 @@ function SessionsList() {
     }
   }
 
+  // Correction des horaires d'une session terminée (oubli d'arrêt, démarrage tardif…)
+  const handleSaveTimes = async (session: WorkSession) => {
+    const startMs = new Date(draftStart).getTime()
+    const endMs = new Date(draftEnd).getTime()
+    if (!(endMs > startMs)) {
+      setTimesError(t('manualSession.errorRange', "L'heure de fin doit être après l'heure de début."))
+      return
+    }
+    const result = await window.electron.ipc.invoke('update-session-times', session.id, startMs, endMs)
+    if (result?.ok) {
+      setTimesError(null)
+      await loadSessions()
+    } else if (result?.error === 'overlap') {
+      setTimesError(t('manualSession.errorOverlap', 'Cette plage chevauche une session existante.'))
+    } else {
+      setTimesError(t('manualSession.errorGeneric', "La session n'a pas pu être enregistrée."))
+    }
+  }
+
   const handleSaveDetails = async (session: WorkSession) => {
     try {
       await window.electron.ipc.invoke(
@@ -173,6 +200,11 @@ function SessionsList() {
     }
   }
 
+  const toDateTimeLocal = (ms: number) => {
+    const d = new Date(ms)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
   const formatTime = (ms: number) => new Date(ms).toLocaleTimeString(localeTag(language), { hour: '2-digit', minute: '2-digit' })
   const formatDuration = (seconds: number) => {
     const h = Math.floor(seconds / 3600)
@@ -372,6 +404,37 @@ function SessionsList() {
               </button>
             </div>
 
+            {/* Horaires (session terminée uniquement) */}
+            {!isOpen && (
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Icon name="clock" size={13} className="text-gray-400" />
+                  <input
+                    type="datetime-local"
+                    value={draftStart}
+                    onChange={(e) => setDraftStart(e.target.value)}
+                    aria-label={t('manualSession.start', 'Début')}
+                    className="px-2 py-1 text-xs rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+                  />
+                  <span className="text-gray-400" aria-hidden="true">→</span>
+                  <input
+                    type="datetime-local"
+                    value={draftEnd}
+                    onChange={(e) => setDraftEnd(e.target.value)}
+                    aria-label={t('manualSession.end', 'Fin')}
+                    className="px-2 py-1 text-xs rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+                  />
+                  <button
+                    onClick={() => handleSaveTimes(session)}
+                    className="px-2.5 py-1 text-xs rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                  >
+                    {t('manualSession.fixTimes', 'Corriger les horaires')}
+                  </button>
+                </div>
+                {timesError && <p role="alert" className="text-xs text-red-600 dark:text-red-400">{timesError}</p>}
+              </div>
+            )}
+
             {/* Temps actif / temps total / dont pause */}
             {!loadingBreakdown && pausedSeconds > 0 && (() => {
               const totalSeconds = isOpen ? durationSeconds : session.duration_seconds + pausedSeconds
@@ -442,6 +505,16 @@ function SessionsList() {
     )
   }
 
+  const addTimeButton = (
+    <button
+      onClick={() => setShowManualForm(true)}
+      className="inline-flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg accent-gradient-bg text-white font-medium hover:brightness-110 transition-all"
+    >
+      <Icon name="plus" size={14} />
+      {t('manualSession.addTime', 'Ajouter du temps')}
+    </button>
+  )
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -454,7 +527,14 @@ function SessionsList() {
     return (
       <Card>
         <CardHeader title={t('sessionsList.title', 'Sessions actives')} icon={<Icon name="target" size={18} />} />
-        <p className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">{t('sessionsList.noneRecorded', 'Aucune session enregistrée pour le moment.')}</p>
+        {showManualForm ? (
+          <ManualSessionForm projects={projects} onCancel={() => setShowManualForm(false)} onCreated={() => { setShowManualForm(false); loadSessions() }} />
+        ) : (
+          <div className="py-4 text-center space-y-3">
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t('sessionsList.noneRecorded', 'Aucune session enregistrée pour le moment.')}</p>
+            {addTimeButton}
+          </div>
+        )}
       </Card>
     )
   }
@@ -470,8 +550,13 @@ function SessionsList() {
         )}
       />
 
+      {showManualForm && (
+        <ManualSessionForm projects={projects} onCancel={() => setShowManualForm(false)} onCreated={() => { setShowManualForm(false); loadSessions() }} />
+      )}
+
       {/* Filtres */}
       <div className="flex items-center gap-2 flex-wrap mb-3">
+        {!showManualForm && addTimeButton}
         <Dropdown
           value={clientFilter}
           onChange={setClientFilter}
