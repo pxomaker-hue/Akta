@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 import frTranslations from '../locales/fr.json'
 import enTranslations from '../locales/en.json'
 import deTranslations from '../locales/de.json'
@@ -27,53 +27,68 @@ const translations: Record<Language, Translations> = {
   de: deTranslations,
 }
 
-export function useTranslation() {
-  const [language, setLanguage] = useState<Language>('fr')
-  const [t, setT] = useState<(key: string, defaultValue?: string) => string>(() => (key: string) => key)
+type TranslateFn = (key: string, defaultValue?: string) => string
 
-  useEffect(() => {
+// Une fonction t stable par langue : les composants qui la mettent en dépendance d'un effet ne
+// se relancent que lorsque la langue change réellement.
+const translators = {} as Record<Language, TranslateFn>
+function translatorFor(language: Language): TranslateFn {
+  if (!translators[language]) {
+    const dict = translations[language] || translations.fr
+    translators[language] = (key, defaultValue) => dict[key] || defaultValue || key
+  }
+  return translators[language]
+}
+
+// État de langue partagé au niveau du module. Chaque composant appelait auparavant
+// get-setting et s'abonnait à 'setting-changed' pour son propre compte : une page comme
+// Activités (une ligne = un composant traduit) dépassait ainsi les 150 écouteurs IPC simultanés.
+// Désormais il n'y a qu'un seul écouteur IPC et une seule lecture du réglage, peu importe le
+// nombre de composants montés.
+let currentLanguage: Language = 'fr'
+const subscribers = new Set<() => void>()
+let unsubscribeIpc: (() => void) | undefined
+let languageLoaded = false
+
+function applyLanguage(newLanguage: Language) {
+  const next: Language = translations[newLanguage] ? newLanguage : 'fr'
+  document.documentElement.lang = next
+  if (next === currentLanguage) return
+  currentLanguage = next
+  subscribers.forEach((notify) => notify())
+}
+
+async function loadLanguage() {
+  try {
+    const saved = (await window.electron.ipc.invoke('get-setting', 'language')) as Language
+    applyLanguage(saved || 'fr')
+  } catch (error) {
+    console.error('Error loading language:', error)
+    applyLanguage('fr')
+  }
+}
+
+function subscribe(notify: () => void) {
+  subscribers.add(notify)
+  if (!unsubscribeIpc) {
+    unsubscribeIpc = window.electron?.ipc?.on('setting-changed', (data: { key: string; value: string }) => {
+      if (data.key === 'language') applyLanguage(data.value as Language)
+    })
+  }
+  if (!languageLoaded) {
+    languageLoaded = true
     loadLanguage()
-
-    // Listen for language changes via IPC
-    const handleSettingChange = (data: { key: string; value: string }) => {
-      if (data.key === 'language') {
-        applyLanguage(data.value as Language)
-      }
-    }
-
-    const unsubscribe = window.electron?.ipc?.on('setting-changed', handleSettingChange)
-
-    return () => {
-      unsubscribe?.()
-    }
-  }, [])
-
-  async function loadLanguage() {
-    try {
-      const savedLanguage = (await window.electron.ipc.invoke('get-setting', 'language')) as Language
-      const langValue = (savedLanguage || 'fr') as Language
-      applyLanguage(langValue)
-    } catch (error) {
-      console.error('Error loading language:', error)
-      applyLanguage('fr')
+  }
+  return () => {
+    subscribers.delete(notify)
+    if (subscribers.size === 0) {
+      unsubscribeIpc?.()
+      unsubscribeIpc = undefined
     }
   }
+}
 
-  function applyLanguage(newLanguage: Language) {
-    setLanguage(newLanguage)
-
-    const currentTranslations = translations[newLanguage] || translations['fr']
-
-    const translationFunction = (key: string, defaultValue?: string) => {
-      const value = currentTranslations[key]
-      return value || defaultValue || key
-    }
-
-    setT(() => translationFunction)
-
-    // Update HTML lang attribute
-    document.documentElement.lang = newLanguage
-  }
-
-  return { language, t, setLanguage: applyLanguage }
+export function useTranslation() {
+  const language = useSyncExternalStore(subscribe, () => currentLanguage)
+  return { language, t: translatorFor(language), setLanguage: applyLanguage }
 }
