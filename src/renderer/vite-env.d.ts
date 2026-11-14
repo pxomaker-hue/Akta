@@ -5,9 +5,9 @@ declare global {
     electron: {
       ipc: {
         invoke: (channel: string, ...args: any[]) => Promise<any>
-        on: (channel: string, listener: (...args: any[]) => void) => void
+        // Renvoie la fonction de désabonnement (il n'y a plus de off() : voir preload.ts)
+        on: (channel: string, listener: (...args: any[]) => void) => () => void
         once: (channel: string, listener: (...args: any[]) => void) => void
-        off: (channel: string, listener: (...args: any[]) => void) => void
       }
     }
   }
