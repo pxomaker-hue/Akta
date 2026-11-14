@@ -32,6 +32,7 @@ if errorlevel 1 goto :fail
 echo.
 echo ========================================
 echo   Termine : les fichiers sont dans release\
+echo   A joindre a la release GitHub : .exe, .exe.blockmap et latest.yml
 echo ========================================
 if exist release explorer release
 pause

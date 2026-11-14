@@ -56,6 +56,13 @@ npm run dist       # génère l'installeur Windows dans release/
 
 Le dossier `release/` n'est pas versionné : les installeurs sont publiés via les [Releases GitHub](https://github.com/pxomaker-hue/Akta/releases).
 
+### Publier une version
+
+1. Monte `version` dans `package.json`, puis `npm run dist`.
+2. Crée une release GitHub avec le tag `v<version>` et joins **les trois fichiers** de `release/` : `Akta.Setup.<version>.exe`, `Akta.Setup.<version>.exe.blockmap` et **`latest.yml`**.
+
+La mise à jour automatique lit `latest.yml` sur la dernière release GitHub (en HTTPS) : sans lui, les applis installées ne voient pas la nouvelle version.
+
 ## Architecture
 
 ```
