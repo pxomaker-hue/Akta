@@ -93,6 +93,8 @@
   "settings.deepwork.desc": "Fokus-Hinweise",
   "settings.distraction": "⚠️ Ablenkungswarnungen",
   "settings.distraction.desc": "Benachrichtigungen bei Ablenkung",
+  "settings.reminders": "Projekt-Erinnerungen",
+  "settings.reminders.desc": "Sitzungen ohne Projekt, überschrittene Budgets und Fristen (einmal pro Tag)",
   "settings.about": "Über",
   "settings.version": "Akta v1.3.6",
   "settings.description": "Persönliche Aktivitätsverfolgung",

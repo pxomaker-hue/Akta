@@ -15,8 +15,25 @@ export function initDatabase(): Database.Database {
   db.pragma('journal_mode = WAL')
 
   createTables()
+  createSyncTriggers()
   closeOrphanedRecords()
   return db
+}
+
+// La synchro fusionne les activités selon updated_at, mais aucune modification d'activité (catégorie,
+// facturable, durée…) ne le mettait à jour : ces changements ne se propageaient jamais aux autres
+// machines. Un trigger le fait pour toutes les écritures, sans dépendre de chaque requête. Il ne
+// s'applique pas quand l'écriture fixe elle-même updated_at (import de synchro, qui garde la date distante).
+function createSyncTriggers() {
+  if (!db) return
+  db.exec(`
+    CREATE TRIGGER IF NOT EXISTS activities_touch_updated_at
+    AFTER UPDATE OF category_id, billable, window_title, end_time, duration_seconds ON activities
+    WHEN NEW.updated_at = OLD.updated_at
+    BEGIN
+      UPDATE activities SET updated_at = CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER) WHERE id = NEW.id;
+    END;
+  `)
 }
 
 // Après un crash, une coupure de courant ou un arrêt de Windows sans fermeture propre, des sessions,
@@ -353,6 +370,13 @@ function createTables() {
     // colonne déjà présente
   }
   try {
+    // Session de travail démarrée automatiquement par cette session Focus (à arrêter avec elle).
+    // Persisté en base : l'ancienne Map en mémoire était perdue au redémarrage de l'app.
+    db.exec(`ALTER TABLE focus_sessions ADD COLUMN work_session_id INTEGER`)
+  } catch {
+    // colonne déjà présente
+  }
+  try {
     db.exec(`ALTER TABLE focus_sessions ADD COLUMN session_duration INTEGER DEFAULT 25`)
   } catch {
     // colonne déjà présente
@@ -587,6 +611,7 @@ function seedDefaultSettings() {
     idle_timeout: '180',
     notifications_deep_work: 'true',
     notifications_distraction: 'true',
+    notifications_reminders: 'true',
     onboarding_completed: 'false',
     focus_coaching_mode: 'tdah',
   }
@@ -1643,10 +1668,11 @@ export function importSyncDataMerge(jsonData: string): { imported: number; skipp
     const projectIdMap = new Map<number, number>()
     const findProject = db.prepare('SELECT id, updated_at FROM projects WHERE name = ?')
     const insertProject = db.prepare(
-      'INSERT INTO projects (name, color, created_at, client_id, hourly_rate, status, hour_goal, budget_hours, budget_amount, deadline, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO projects (name, color, created_at, client_id, hourly_rate, status, hour_goal, budget_hours, budget_amount, deadline, updated_at, keywords) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     )
+    // keywords inclus : sans eux, l'auto-détection de projet était perdue sur l'autre machine
     const updateProjectStmt = db.prepare(
-      'UPDATE projects SET color = ?, client_id = ?, hourly_rate = ?, status = ?, hour_goal = ?, budget_hours = ?, budget_amount = ?, deadline = ?, updated_at = ? WHERE id = ?'
+      'UPDATE projects SET color = ?, client_id = ?, hourly_rate = ?, status = ?, hour_goal = ?, budget_hours = ?, budget_amount = ?, deadline = ?, updated_at = ?, keywords = ? WHERE id = ?'
     )
     for (const project of backup.data.projects || []) {
       try {
@@ -1670,6 +1696,7 @@ export function importSyncDataMerge(jsonData: string): { imported: number; skipp
               project.budget_amount ?? null,
               project.deadline ?? null,
               remoteUpdatedAt,
+              project.keywords ?? null,
               existing.id
             )
             imported++
@@ -1688,7 +1715,8 @@ export function importSyncDataMerge(jsonData: string): { imported: number; skipp
             project.budget_hours ?? null,
             project.budget_amount ?? null,
             project.deadline ?? null,
-            remoteUpdatedAt
+            remoteUpdatedAt,
+            project.keywords ?? null
           )
           projectIdMap.set(project.id, Number(result.lastInsertRowid))
           imported++

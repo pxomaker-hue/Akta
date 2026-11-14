@@ -1,6 +1,6 @@
 import { Notification } from 'electron'
 import path from 'path'
-import { getDatabase } from './database'
+import { getDatabase, getSetting } from './database'
 import { mt, mtf } from './i18n'
 
 const ICON_PATH = path.join(__dirname, '../../../assets/icon.png')
@@ -14,6 +14,23 @@ const TDAH_OPTIMAL_CYCLE = 18 * 60 * 1000 // 18 minutes (shorter than Pomodoro f
 const TDAH_BREAK = 4 * 60 * 1000 // 4 minutes break
 const DEEP_WORK_MIN_MINUTES = 15 // minimum continuous focus to count as deep work
 
+// Les réglages Paramètres → Notifications et Mode de coaching étaient enregistrés mais jamais lus :
+// les notifications partaient toujours, en mode TDAH. Ils sont désormais appliqués ici.
+function readSetting(key: string, fallback: string): string {
+  try {
+    return getSetting(key) ?? fallback
+  } catch {
+    return fallback
+  }
+}
+
+function coachMode(): 'tdah' | 'standard' {
+  return readSetting('focus_coaching_mode', 'tdah') === 'standard' ? 'standard' : 'tdah'
+}
+
+const deepWorkNotificationsEnabled = () => readSetting('notifications_deep_work', 'true') === 'true'
+const distractionNotificationsEnabled = () => readSetting('notifications_distraction', 'true') === 'true'
+
 let switchTimestamps: number[] = []
 let lastDistractionNudge = 0
 
@@ -24,6 +41,7 @@ export function recordSwitch() {
 }
 
 export function maybeNudgeDistraction() {
+  if (!distractionNotificationsEnabled()) return
   const now = Date.now()
   if (switchTimestamps.length < SWITCH_THRESHOLD) return
   if (now - lastDistractionNudge < NUDGE_COOLDOWN_MS) return
@@ -38,8 +56,8 @@ export function maybeNudgeDistraction() {
   }
 }
 
-export function notifyDeepWorkMilestone(minutes: number, mode: 'tdah' | 'standard' = 'tdah') {
-  if (!Notification.isSupported()) return
+export function notifyDeepWorkMilestone(minutes: number, mode: 'tdah' | 'standard' = coachMode()) {
+  if (!Notification.isSupported() || !deepWorkNotificationsEnabled()) return
 
   if (mode === 'tdah') {
     // Mode TDAH : encourageant et gamifié
@@ -60,7 +78,7 @@ export function notifyDeepWorkMilestone(minutes: number, mode: 'tdah' | 'standar
   }
 }
 
-export function notifyMilestoneUnlocked(milestoneName: string, mode: 'tdah' | 'standard' = 'tdah') {
+export function notifyMilestoneUnlocked(milestoneName: string, mode: 'tdah' | 'standard' = coachMode()) {
   if (!Notification.isSupported()) return
 
   if (mode === 'tdah') {
@@ -80,7 +98,7 @@ export function notifyMilestoneUnlocked(milestoneName: string, mode: 'tdah' | 's
   }
 }
 
-export function notifyChallengeCompleted(challengeName: string, mode: 'tdah' | 'standard' = 'tdah') {
+export function notifyChallengeCompleted(challengeName: string, mode: 'tdah' | 'standard' = coachMode()) {
   if (!Notification.isSupported()) return
 
   if (mode === 'tdah') {
@@ -102,8 +120,8 @@ export function notifyChallengeCompleted(challengeName: string, mode: 'tdah' | '
   }
 }
 
-export function notifyDistractionDuringSession(appName: string, mode: 'tdah' | 'standard' = 'tdah') {
-  if (!Notification.isSupported()) return
+export function notifyDistractionDuringSession(appName: string, mode: 'tdah' | 'standard' = coachMode()) {
+  if (!Notification.isSupported() || !distractionNotificationsEnabled()) return
 
   if (mode === 'tdah') {
     // Mode TDAH : ludique et motivant
@@ -124,7 +142,7 @@ export function notifyDistractionDuringSession(appName: string, mode: 'tdah' | '
   }
 }
 
-export function notifySessionCompleted(duration: number, streakDays: number, mode: 'tdah' | 'standard' = 'tdah') {
+export function notifySessionCompleted(duration: number, streakDays: number, mode: 'tdah' | 'standard' = coachMode()) {
   if (!Notification.isSupported()) return
 
   if (mode === 'tdah') {

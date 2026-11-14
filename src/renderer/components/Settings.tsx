@@ -17,6 +17,7 @@ interface SettingsState {
   idle_timeout: string
   notifications_deep_work: string
   notifications_distraction: string
+  notifications_reminders?: string
   focus_coaching_mode: string
   close_action?: string
 }
@@ -312,6 +313,20 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
             <div>
               <p className="font-medium text-gray-900 dark:text-white">{t('settings.distraction')}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.distraction.desc')}</p>
+            </div>
+          </label>
+
+          {/* Rappels : sessions sans projet, budgets, échéances */}
+          <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer">
+            <input
+              type="checkbox"
+              checked={(settings.notifications_reminders ?? 'true') === 'true'}
+              onChange={(e) => updateSetting('notifications_reminders', e.target.checked.toString())}
+              className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <div>
+              <p className="font-medium text-gray-900 dark:text-white">{t('settings.reminders', 'Rappels projets')}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.reminders.desc', 'Sessions sans projet, budgets dépassés et échéances (une fois par jour)')}</p>
             </div>
           </label>
         </div>

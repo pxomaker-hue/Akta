@@ -12,7 +12,7 @@ export function setMainWindow(win: BrowserWindow) {
 }
 
 export function activateBlocking(apps: string[]) {
-  blockedApps = apps.map((a) => a.toLowerCase())
+  blockedApps = apps.map((a) => a.trim().toLowerCase()).filter((a) => a.length > 0)
   isActive = true
   lastNotifiedApp = null
 }
@@ -33,25 +33,40 @@ function matchesBlockedApp(appName: string, windowTitle: string = ''): boolean {
 
   // Priority 1: Check windowTitle first (like project detection)
   if (titleLower) {
-    const titleMatch = blockedApps.some((blocked) => titleLower.includes(blocked) || blocked.includes(titleLower))
+    // Sens unique : le titre/le nom d'appli doit CONTENIR l'entrée bloquée. L'inverse
+    // (`blocked.includes(title)`) bloquait par erreur toute fenêtre au titre court contenu dans
+    // une entrée (ex : appli "Code" bloquée parce que "visual studio code" est dans la liste).
+    const titleMatch = blockedApps.some((blocked) => titleLower.includes(blocked))
     if (titleMatch) {
       return true
     }
   }
 
   // Priority 2: Fallback to appName
-  return blockedApps.some((blocked) => appLower.includes(blocked) || blocked.includes(appLower))
+  return blockedApps.some((blocked) => appLower.includes(blocked))
 }
+
+// Lancer PowerShell (+ compilation Add-Type) coûte ~0,5 s de CPU : une seule minimisation à la fois,
+// et pas plus d'une toutes les 3 s, au lieu d'un nouveau process à chaque poll de 2 s.
+const MINIMIZE_COOLDOWN_MS = 3000
+let minimizeInFlight = false
+let lastMinimizeAt = 0
 
 // Minimise la fenêtre actuellement au premier plan via l'API Win32
 function minimizeForegroundWindow() {
+  const now = Date.now()
+  if (minimizeInFlight || now - lastMinimizeAt < MINIMIZE_COOLDOWN_MS) return
+  minimizeInFlight = true
+  lastMinimizeAt = now
+
   const script =
     '$sig=\'[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow); [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();\';' +
     "Add-Type -MemberDefinition $sig -Name Win32 -Namespace Native;" +
     '$hwnd = [Native.Win32]::GetForegroundWindow();' +
     '[Native.Win32]::ShowWindow($hwnd, 6) | Out-Null'
 
-  execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], (error) => {
+  execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { windowsHide: true }, (error) => {
+    minimizeInFlight = false
     if (error) {
       console.error('Erreur lors de la minimisation de la fenêtre:', error)
     }

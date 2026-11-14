@@ -93,6 +93,8 @@
   "settings.deepwork.desc": "Alertes de concentration",
   "settings.distraction": "⚠️ Alertes distraction",
   "settings.distraction.desc": "Notifications quand dispersé",
+  "settings.reminders": "Rappels projets",
+  "settings.reminders.desc": "Sessions sans projet, budgets dépassés et échéances (une fois par jour)",
   "settings.about": "À propos",
   "settings.version": "Akta v1.3.6",
   "settings.description": "Suivi d'activité personnel",

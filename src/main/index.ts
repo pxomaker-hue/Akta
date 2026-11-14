@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, Menu, Tray, nativeImage, nativeTheme, glob
 import path from 'path'
 import { initDatabase, closeDatabase, getDatabase, getSetting, setSetting, getAllSettings, createTag, getTags, getTagsByActivity, addTagToActivity, removeTagFromActivity, deleteTag, exportData, importData, exportActivitiesCSV, updateWorkSessionBillable, getWorkSessionById, getActivitiesInRange, deleteWorkSession, createProject, getProjects, deleteProject, updateProject, updateSessionDetails, createClient, getClients, deleteClient, getProjectBillableSeconds, getSessionBillableSeconds, getSessionsForProject, getSessionPauses, getSessionPausedSeconds, getPausesInRange, createProjectPhase, getProjectPhases, updateProjectPhase, deleteProjectPhase, getPhaseBillableSeconds, getProjectTimeBreakdown, exportProjectSessionsCSV, exportMonthlyCSV, getWorkSessionsWithProjectInRange, recordSyncTombstone, getSessionsWithoutProjectToday, getProjectsWithBudgetOrDeadlineIssues, getBudgetPredictions } from './database'
 import { generateProjectPDF, generateMonthlyPDF } from './pdf-export'
-import { startTracker, stopTracker, handleSystemAway, refreshIdleTimeout, flushForShutdown, getRecentActivities, getCurrentActivityId, getTrackingStatus, startSession, pauseSession, resumeSession, stopSession, setSessionBillable, listWorkSessions, setSessionCategoryOverrides, setSessionProject, getCurrentWorkSessionDetails } from './tracker'
+import { startTracker, stopTracker, handleSystemAway, refreshIdleTimeout, flushForShutdown, getCurrentWorkSessionId, getRecentActivities, getCurrentActivityId, getTrackingStatus, startSession, pauseSession, resumeSession, stopSession, setSessionBillable, listWorkSessions, setSessionCategoryOverrides, setSessionProject, getCurrentWorkSessionDetails } from './tracker'
 import { startFocusSession, endFocusSession, getFocusSessions, getCurrentFocusSession, deleteFocusSession, checkAutoCompleteFocusSession } from './focus-mode'
 import { analyzeFocusQuality, getProductivityPattern, getCoachingRecommendations, getOptimalCycleDuration } from './coach'
 import { setMainWindow, activateBlocking, deactivateBlocking } from './blocker'
@@ -163,6 +163,18 @@ function createWindow() {
 
   setMainWindow(mainWindow)
   setUpdaterWindow(mainWindow)
+}
+
+// Fin d'une session Focus (manuelle ou à échéance) : coupe le blocage d'applis et arrête la session
+// de travail qu'elle avait démarrée — seulement si c'est toujours celle en cours (l'utilisateur a pu
+// en relancer une autre entre-temps, ou l'app a redémarré).
+function finishFocusSideEffects(focusSession: { work_session_id?: number | null }) {
+  deactivateBlocking()
+  const workSessionId = focusSession.work_session_id ?? null
+  if (workSessionId !== null && getCurrentWorkSessionId() === workSessionId) {
+    stopSession()
+    broadcastTrackingStatus()
+  }
 }
 
 // Prévient TOUTES les fenêtres (principale + widget tray) qu'une session a changé d'état, quelle
@@ -443,83 +455,84 @@ function toggleTrayWidget() {
   trayWidgetWindow.focus()
 }
 
+// Rappels (projets sans session, budgets, échéances) : chacun n'est envoyé qu'une fois par jour.
+// Avant, la vérification horaire renvoyait les mêmes alertes toutes les heures, y compris pour la
+// session en cours. Les rappels déjà envoyés sont mémorisés en base (survivent au redémarrage).
+function notifyOncePerDay(key: string, title: string, body: string, sent: Record<string, string>, today: string) {
+  if (sent[key] === today) return
+  sent[key] = today
+  new Notification({ title, body, icon: ICON_PATH }).show()
+}
+
 function checkSmartNotifications() {
   try {
     if (!Notification.isSupported()) return
+    if ((getSetting('notifications_reminders') ?? 'true') !== 'true') return
 
-    // 1. Sessions without project
-    const sessionsWithoutProject = getSessionsWithoutProjectToday()
-    if (sessionsWithoutProject.length > 0) {
-      new Notification({
-        title: mt('notifications', 'noProjectTitle'),
-        body: mtf('notifications', 'noProjectBody', { count: sessionsWithoutProject.length }),
-        icon: ICON_PATH,
-      }).show()
+    const today = new Date().toDateString()
+    let sent: Record<string, string> = {}
+    try {
+      sent = JSON.parse(getSetting('smart_notifications_sent') || '{}')
+    } catch {
+      sent = {}
+    }
+    // Ne garde que les clés du jour (sinon la liste grossirait indéfiniment)
+    for (const key of Object.keys(sent)) if (sent[key] !== today) delete sent[key]
+
+    // 1. Sessions terminées sans projet (la session en cours n'est pas concernée : on peut encore
+    // lui attribuer un projet). Un nouveau rappel seulement si leur nombre a augmenté.
+    const currentId = getCurrentWorkSessionId()
+    const withoutProject = getSessionsWithoutProjectToday().filter((ws: any) => ws.id !== currentId && ws.end_time !== null)
+    if (withoutProject.length > 0) {
+      notifyOncePerDay(
+        `no_project:${withoutProject.length}`,
+        mt('notifications', 'noProjectTitle'),
+        mtf('notifications', 'noProjectBody', { count: withoutProject.length }),
+        sent,
+        today
+      )
     }
 
-    // 2. Budget exceeded (projet ou phase)
+    // 2 & 3. Budgets et échéances (projet ou phase), au plus 2 de chaque par vérification
     const issues = getProjectsWithBudgetOrDeadlineIssues()
-    const budgetIssues = issues.filter(i => i.type.includes('budget'))
-    const deadlineIssues = issues.filter(i => i.type.includes('deadline'))
+    const budgetIssues = issues.filter((i) => i.type.includes('budget')).slice(0, 2)
+    const deadlineIssues = issues.filter((i) => i.type.includes('deadline')).slice(0, 2)
+    const daysLeft = (deadline: number | string | Date) => Math.ceil((new Date(deadline).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
 
-    for (const issue of budgetIssues.slice(0, 2)) {
-      if (issue.type === 'budget_hours') {
-        new Notification({
-          title: mt('notifications', 'budgetExceededTitle'),
-          body: mtf('notifications', 'budgetExceededHoursBody', { project: issue.projectName }),
-          icon: ICON_PATH,
-        }).show()
-      } else if (issue.type === 'budget_amount') {
-        new Notification({
-          title: mt('notifications', 'budgetExceededTitle'),
-          body: mtf('notifications', 'budgetExceededAmountBody', { project: issue.projectName }),
-          icon: ICON_PATH,
-        }).show()
-      } else if (issue.type === 'phase_budget_hours') {
-        new Notification({
-          title: mt('notifications', 'budgetExceededTitle'),
-          body: mtf('notifications', 'phaseBudgetExceededHoursBody', { phase: issue.phaseName, project: issue.projectName }),
-          icon: ICON_PATH,
-        }).show()
-      } else if (issue.type === 'phase_budget_amount') {
-        new Notification({
-          title: mt('notifications', 'budgetExceededTitle'),
-          body: mtf('notifications', 'phaseBudgetExceededAmountBody', { phase: issue.phaseName, project: issue.projectName }),
-          icon: ICON_PATH,
-        }).show()
+    for (const issue of [...budgetIssues, ...deadlineIssues]) {
+      const key = `${issue.type}:${issue.projectName}:${issue.phaseName ?? ''}`
+      const vars = { project: issue.projectName, phase: issue.phaseName }
+      switch (issue.type) {
+        case 'budget_hours':
+          notifyOncePerDay(key, mt('notifications', 'budgetExceededTitle'), mtf('notifications', 'budgetExceededHoursBody', vars), sent, today)
+          break
+        case 'budget_amount':
+          notifyOncePerDay(key, mt('notifications', 'budgetExceededTitle'), mtf('notifications', 'budgetExceededAmountBody', vars), sent, today)
+          break
+        case 'phase_budget_hours':
+          notifyOncePerDay(key, mt('notifications', 'budgetExceededTitle'), mtf('notifications', 'phaseBudgetExceededHoursBody', vars), sent, today)
+          break
+        case 'phase_budget_amount':
+          notifyOncePerDay(key, mt('notifications', 'budgetExceededTitle'), mtf('notifications', 'phaseBudgetExceededAmountBody', vars), sent, today)
+          break
+        case 'deadline_passed':
+          if (issue.deadline) notifyOncePerDay(key, mt('notifications', 'deadlinePassedTitle'), mtf('notifications', 'deadlinePassedBody', vars), sent, today)
+          break
+        case 'deadline_soon':
+          if (issue.deadline)
+            notifyOncePerDay(key, mt('notifications', 'deadlineApproachingTitle'), mtf('notifications', 'deadlineApproachingBody', { ...vars, days: daysLeft(issue.deadline) }), sent, today)
+          break
+        case 'phase_deadline_passed':
+          if (issue.deadline) notifyOncePerDay(key, mt('notifications', 'deadlinePassedTitle'), mtf('notifications', 'phaseDeadlinePassedBody', vars), sent, today)
+          break
+        case 'phase_deadline_soon':
+          if (issue.deadline)
+            notifyOncePerDay(key, mt('notifications', 'deadlineApproachingTitle'), mtf('notifications', 'phaseDeadlineApproachingBody', { ...vars, days: daysLeft(issue.deadline) }), sent, today)
+          break
       }
     }
 
-    // 3. Deadline issues (projet ou phase)
-    for (const issue of deadlineIssues.slice(0, 2)) {
-      if (issue.type === 'deadline_passed' && issue.deadline) {
-        new Notification({
-          title: mt('notifications', 'deadlinePassedTitle'),
-          body: mtf('notifications', 'deadlinePassedBody', { project: issue.projectName }),
-          icon: ICON_PATH,
-        }).show()
-      } else if (issue.type === 'deadline_soon' && issue.deadline) {
-        const daysLeft = Math.ceil((new Date(issue.deadline).getTime() - new Date().getTime()) / (24 * 60 * 60 * 1000))
-        new Notification({
-          title: mt('notifications', 'deadlineApproachingTitle'),
-          body: mtf('notifications', 'deadlineApproachingBody', { project: issue.projectName, days: daysLeft }),
-          icon: ICON_PATH,
-        }).show()
-      } else if (issue.type === 'phase_deadline_passed' && issue.deadline) {
-        new Notification({
-          title: mt('notifications', 'deadlinePassedTitle'),
-          body: mtf('notifications', 'phaseDeadlinePassedBody', { phase: issue.phaseName, project: issue.projectName }),
-          icon: ICON_PATH,
-        }).show()
-      } else if (issue.type === 'phase_deadline_soon' && issue.deadline) {
-        const daysLeft = Math.ceil((new Date(issue.deadline).getTime() - new Date().getTime()) / (24 * 60 * 60 * 1000))
-        new Notification({
-          title: mt('notifications', 'deadlineApproachingTitle'),
-          body: mtf('notifications', 'phaseDeadlineApproachingBody', { phase: issue.phaseName, project: issue.projectName, days: daysLeft }),
-          icon: ICON_PATH,
-        }).show()
-      }
-    }
+    setSetting('smart_notifications_sent', JSON.stringify(sent))
   } catch (error) {
     console.error('Error in checkSmartNotifications:', error)
   }
@@ -545,6 +558,17 @@ app.on('ready', () => {
 
   // Initialiser les défis focus
   initializeChallenges()
+
+  // Session Focus encore en cours au redémarrage (crash, mise à jour…) : le blocage d'applis ne
+  // vivait qu'en mémoire, on le réactive tant que la session n'est pas arrivée à échéance.
+  try {
+    const ongoingFocus = getCurrentFocusSession()
+    if (ongoingFocus && !checkAutoCompleteFocusSession()) {
+      activateBlocking(JSON.parse((ongoingFocus as any).blocked_apps || '[]'))
+    }
+  } catch (error) {
+    console.warn('Could not restore focus blocking:', error)
+  }
 
   // Démarrer le tracker d'activité
   startTracker()
@@ -596,7 +620,7 @@ app.on('ready', () => {
     const completed = checkAutoCompleteFocusSession()
     if (!completed) return
 
-    deactivateBlocking()
+    finishFocusSideEffects(completed as any)
 
     if (Notification.isSupported()) {
       new Notification({
@@ -1387,7 +1411,6 @@ function setupIpcHandlers() {
 
   // Focus Mode handlers
   // Map to track which Focus Sessions created their own Work Sessions
-  const focusSessionWorkSessionMap = new Map<number, boolean>()
 
   ipcMain.handle(
     'start-focus-session',
@@ -1421,7 +1444,7 @@ function setupIpcHandlers() {
 
         // Remember that this focus session created a work session
         if (didCreateWorkSession) {
-          focusSessionWorkSessionMap.set(session.id, true)
+          getDatabase().prepare('UPDATE focus_sessions SET work_session_id = ? WHERE id = ?').run(getCurrentWorkSessionId(), session.id)
         }
 
         try {
@@ -1444,21 +1467,9 @@ function setupIpcHandlers() {
 
   ipcMain.handle('end-focus-session', async (event, sessionId: number) => {
     try {
-      // Check if this focus session created a work session
-      const didCreateWorkSession = focusSessionWorkSessionMap.get(sessionId)
-
-      // If we created a work session, end it too
-      if (didCreateWorkSession) {
-        console.log('[FocusMode] Ending work session that was created by focus mode')
-        stopSession()
-        broadcastTrackingStatus()
-      }
-
-      // Clean up the map
-      focusSessionWorkSessionMap.delete(sessionId)
-
+      const session = getDatabase().prepare('SELECT * FROM focus_sessions WHERE id = ?').get(sessionId) as any
       const result = endFocusSession(sessionId)
-      deactivateBlocking()
+      if (session) finishFocusSideEffects(session)
       return result
     } catch (error) {
       console.error('Error ending focus session:', error)

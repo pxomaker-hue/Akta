@@ -592,6 +592,10 @@ export function updateLastInputTime() {
   lastInputTime = Date.now()
 }
 
+export function getCurrentWorkSessionId(): number | null {
+  return currentWorkSessionId
+}
+
 export function getCurrentActivityId(): number | null {
   return currentOpenActivity?.id ?? null
 }
