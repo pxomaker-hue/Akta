@@ -8,7 +8,7 @@ const clamp = (x,a=0,b=1) => Math.max(a,Math.min(b,x))
 const mix = (a,b,t) => a+(b-a)*t
 const colors = {
   bg:[11,20,48], g:[16,185,129], gm:[70,208,162],
-  light:[131,231,188], light2:[178,241,216],
+  light:[134,229,186], light2:[178,241,216],
   white:[255,255,255], glow:[168,246,218]
 }
 const blend = (p,c,a) => [mix(p[0],c[0],a),mix(p[1],c[1],a),mix(p[2],c[2],a),p[3]+(1-p[3])*a]
@@ -23,59 +23,54 @@ const roundedRectSDF = (x,y,cx,cy,hx,hy,r) => {
   return Math.hypot(Math.max(qx,0),Math.max(qy,0))+Math.min(Math.max(qx,qy),0)-r
 }
 function draw(n) {
-  const out=new Uint8Array(n*n*4), scale=n/128, aa=0.55/scale
-  const pulse=[[28,82],[54,82],[58,86],[64,71],[71,91],[76,82],[100,82]]
-  const dPulse=(x,y)=>{
-    let d=1e9
-    for(let j=1;j<pulse.length;j++)d=Math.min(d,seg(x,y,...pulse[j-1],...pulse[j]))
-    return d
-  }
+  const out = new Uint8Array(n*n*4), scale=n/128, aa=0.56/scale
+  const cy=89-Math.sqrt(45*45-36.5*36.5)
+  const pulse=[[28,81],[61,81],[65,72],[70,89],[75,81],[100,81]]
   for(let py=0;py<n;py++) for(let px=0;px<n;px++) {
     const x=(px+.5)/scale,y=(py+.5)/scale
-    const d=roundedRectSDF(x,y,64,64,64,64,28)
-    const bgA=clamp(.5-d/aa)
-    let p=[...colors.bg,bgA]
-    if(bgA>0) {
-      const border=smooth(Math.abs(roundedRectSDF(x,y,64,64,62.5,62.5,26.5)),1,aa)
-      if(border>0) {
-        const t=clamp((x+y-16)/224)
-        p=blend(p,colors.g.map((v,i)=>mix(v,colors.light[i],t)),border*bgA)
+    const d=roundedRectSDF(x,y,64,64,64,64,29)
+    const alpha=clamp(.5-d/aa)
+    let p=[...colors.bg,alpha]
+    if(alpha>0) {
+      // Incomplete circular progression ring; no outer colored border.
+      const angle=(Math.atan2(y-cy,x-64)*180/Math.PI+360)%360
+      const radius=Math.abs(Math.hypot(x-64,y-cy)-45)
+      const cap=Math.min(Math.hypot(x-27.5,y-89),Math.hypot(x-100.5,y-89))
+      const arc=(angle>=144||angle<=36)?Math.min(radius,cap):cap
+      const r=smooth(arc,3.8,aa)
+      if(r>0) {
+        const t=clamp((x+y-30)/177)
+        p=blend(p,colors.g.map((v,i)=>mix(v,colors.gm[i],t)),r)
       }
-      const angle=(Math.atan2(y-64,x-64)*180/Math.PI+360)%360
-      const radial=Math.abs(Math.hypot(x-64,y-64)-41.5)
-      const cap=Math.min(Math.hypot(x-30,y-88),Math.hypot(x-98,y-88))
-      const arc=(angle>=145||angle<=35)?Math.min(radial,cap):cap
-      const ring=smooth(arc,3.5,aa)
-      if(ring>0) {
-        const t=clamp((x-20)/90)
-        p=blend(p,colors.g.map((v,i)=>mix(v,colors.light[i],t)),ring)
+
+      // One smoothly rounded A, orange/green/blue etc. uses the same hue on both sides.
+      const left=smooth(seg(x,y,35,101,64,49),8.5,aa)
+      const right=smooth(seg(x,y,64,49,93,101),8.5,aa)
+      const mark=Math.max(left,right)
+      if(mark>0) {
+        const q=clamp((x-59)/8)
+        const tint=colors.g.map((v,i)=>mix(v,colors.light[i],q))
+        p=blend(p,tint,mark)
       }
-      const left=smooth(seg(x,y,36,100,64,47),8,aa)
-      if(left>0) {
-        const t=clamp((100-y)/53)
-        p=blend(p,colors.g.map((v,i)=>mix(v,colors.gm[i],t)),left)
+
+      const dot=smooth(Math.hypot(x-94,y-34),5.4,aa)
+      if(dot>0)p=blend(p,colors.white,dot)
+
+      let pulseD=1e9
+      for(let j=1;j<pulse.length;j++)
+        pulseD=Math.min(pulseD,seg(x,y,...pulse[j-1],...pulse[j]))
+      if(n>=32) {
+        const halo=smooth(pulseD,4.3,aa)*.29
+        if(halo>0)p=blend(p,colors.white,halo)
       }
-      const right=smooth(seg(x,y,64,47,92,100),8,aa)
-      if(right>0) {
-        const t=clamp((y-47)/53)
-        p=blend(p,colors.light.map((v,i)=>mix(v,colors.light2[i],t)),right)
-      }
-      const dd=Math.hypot(x-92,y-35)
-      const dotBorder=smooth(dd,5.8,aa)
-      if(dotBorder>0)p=blend(p,colors.g,dotBorder)
-      const dotWhite=smooth(dd,4.6,aa)
-      if(dotWhite>0)p=blend(p,colors.white,dotWhite)
-      const pd=dPulse(x,y)
-      const halo=smooth(pd,4.25,aa)*.25
-      if(halo>0)p=blend(p,colors.glow,halo)
-      const core=smooth(pd,1.75,aa)
+      const core=smooth(pulseD,n<=24?2.35:1.9,aa)
       if(core>0)p=blend(p,colors.white,core)
     }
-    const off=(py*n+px)*4
-    out[off]=Math.round(clamp(p[0],0,255))
-    out[off+1]=Math.round(clamp(p[1],0,255))
-    out[off+2]=Math.round(clamp(p[2],0,255))
-    out[off+3]=Math.round(clamp(p[3],0,1)*255)
+    const k=(py*n+px)*4
+    out[k]=Math.round(clamp(p[0],0,255))
+    out[k+1]=Math.round(clamp(p[1],0,255))
+    out[k+2]=Math.round(clamp(p[2],0,255))
+    out[k+3]=Math.round(clamp(p[3],0,1)*255)
   }
   return out
 }
