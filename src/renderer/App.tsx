@@ -239,7 +239,7 @@ function App() {
       <header className="bg-white dark:bg-slate-900 shadow flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3.5">
-            <Logo size={46} />
+            <Logo size={62} />
             <div>
               <h1 className="text-2xl font-extrabold tracking-tight accent-gradient-text leading-tight">
                 {t('app.title')}
