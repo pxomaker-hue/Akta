@@ -4,17 +4,16 @@ interface LogoProps {
   size?: number
 }
 
-// Même dessin dans l'en-tête, la barre de titre et le widget.
-// Seuls la palette et le fond suivent le thème ; le pulse reste blanc et respire seul.
+// Le A, l'orbite et le liseré réagissent aux deux variables d'accentuation.
+// Le signal blanc garde sa forme et respire seul ; aucun effet sur le reste du symbole.
 function Logo({ size = 44 }: LogoProps) {
-  // IDs uniques : plusieurs logos peuvent coexister dans le même document (ex. onboarding).
   const uid = useId().replace(/:/g, '')
-  const borderId = `${uid}-border`
-  const ringId = `${uid}-ring`
-  const leftId = `${uid}-left`
-  const rightId = `${uid}-right`
+  const rimId = `${uid}-rim`
+  const orbitId = `${uid}-orbit`
+  const markId = `${uid}-mark`
 
-  const pulse = 'M 28 82 H 54 L 58 86 L 64 71 L 71 91 L 76 82 H 100'
+  // Signal ECG volontairement simple, lisible même réduit en en-tête.
+  const pulsePath = 'M 28 81 H 61 L 65 72 L 70 89 L 75 81 H 100'
 
   return (
     <svg
@@ -26,48 +25,43 @@ function Logo({ size = 44 }: LogoProps) {
       focusable="false"
     >
       <defs>
-        <linearGradient id={borderId} x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id={rimId} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="128" y2="128">
           <stop offset="0%" stopColor="var(--accent-primary, #6366f1)" />
           <stop offset="100%" stopColor="var(--accent-secondary, #06b6d4)" />
         </linearGradient>
-        <linearGradient id={ringId} x1="0" y1="1" x2="1" y2="0">
+        <linearGradient id={orbitId} gradientUnits="userSpaceOnUse" x1="27" y1="93" x2="105" y2="23">
           <stop offset="0%" stopColor="var(--accent-primary, #6366f1)" />
           <stop offset="100%" stopColor="var(--accent-secondary, #06b6d4)" />
         </linearGradient>
-        <linearGradient id={leftId} x1="0" y1="1" x2="0.8" y2="0">
+        <linearGradient id={markId} gradientUnits="userSpaceOnUse" x1="35" y1="75" x2="93" y2="75">
           <stop offset="0%" stopColor="var(--accent-primary, #6366f1)" />
-          <stop offset="100%" stopColor="color-mix(in srgb, var(--accent-primary, #6366f1) 86%, white)" />
-        </linearGradient>
-        <linearGradient id={rightId} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="color-mix(in srgb, var(--accent-primary, #6366f1) 60%, white)" />
-          <stop offset="100%" stopColor="color-mix(in srgb, var(--accent-primary, #6366f1) 52%, white)" />
+          <stop offset="42%" stopColor="var(--accent-primary, #6366f1)" />
+          <stop offset="54%" stopColor="color-mix(in srgb, var(--accent-primary, #6366f1) 72%, white)" />
+          <stop offset="100%" stopColor="color-mix(in srgb, var(--accent-primary, #6366f1) 60%, white)" />
         </linearGradient>
       </defs>
 
-      {/* Fond contrasté selon le thème ; liseré sans halo extérieur. */}
-      <rect className="akta-logo__background" width="128" height="128" rx="28" />
-      <rect x="1.5" y="1.5" width="125" height="125" rx="26.5"
-        fill="none" stroke={`url(#${borderId})`} strokeWidth="2" />
+      <rect className="akta-logo__background" width="128" height="128" rx="29" />
+      <rect x="1.5" y="1.5" width="125" height="125" rx="27"
+        fill="none" stroke={`url(#${rimId})`} strokeWidth="2.6" />
 
-      {/* Progression : suit l'accentuation, sans animation. */}
-      <path d="M 30 88 A 41.5 41.5 0 1 1 98 88"
-        fill="none" stroke={`url(#${ringId})`} strokeWidth="7" strokeLinecap="round" />
-      <circle className="akta-logo__dot" cx="92" cy="35" r="5.2" strokeWidth="1.2" />
+      {/* Orbite et A arrondi : dessin statique, sans filtres ni animation. */}
+      <path d="M 27.5 89 A 45 45 0 1 1 100.5 89"
+        fill="none" stroke={`url(#${orbitId})`} strokeWidth="7.6" strokeLinecap="round" />
+      <circle cx="94" cy="34" r="5.4" fill="white" />
+      <path d="M 35 101 L 60 53 Q 64 45 68 53 L 93 101"
+        fill="none" stroke={`url(#${markId})`} strokeWidth="17"
+        strokeLinecap="round" strokeLinejoin="round" />
 
-      {/* A : couleur primaire à gauche, nuance plus claire de la MÊME teinte à droite. */}
-      <path d="M 36 100 L 64 47" fill="none" stroke={`url(#${leftId})`}
-        strokeWidth="16" strokeLinecap="round" />
-      <path d="M 64 47 L 92 100" fill="none" stroke={`url(#${rightId})`}
-        strokeWidth="16" strokeLinecap="round" />
-
-      {/* Sur fond clair, une fine sous-couche sombre donne du contraste au blanc. */}
-      <path className="akta-logo__pulse-contrast" d={pulse} fill="none"
-        strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Le pulse, lui seul, respire. Sur fond clair un mince contraste le détache du blanc. */}
+      <path className="akta-logo__pulse-contrast" d={pulsePath}
+        fill="none" strokeWidth="6.1" strokeLinejoin="round" strokeLinecap="round" />
       <g className="akta-logo__pulse">
-        <path className="akta-logo__pulse-glow" d={pulse} fill="none"
-          stroke="white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
-        <path d={pulse} fill="none" stroke="white" strokeWidth="3.5"
+        <path className="akta-logo__pulse-halo" d={pulsePath}
+          fill="none" stroke="white" strokeWidth="8"
           strokeLinecap="round" strokeLinejoin="round" />
+        <path d={pulsePath} fill="none" stroke="white"
+          strokeWidth="3.8" strokeLinecap="round" strokeLinejoin="round" />
       </g>
     </svg>
   )
