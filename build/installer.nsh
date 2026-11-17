@@ -27,17 +27,24 @@
 
 ; Akta ouvert pendant l'installation / la désinstallation.
 ;
-; Remplace la vérification par défaut d'electron-builder (_CHECK_APP_RUNNING) : elle se contente d'un
-; taskkill "poli" (WM_CLOSE) qu'Akta intercepte pour se réduire dans le tray, et finit souvent par
-; demander de fermer l'app à la main. Ici :
-;   1. on demande à l'utilisateur s'il veut fermer Akta (sauf mise à jour auto ou mode silencieux) ;
-;   2. on relance Akta avec --akta-quit : l'instance ouverte quitte proprement et enregistre la
+; Remplace la vérification par défaut d'electron-builder (_CHECK_APP_RUNNING), qui posait deux problèmes :
+;   - elle cherche l'app avec "tasklist /FI USERNAME eq %USERNAME%", un filtre qui échoue sur certains
+;     comptes (compte Microsoft, installeur élevé…) : l'app n'est alors pas vue, et l'installation bute
+;     plus loin sur les fichiers verrouillés ("Akta ne peut pas être fermé…") ;
+;   - son taskkill "poli" (WM_CLOSE) est intercepté par Akta, qui se réduit dans le tray.
+; Ici :
+;   1. détection via nsProcess (énumère tous les processus, sans filtre utilisateur) ;
+;   2. on demande à l'utilisateur s'il veut fermer Akta (sauf mise à jour auto ou mode silencieux) ;
+;   3. on relance Akta avec --akta-quit : l'instance ouverte quitte proprement et enregistre la
 ;      session en cours (voir QUIT_FLAG dans src/main/index.ts) ;
-;   3. si elle tourne encore après ~5 s (ancienne version sans ce drapeau, app bloquée…), on force.
-; Aucune étiquette (label) ici : la macro peut être insérée plusieurs fois dans la même fonction,
-; on passe donc uniquement par LogicLib qui génère des étiquettes uniques.
+;   4. si elle tourne encore après ~5 s (ancienne version sans ce drapeau, app bloquée…), on force.
+; Aucune étiquette (label) ici : on passe uniquement par LogicLib, qui génère des étiquettes uniques.
+!macro _AKTA_FIND_PROCESS _ERR
+  ${nsProcess::FindProcess} "${APP_EXECUTABLE_FILENAME}" ${_ERR}
+!macroend
+
 !macro customCheckAppRunning
-  !insertmacro FIND_PROCESS "${APP_EXECUTABLE_FILENAME}" $R0
+  !insertmacro _AKTA_FIND_PROCESS $R0
   ${If} $R0 == 0
     ${IfNot} ${isUpdated}
       ${IfNot} ${Cmd} `MessageBox MB_YESNO|MB_ICONQUESTION "${PRODUCT_NAME} est en cours d'exécution.$\r$\n$\r$\nLe fermer pour continuer ? La session en cours sera enregistrée." /SD IDYES IDYES`
@@ -55,16 +62,17 @@
     ${Do}
       Sleep 500
       IntOp $R1 $R1 + 1
-      !insertmacro FIND_PROCESS "${APP_EXECUTABLE_FILENAME}" $R0
+      !insertmacro _AKTA_FIND_PROCESS $R0
     ${LoopUntil} $R0 != 0
     ${OrIf} $R1 >= 10
 
-    ; Toujours là : fermeture forcée (processus de l'utilisateur courant uniquement).
+    ; Toujours là : fermeture forcée de tous les processus Akta.exe.
     ${DoWhile} $R0 == 0
-      nsExec::Exec `%SYSTEMROOT%\System32\cmd.exe /c taskkill /f /t /im "${APP_EXECUTABLE_FILENAME}" /fi "USERNAME eq %USERNAME%"`
+      ${nsProcess::KillProcess} "${APP_EXECUTABLE_FILENAME}" $R2
+      nsExec::Exec `"$SYSDIR\taskkill.exe" /f /t /im "${APP_EXECUTABLE_FILENAME}"`
       Pop $R2
       Sleep 1000
-      !insertmacro FIND_PROCESS "${APP_EXECUTABLE_FILENAME}" $R0
+      !insertmacro _AKTA_FIND_PROCESS $R0
       ${If} $R0 == 0
         ${IfNot} ${Cmd} `MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "Impossible de fermer ${PRODUCT_NAME}. Fermez-le manuellement puis cliquez sur Réessayer." /SD IDCANCEL IDRETRY`
           Quit
