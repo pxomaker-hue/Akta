@@ -1,27 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="1024" height="1024">
-  <!-- Identité Akta statique : palette par défaut Indigo & Cyan, pulse blanc. -->
+  <!-- Identité Akta statique : vert identitaire de l'ancienne icône, pulse blanc. -->
   <defs>
     <linearGradient id="border" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#6366f1"/><stop offset="1" stop-color="#06b6d4"/>
+      <stop stop-color="#10b981"/><stop offset="1" stop-color="#6ee7b7"/>
     </linearGradient>
     <linearGradient id="ring" x1="0" y1="1" x2="1" y2="0">
-      <stop stop-color="#6366f1"/><stop offset="1" stop-color="#06b6d4"/>
+      <stop stop-color="#10b981"/><stop offset="1" stop-color="#6ee7b7"/>
     </linearGradient>
     <linearGradient id="left" x1="0" y1="1" x2=".8" y2="0">
-      <stop stop-color="#6366f1"/><stop offset="1" stop-color="#7c7ef2"/>
+      <stop stop-color="#10b981"/><stop offset="1" stop-color="#46d0a2"/>
     </linearGradient>
     <linearGradient id="right" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#a1a3f6"/><stop offset="1" stop-color="#a9aaf7"/>
+      <stop stop-color="#83e7bc"/><stop offset="1" stop-color="#b2f1d8"/>
     </linearGradient>
   </defs>
   <rect width="128" height="128" rx="28" fill="#0b1430"/>
   <rect x="1.5" y="1.5" width="125" height="125" rx="26.5" fill="none" stroke="url(#border)" stroke-width="2"/>
   <path d="M30 88 A41.5 41.5 0 1 1 98 88" fill="none" stroke="url(#ring)" stroke-width="7" stroke-linecap="round"/>
-  <circle cx="92" cy="35" r="5.2" fill="white" stroke="#6366f1" stroke-width="1.2"/>
+  <circle cx="92" cy="35" r="5.2" fill="white" stroke="#10b981" stroke-width="1.2"/>
   <path d="M36 100 L64 47" fill="none" stroke="url(#left)" stroke-width="16" stroke-linecap="round"/>
   <path d="M64 47 L92 100" fill="none" stroke="url(#right)" stroke-width="16" stroke-linecap="round"/>
   <path d="M28 82 H54 L58 86 L64 71 L71 91 L76 82 H100"
-        fill="none" stroke="#a5f3fc" opacity=".45" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+        fill="none" stroke="#a8f6da" opacity=".45" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M28 82 H54 L58 86 L64 71 L71 91 L76 82 H100"
         fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
