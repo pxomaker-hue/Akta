@@ -54,7 +54,7 @@ function FocusHistory({ sessions, onDelete }: FocusHistoryProps) {
   if (sessions.length === 0) {
     return (
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-gray-200/50 dark:border-slate-700/50 p-6 text-center py-12">
-        <p className="text-gray-600 dark:text-gray-400">{t('focusHistory.empty', "Aucune session focus pour le moment. Démarre une session pour voir l'historique.")}</p>
+        <p className="text-gray-600 dark:text-slate-400">{t('focusHistory.empty', "Aucune session focus pour le moment. Démarre une session pour voir l'historique.")}</p>
       </div>
     )
   }
@@ -74,12 +74,12 @@ function FocusHistory({ sessions, onDelete }: FocusHistoryProps) {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
             <tr>
-              <th className="text-left py-3 px-6 font-semibold text-gray-700 dark:text-gray-300">{t('focusHistory.startTime', 'Heure de début')}</th>
-              <th className="text-left py-3 px-6 font-semibold text-gray-700 dark:text-gray-300">{t('focusHistory.duration', 'Durée')}</th>
-              <th className="text-left py-3 px-6 font-semibold text-gray-700 dark:text-gray-300">{t('focusHistory.planned', 'Prévue')}</th>
-              <th className="text-center py-3 px-6 font-semibold text-gray-700 dark:text-gray-300">{t('focusHistory.status', 'Statut')}</th>
-              <th className="text-left py-3 px-6 font-semibold text-gray-700 dark:text-gray-300">{t('focusHistory.blockedApps', 'Apps bloquées')}</th>
-              <th className="text-right py-3 px-6 font-semibold text-gray-700 dark:text-gray-300"></th>
+              <th className="text-left py-3 px-6 font-semibold text-gray-700 dark:text-slate-300">{t('focusHistory.startTime', 'Heure de début')}</th>
+              <th className="text-left py-3 px-6 font-semibold text-gray-700 dark:text-slate-300">{t('focusHistory.duration', 'Durée')}</th>
+              <th className="text-left py-3 px-6 font-semibold text-gray-700 dark:text-slate-300">{t('focusHistory.planned', 'Prévue')}</th>
+              <th className="text-center py-3 px-6 font-semibold text-gray-700 dark:text-slate-300">{t('focusHistory.status', 'Statut')}</th>
+              <th className="text-left py-3 px-6 font-semibold text-gray-700 dark:text-slate-300">{t('focusHistory.blockedApps', 'Apps bloquées')}</th>
+              <th className="text-right py-3 px-6 font-semibold text-gray-700 dark:text-slate-300"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
@@ -94,7 +94,7 @@ function FocusHistory({ sessions, onDelete }: FocusHistoryProps) {
                   <td className="py-3 px-6 text-gray-900 dark:text-white">
                     {actualDuration > 0 ? formatDuration(actualDuration) : t('focusHistory.inProgress', 'En cours')}
                   </td>
-                  <td className="py-3 px-6 text-gray-600 dark:text-gray-400">{formatDuration(session.planned_duration)}</td>
+                  <td className="py-3 px-6 text-gray-600 dark:text-slate-400">{formatDuration(session.planned_duration)}</td>
                   <td className="py-3 px-6 text-center">
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -120,10 +120,10 @@ function FocusHistory({ sessions, onDelete }: FocusHistoryProps) {
                             {app}
                           </span>
                         ))}
-                        {blockedApps.length > 2 && <span className="text-xs text-gray-500 dark:text-gray-400 px-2 py-1">+{blockedApps.length - 2}</span>}
+                        {blockedApps.length > 2 && <span className="text-xs text-gray-500 dark:text-slate-400 px-2 py-1">+{blockedApps.length - 2}</span>}
                       </div>
                     ) : (
-                      <span className="text-gray-500 dark:text-gray-400">—</span>
+                      <span className="text-gray-500 dark:text-slate-400">—</span>
                     )}
                   </td>
                   <td className="py-3 px-6 text-right">

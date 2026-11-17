@@ -91,19 +91,19 @@ function TagManager({ onTagsLoaded }: TagManagerProps) {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('categoryList.name', 'Nom')}</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">{t('categoryList.name', 'Nom')}</label>
             <input
               type="text"
               value={newTagName}
               onChange={(e) => setNewTagName(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && createTag()}
               placeholder={t('tagManager.namePlaceholder', 'Entrer le nom du tag...')} aria-label={t('tagManager.namePlaceholder', 'Entrer le nom du tag...')}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('categoryForm.colorLabel', 'Couleur')}</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">{t('categoryForm.colorLabel', 'Couleur')}</label>
             <div className="flex gap-2 flex-wrap">
               {colors.map((color) => (
                 <button
@@ -135,7 +135,7 @@ function TagManager({ onTagsLoaded }: TagManagerProps) {
         </h3>
 
         {tags.length === 0 ? (
-          <p className="text-center text-gray-500 dark:text-gray-400 py-8">{t('tagManager.noTag', 'Aucun tag créé')}</p>
+          <p className="text-center text-gray-500 dark:text-slate-400 py-8">{t('tagManager.noTag', 'Aucun tag créé')}</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {tags.map((tag) => (

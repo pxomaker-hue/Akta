@@ -326,7 +326,7 @@ function SessionsList() {
                     </span>
                   )}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-gray-500 dark:text-slate-400">
                   {session.label ? `${formatSessionTime(session.start_time)}${!isOpen && session.end_time ? ` → ${formatTime(session.end_time)}` : ` (${t('sessionsList.inProgress', 'en cours')})`} • ` : ''}
                   {formatDuration(durationSeconds)}
                 </p>
@@ -455,7 +455,7 @@ function SessionsList() {
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-500"></div>
               </div>
             ) : breakdown.length === 0 && pauses.length === 0 ? (
-              <p className="text-xs text-gray-500 dark:text-gray-400 py-2">{t('sessionsList.noActivityInSession', 'Aucune activité enregistrée pendant cette session.')}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400 py-2">{t('sessionsList.noActivityInSession', 'Aucune activité enregistrée pendant cette session.')}</p>
             ) : (
               <div className="space-y-1.5">
                 {breakdown.map((app) => (
@@ -523,7 +523,7 @@ function SessionsList() {
           <ManualSessionForm projects={projects} onCancel={() => setShowManualForm(false)} onCreated={() => { setShowManualForm(false); loadSessions() }} />
         ) : (
           <div className="py-4 text-center space-y-3">
-            <p className="text-sm text-gray-500 dark:text-gray-400">{t('sessionsList.noneRecorded', 'Aucune session enregistrée pour le moment.')}</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400">{t('sessionsList.noneRecorded', 'Aucune session enregistrée pour le moment.')}</p>
             {addTimeButton}
           </div>
         )}
@@ -656,7 +656,7 @@ function SessionsList() {
       )}
 
       {filteredSessions.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">{t('sessionsList.noMatch', 'Aucune session ne correspond à ce filtre.')}</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400 py-4 text-center">{t('sessionsList.noMatch', 'Aucune session ne correspond à ce filtre.')}</p>
       ) : (
         <div className="space-y-4">
           {todaysSessions.length > 0 && (

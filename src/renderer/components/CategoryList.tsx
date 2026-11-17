@@ -146,7 +146,7 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
             {editingId === category.id ? (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{t('categoryList.name', 'Nom')}</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">{t('categoryList.name', 'Nom')}</label>
                   <input
                     type="text"
                     aria-label={t('categoryList.name', 'Nom')}
@@ -158,7 +158,7 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">{t('categoryForm.colorLabel', 'Couleur')}</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-2">{t('categoryForm.colorLabel', 'Couleur')}</label>
                   <div className="flex gap-2 flex-wrap">
                     {PREDEFINED_COLORS.map((c) => (
                       <button
@@ -182,7 +182,7 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
                     className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                     disabled={isSaving}
                   />
-                  <label htmlFor={`billable-${category.id}`} className="text-sm text-gray-700 dark:text-gray-300">
+                  <label htmlFor={`billable-${category.id}`} className="text-sm text-gray-700 dark:text-slate-300">
                     {t('categoryList.billableDefault', 'Facturable par défaut')}
                   </label>
                 </div>
@@ -196,13 +196,13 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
                     className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-2 focus:ring-red-500 cursor-pointer"
                     disabled={isSaving}
                   />
-                  <label htmlFor={`distraction-${category.id}`} className="text-sm text-gray-700 dark:text-gray-300">
+                  <label htmlFor={`distraction-${category.id}`} className="text-sm text-gray-700 dark:text-slate-300">
                     {t('categoryList.distractionShort', 'Distraction — jamais facturable')}
                   </label>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">{t('categoryForm.keywordsLabel', 'Mots-clés (auto-catégorisation)')}</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-2">{t('categoryForm.keywordsLabel', 'Mots-clés (auto-catégorisation)')}</label>
                   <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
                       <input
@@ -309,7 +309,7 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
                     {[...new Set(category.match_rules.map((rule) => rule.keyword))].map((keyword) => (
                       <span
                         key={keyword}
-                        className="text-xs bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full"
+                        className="text-xs bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 px-2 py-0.5 rounded-full"
                       >
                         {keyword}
                       </span>

@@ -76,7 +76,7 @@ function Mascot({ mood, size = 64, message, background = 'gray' }: MascotProps) 
         ) : null}
       </div>
 
-      {message && <p className="text-xs text-gray-600 dark:text-gray-400 text-center max-w-[140px] font-medium">{message}</p>}
+      {message && <p className="text-xs text-gray-600 dark:text-slate-400 text-center max-w-[140px] font-medium">{message}</p>}
     </div>
   )
 }

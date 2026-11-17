@@ -488,7 +488,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
 
       {/* Liste */}
       {visibleProjects.length === 0 ? (
-        <p className="text-center text-gray-500 dark:text-gray-400 py-4 text-sm">
+        <p className="text-center text-gray-500 dark:text-slate-400 py-4 text-sm">
           {showArchived ? t('projectManager.noProject', 'Aucun projet') : t('projectManager.noActiveProject', 'Aucun projet actif')}
         </p>
       ) : (
@@ -622,7 +622,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                               </span>
                             )}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          <p className="text-xs text-gray-500 dark:text-slate-400 truncate">
                             {project.client_name || t('projectManager.noClient', 'Aucun client')}
                             {project.hourly_rate ? ` • ${project.hourly_rate} €/h` : ''}
                           </p>
@@ -655,7 +655,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                     {/* Facturation estimée */}
                     {stats && (stats.monthSeconds > 0 || stats.totalSeconds > 0) && (
                       <div className="mt-2.5 pt-2.5 border-t border-gray-200/50 dark:border-slate-700/50 flex items-center justify-between text-xs">
-                        <span className="text-gray-500 dark:text-gray-400">
+                        <span className="text-gray-500 dark:text-slate-400">
                           {tf(t('projectManager.hoursThisMonth', '{{h}}h ce mois'), { h: formatHoursDecimal(stats.monthSeconds) })}
                           {formatAmount(stats.monthSeconds, project.hourly_rate) && ` ≈ ${formatAmount(stats.monthSeconds, project.hourly_rate)} €`}
                         </span>
@@ -678,7 +678,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-500"></div>
                           </div>
                         ) : projectSessions.length === 0 ? (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 py-1">{t('projectManager.noSessionForProject', 'Aucune session rattachée à ce projet.')}</p>
+                          <p className="text-xs text-gray-500 dark:text-slate-400 py-1">{t('projectManager.noSessionForProject', 'Aucune session rattachée à ce projet.')}</p>
                         ) : (
                           projectSessions.map((session) => (
                             <div key={session.id} className="flex items-center justify-between text-xs">
@@ -700,7 +700,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                     {/* Objectif d'heures */}
                     {goalProgress !== null && (
                       <div className="mt-2">
-                        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+                        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-400 mb-1">
                           <span>{tf(t('projectManager.goalProgress', 'Objectif : {{current}}h / {{goal}}h ce mois'), { current: monthHours.toFixed(1), goal: project.hour_goal ?? 0 })}</span>
                           <span>{Math.round(goalProgress)}%</span>
                         </div>
@@ -718,7 +718,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                       <div className="mt-2">
                         <div
                           className={`flex items-center justify-between text-xs mb-1 ${
-                            budgetHoursOver ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-gray-400'
+                            budgetHoursOver ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-slate-400'
                           }`}
                         >
                           <span>
@@ -739,7 +739,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                       <div className="mt-2">
                         <div
                           className={`flex items-center justify-between text-xs mb-1 ${
-                            budgetAmountOver ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-gray-400'
+                            budgetAmountOver ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-slate-400'
                           }`}
                         >
                           <span>
@@ -766,7 +766,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                           </div>
                         ) : (
                           <>
-                            {phases.length === 0 && <p className="text-xs text-gray-500 dark:text-gray-400 py-1">{t('projectManager.noPhaseForProject', 'Aucune phase pour ce projet.')}</p>}
+                            {phases.length === 0 && <p className="text-xs text-gray-500 dark:text-slate-400 py-1">{t('projectManager.noPhaseForProject', 'Aucune phase pour ce projet.')}</p>}
                             {phases.map((phase) =>
                               editingPhaseId === phase.id ? (
                                 <div key={phase.id} className="space-y-1.5">
@@ -843,7 +843,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                   </button>
                                   <button aria-label={t('projectManager.cancel', 'Annuler')}
                                     onClick={() => setEditingPhaseId(null)}
-                                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
+                                    className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 flex-shrink-0"
                                     title={t('projectManager.cancel', 'Annuler')}
                                   >
                                     <Icon name="x" size={13} />
@@ -909,7 +909,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                         <div className="mt-1.5">
                                           <div
                                             className={`flex items-center justify-between text-xs mb-0.5 ${
-                                              phaseBudgetHoursOver ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-gray-400'
+                                              phaseBudgetHoursOver ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-slate-400'
                                             }`}
                                           >
                                             <span>
@@ -933,7 +933,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                         <div className="mt-1.5">
                                           <div
                                             className={`flex items-center justify-between text-xs mb-0.5 ${
-                                              phaseBudgetAmountOver ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-gray-400'
+                                              phaseBudgetAmountOver ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-slate-400'
                                             }`}
                                           >
                                             <span>
@@ -1061,7 +1061,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
       {archivedCount > 0 && (
         <button
           onClick={() => setShowArchived(!showArchived)}
-          className="w-full mt-3 text-xs text-gray-500 dark:text-gray-400 hover:accent-text transition-colors"
+          className="w-full mt-3 text-xs text-gray-500 dark:text-slate-400 hover:accent-text transition-colors"
         >
           {tf(
             archivedCount === 1

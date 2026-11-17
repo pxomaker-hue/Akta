@@ -28,6 +28,13 @@ export const DESIGN = {
     info: '#06b6d4',
   },
 
+  // Code couleur Professionnel / Personnel / Non classé, identique partout (graphiques, filtres)
+  billing: {
+    professional: 'var(--accent-secondary, #06b6d4)',
+    personal: 'var(--accent-primary, #6366f1)',
+    unclassified: '#94a3b8',
+  },
+
   // Catégories avec couleurs + icônes
   categories: {
     développement: {

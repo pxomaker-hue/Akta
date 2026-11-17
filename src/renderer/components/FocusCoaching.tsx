@@ -79,10 +79,10 @@ function FocusCoaching() {
 
   const getQualityIcon = () => {
     switch (analysis.focusQuality) {
-      case 'excellent': return '✨'
-      case 'good': return '👍'
-      case 'fair': return '⚡'
-      case 'poor': return '📉'
+      case 'excellent': return 'sparkles' as const
+      case 'good': return 'check' as const
+      case 'fair': return 'activity' as const
+      case 'poor': return 'alert' as const
     }
   }
 
@@ -123,7 +123,7 @@ function FocusCoaching() {
       <CardHeader
         title={t('focusCoaching.title', 'Focus Coaching')}
         icon={<Icon name="activity" size={16} />}
-        subtitle={mode === 'tdah' ? t('focusCoaching.tdahSubtitle', '🧠 Mode TDAH (optimisé pour les cycles courts)') : t('focusCoaching.standardSubtitle', '⏱️ Mode Standard (Pomodoro classique)')}
+        subtitle={mode === 'tdah' ? t('focusCoaching.tdahSubtitle', 'Mode TDAH (optimisé pour les cycles courts)') : t('focusCoaching.standardSubtitle', '⏱ Mode Standard (Pomodoro classique)')}
       />
 
       <div className="space-y-4">
@@ -132,7 +132,7 @@ function FocusCoaching() {
           <div className="flex items-start justify-between mb-3">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-2xl">{getQualityIcon()}</span>
+                <Icon name={getQualityIcon()} size={20} className={getQualityColor()} />
                 <span className="text-sm font-medium text-gray-600 dark:text-slate-400">{t('focusCoaching.deepWorkScore', 'Deep Work Score')}</span>
               </div>
               <div className={`text-3xl font-bold ${getQualityColor()}`}>
@@ -141,7 +141,7 @@ function FocusCoaching() {
             </div>
             <div className="text-right">
               <div className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
-                {analysis.streakDays > 0 ? '🔥' : '⭐'} {tf(t('focusCoaching.streakDays', '{{n}} jours'), { n: analysis.streakDays })}
+                <Icon name={analysis.streakDays > 0 ? 'flame' : 'star'} size={14} className="inline-block align-[-2px] mr-1 text-orange-500" />{tf(t('focusCoaching.streakDays', '{{n}} jours'), { n: analysis.streakDays })}
               </div>
               <div className="text-xs text-gray-500 dark:text-slate-400">
                 {tf(t('focusCoaching.completionRate', '{{pct}}% complétées'), { pct: analysis.completionRate.toFixed(0) })}
@@ -229,7 +229,7 @@ function FocusCoaching() {
         {mode === 'tdah' && recommendations.length > 0 && (
           <div className="rounded-lg border border-gray-200 dark:border-slate-700 p-4">
             <div className="text-xs font-semibold text-gray-600 dark:text-slate-400 mb-3 uppercase tracking-wide">
-              {t('focusCoaching.recommendations', '💡 Recommandations')}
+              {t('focusCoaching.recommendations', 'Recommandations')}
             </div>
             <div className={`space-y-2.5 ${recommendations.length > 4 ? 'max-h-80 overflow-y-auto' : ''}`}>
               {recommendations.map((rec, idx) => (
@@ -303,7 +303,7 @@ function FocusCoaching() {
 
             {pattern.peakHour !== null && (
               <div className="rounded-lg bg-indigo-50 dark:bg-indigo-950/20 px-3 py-2 text-xs text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/50">
-                <span className="font-medium">{t('focusCoaching.insightLabel', '💡 Insight:')}</span>{' '}
+                <span className="font-medium">{t('focusCoaching.insightLabel', 'Insight:')}</span>{' '}
                 {t('focusCoaching.insightPrefix', 'Tu es le plus productif vers')} <span className="font-semibold">{pattern.peakHour}h</span>.{' '}
                 {t('focusCoaching.insightSuffix', 'Bloque ce créneau pour du travail profond.')}
               </div>

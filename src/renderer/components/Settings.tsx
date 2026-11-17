@@ -26,7 +26,7 @@ interface SettingsProps {
 function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
   const [settings, setSettings] = useState<SettingsState | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'settings' | 'inactivity' | 'backup'>('settings')
+  const [tab, setTab] = useState<'general' | 'focus' | 'inactivity' | 'backup'>('general')
   const [isDeletingAll, setIsDeletingAll] = useState(false)
   const [deleteAllResult, setDeleteAllResult] = useState<number | null>(null)
   const [launchAtStartup, setLaunchAtStartup] = useState(false)
@@ -120,7 +120,8 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
       <div className="border-b border-gray-200 dark:border-slate-700">
         <SlidingTabs
           tabs={[
-            { id: 'settings' as const, label: t('tabs.settings'), icon: <Icon name="settings" size={16} /> },
+            { id: 'general' as const, label: t('settings.generalTab', 'Général'), icon: <Icon name="settings" size={16} /> },
+            { id: 'focus' as const, label: t('settings.focusTab', 'Notifications & Focus'), icon: <Icon name="bell" size={16} /> },
             { id: 'inactivity' as const, label: t('settings.inactivityTab', 'Inactivité'), icon: <Icon name="clock" size={16} /> },
             { id: 'backup' as const, label: t('settings.backupTab', 'Sauvegarde'), icon: <Icon name="save" size={16} /> },
           ]}
@@ -129,7 +130,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
         />
       </div>
 
-      {tab === 'settings' && (
+      {tab === 'general' && (
         <>
           {/* Affichage */}
       <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
@@ -140,7 +141,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
           <div className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
             <div>
               <p className="font-medium text-gray-900 dark:text-white">{t('settings.theme')}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.light')} / {t('settings.dark')}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">{t('settings.light')} / {t('settings.dark')} / {t('settings.auto')}</p>
             </div>
             <Dropdown
               value={settings.theme}
@@ -158,7 +159,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
           <div className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
             <div>
               <p className="font-medium text-gray-900 dark:text-white">{t('settings.language')}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.french')} / {t('settings.english')} / {t('settings.german')}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">{t('settings.french')} / {t('settings.english')} / {t('settings.german')}</p>
             </div>
             <Dropdown
               value={settings.language}
@@ -180,7 +181,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
           <Icon name="palette" size={18} className="accent-text" />
           {t('settings.accentColor', "Couleur d'accent")}
         </h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{t('settings.accentColorHint', "Personnalise la teinte principale utilisée dans toute l'application.")}</p>
+        <p className="text-xs text-gray-500 dark:text-slate-400 mb-4">{t('settings.accentColorHint', "Personnalise la teinte principale utilisée dans toute l'application.")}</p>
         <div className="flex gap-3 flex-wrap">
           {presets.map((preset) => (
             <button
@@ -193,24 +194,6 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
               style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }}
             />
           ))}
-        </div>
-      </div>
-
-      {/* Raccourcis clavier globaux */}
-      <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
-        <h3 className="text-lg font-bold accent-gradient-text mb-1">{t('settings.globalShortcuts', 'Raccourcis clavier globaux')}</h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-          {t('settings.globalShortcutsHint', "Fonctionnent même si Akta n'est pas au premier plan (réduit dans le tray).")}
-        </p>
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
-            <span className="text-gray-700 dark:text-slate-300">{t('settings.shortcutStartPauseResume', 'Démarrer / Mettre en pause / Reprendre')}</span>
-            <kbd className="px-2 py-1 text-xs font-mono rounded bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200">Alt+Shift+S</kbd>
-          </div>
-          <div className="flex items-center justify-between text-sm p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
-            <span className="text-gray-700 dark:text-slate-300">{t('settings.shortcutStop', 'Arrêter la session')}</span>
-            <kbd className="px-2 py-1 text-xs font-mono rounded bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200">Alt+Shift+X</kbd>
-          </div>
         </div>
       </div>
 
@@ -227,7 +210,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
           />
           <div>
             <p className="font-medium text-gray-900 dark:text-white">{t('settings.launchAtStartup', 'Lancer Akta au démarrage de Windows')}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.launchAtStartupHint', "L'application démarre automatiquement (réduite dans le tray) à l'ouverture de session.")}</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400">{t('settings.launchAtStartupHint', "L'application démarre automatiquement (réduite dans le tray) à l'ouverture de session.")}</p>
           </div>
         </label>
 
@@ -239,7 +222,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
             <Icon name="refresh" size={16} className="text-gray-400 flex-shrink-0" />
             <div>
               <p className="font-medium text-gray-900 dark:text-white">{t('settings.replayOnboarding', "Revoir l'introduction")}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.replayOnboardingHint', 'Reparcourt la présentation des fonctionnalités affichée au premier lancement.')}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">{t('settings.replayOnboardingHint', 'Reparcourt la présentation des fonctionnalités affichée au premier lancement.')}</p>
             </div>
           </button>
         )}
@@ -248,7 +231,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
       {/* Fermeture */}
       <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
         <h3 className="text-lg font-bold accent-gradient-text mb-4">{t('settings.closeSection', "Fermeture de l'application")}</h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 -mt-2">
+        <p className="text-xs text-gray-500 dark:text-slate-400 mb-3 -mt-2">
           {t('settings.closeSectionHint', 'Comportement du bouton de fermeture de la fenêtre. Si tu as coché "Se souvenir de mon choix" dans la modale, change-le ici.')}
         </p>
         <div className="space-y-1">
@@ -282,6 +265,40 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
         </div>
       </div>
 
+      <UpdateSettings />
+
+      {/* À propos */}
+      <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700 text-center">
+        <p className="text-sm text-gray-600 dark:text-slate-400">
+          <strong>{t('settings.version')}</strong> • {t('settings.description')}
+        </p>
+        <p className="text-xs text-gray-500 dark:text-slate-500 mt-2">
+          {t('settings.autosave')}
+        </p>
+      </div>
+        </>
+      )}
+
+      {tab === 'focus' && (
+        <>
+      {/* Raccourcis clavier globaux */}
+      <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
+        <h3 className="text-lg font-bold accent-gradient-text mb-1">{t('settings.globalShortcuts', 'Raccourcis clavier globaux')}</h3>
+        <p className="text-xs text-gray-500 dark:text-slate-400 mb-4">
+          {t('settings.globalShortcutsHint', "Fonctionnent même si Akta n'est pas au premier plan (réduit dans le tray).")}
+        </p>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+            <span className="text-gray-700 dark:text-slate-300">{t('settings.shortcutStartPauseResume', 'Démarrer / Mettre en pause / Reprendre')}</span>
+            <kbd className="px-2 py-1 text-xs font-mono rounded bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200">Alt+Shift+S</kbd>
+          </div>
+          <div className="flex items-center justify-between text-sm p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+            <span className="text-gray-700 dark:text-slate-300">{t('settings.shortcutStop', 'Arrêter la session')}</span>
+            <kbd className="px-2 py-1 text-xs font-mono rounded bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200">Alt+Shift+X</kbd>
+          </div>
+        </div>
+      </div>
+
       {/* Notifications */}
       <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
         <h3 className="text-lg font-bold accent-gradient-text mb-4">{t('settings.notifications')}</h3>
@@ -297,7 +314,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
             />
             <div>
               <p className="font-medium text-gray-900 dark:text-white">{t('settings.deepwork')}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.deepwork.desc')}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">{t('settings.deepwork.desc')}</p>
             </div>
           </label>
 
@@ -311,7 +328,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
             />
             <div>
               <p className="font-medium text-gray-900 dark:text-white">{t('settings.distraction')}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.distraction.desc')}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">{t('settings.distraction.desc')}</p>
             </div>
           </label>
 
@@ -325,7 +342,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
             />
             <div>
               <p className="font-medium text-gray-900 dark:text-white">{t('settings.reminders', 'Rappels projets')}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.reminders.desc', 'Sessions sans projet, budgets dépassés et échéances (une fois par jour)')}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">{t('settings.reminders.desc', 'Sessions sans projet, budgets dépassés et échéances (une fois par jour)')}</p>
             </div>
           </label>
         </div>
@@ -333,7 +350,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
 
       {/* Focus Coaching Mode */}
       <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
-        <h3 className="text-lg font-bold accent-gradient-text mb-4">🧠 {t('focusCoaching.title', 'Focus Coaching')}</h3>
+        <h3 className="text-lg font-bold accent-gradient-text mb-4">{t('focusCoaching.title', 'Focus Coaching')}</h3>
 
         <div className="space-y-3">
           <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer">
@@ -345,7 +362,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
             />
             <div className="flex-1">
               <p className="font-medium text-gray-900 dark:text-white">{t('settings.tdahMode', 'Mode TDAH')}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.tdahModeDesc', 'Micro-cycles de 15-20 min, streaks, gamification, notifications encourageantes')}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">{t('settings.tdahModeDesc', 'Micro-cycles de 15-20 min, streaks, gamification, notifications encourageantes')}</p>
             </div>
           </label>
 
@@ -358,12 +375,56 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
             />
             <div className="flex-1">
               <p className="font-medium text-gray-900 dark:text-white">{t('settings.standardMode', 'Mode Standard')}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.standardModeDesc', 'Pomodoro classique (25/45 min), recommandations simples et discrètes')}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">{t('settings.standardModeDesc', 'Pomodoro classique (25/45 min), recommandations simples et discrètes')}</p>
             </div>
           </label>
         </div>
       </div>
 
+        </>
+      )}
+
+      {tab === 'inactivity' && (
+        <div className="space-y-6">
+          {/* Détection d'inactivité */}
+          <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
+            <h3 className="text-lg font-bold accent-gradient-text mb-4">{t('settings.tracking')}</h3>
+
+            <div className="p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white">{t('settings.idle')}</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400">{t('settings.idle.desc')}</p>
+                </div>
+                <span className="text-sm font-bold accent-text">{settings.idle_timeout}s</span>
+              </div>
+              <input
+                type="range"
+                aria-label={t('settings.idle')}
+                min="60"
+                max="600"
+                step="30"
+                value={settings.idle_timeout}
+                onChange={(e) => updateSetting('idle_timeout', e.target.value)}
+                className="w-full h-2 bg-gray-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-[var(--accent-primary)]"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400 mt-1">
+                <span>{tf(t('settings.minutesShort', '{{n}} min'), { n: 1 })}</span>
+                <span>{tf(t('settings.minutesShort', '{{n}} min'), { n: 10 })}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Exclusions d'inactivité */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md p-6 border border-gray-200/50 dark:border-slate-700/50">
+            <InactivityExclusionsManager />
+          </div>
+        </div>
+      )}
+
+      {tab === 'backup' && (
+        <>
+          <BackupRestore />
       <SyncSettings />
 
       {/* Zone de danger */}
@@ -372,7 +433,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
           <Icon name="alert" size={18} />
           {t('settings.dangerZone', 'Zone de danger')}
         </h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+        <p className="text-xs text-gray-500 dark:text-slate-400 mb-4">
           {t('settings.dangerZoneHint', 'Supprime définitivement toutes les activités enregistrées, depuis le tout début du suivi. Les catégories, tags et paramètres sont conservés.')}
         </p>
         <button
@@ -397,59 +458,8 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
         )}
       </div>
 
-      <UpdateSettings />
-
-      {/* À propos */}
-      <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700 text-center">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          <strong>{t('settings.version')}</strong> • {t('settings.description')}
-        </p>
-        <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-          {t('settings.autosave')}
-        </p>
-      </div>
         </>
       )}
-
-      {tab === 'inactivity' && (
-        <div className="space-y-6">
-          {/* Détection d'inactivité */}
-          <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
-            <h3 className="text-lg font-bold accent-gradient-text mb-4">{t('settings.tracking')}</h3>
-
-            <div className="p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-white">{t('settings.idle')}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.idle.desc')}</p>
-                </div>
-                <span className="text-sm font-bold accent-text">{settings.idle_timeout}s</span>
-              </div>
-              <input
-                type="range"
-                aria-label={t('settings.idle')}
-                min="60"
-                max="600"
-                step="30"
-                value={settings.idle_timeout}
-                onChange={(e) => updateSetting('idle_timeout', e.target.value)}
-                className="w-full h-2 bg-gray-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-[var(--accent-primary)]"
-              />
-              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-                <span>{tf(t('settings.minutesShort', '{{n}} min'), { n: 1 })}</span>
-                <span>{tf(t('settings.minutesShort', '{{n}} min'), { n: 10 })}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Exclusions d'inactivité */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md p-6 border border-gray-200/50 dark:border-slate-700/50">
-            <InactivityExclusionsManager />
-          </div>
-        </div>
-      )}
-
-      {tab === 'backup' && <BackupRestore />}
     </div>
   )
 }

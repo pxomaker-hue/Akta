@@ -219,7 +219,7 @@ function Reports({ categories }: ReportsProps) {
             <YAxis {...chart.axis} label={{ value: t('reports.hoursAxis', 'Heures'), angle: -90, position: 'insideLeft' }} />
             <Tooltip
               {...chart.tooltip}
-              formatter={(value) => `${value}h`}
+              formatter={(value: number) => [formatDuration(Math.round(value * 3600)), t('common.duration', 'Durée')]}
             />
             <Bar dataKey="hours" fill="var(--accent-primary)" radius={[8, 8, 0, 0]} />
           </BarChart>
@@ -232,13 +232,13 @@ function Reports({ categories }: ReportsProps) {
           <CardHeader title={t('reports.topCategoriesWeek', 'Top catégories de la semaine')} icon={<Icon name="trophy" size={18} />} />
           <div className="space-y-3">
             {topCategories.map((cat, idx) => (
-              <div key={cat.name} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+              <div key={cat.name} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${cat.color}20` }}>
                   <CategoryIcon categoryName={cat.name} size={16} color={cat.color} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 dark:text-white">{cat.name}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{tf(t('reports.categoryRank', '#{{n}} catégorie'), { n: idx + 1 })}</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{tf(t('reports.categoryRank', '#{{n}} catégorie'), { n: idx + 1 })}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-sm font-bold text-gray-900 dark:text-white">{formatDuration(cat.seconds)}</p>
@@ -258,7 +258,7 @@ function Reports({ categories }: ReportsProps) {
               const share = projectBreakdown[0].seconds > 0 ? (proj.seconds / projectBreakdown[0].seconds) * 100 : 0
               const amount = proj.hourly_rate ? ((proj.seconds / 3600) * proj.hourly_rate).toFixed(2) : null
               return (
-                <div key={proj.project_id} className="p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                <div key={proj.project_id} className="p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
                   <div className="flex items-center justify-between gap-3 mb-1.5">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: proj.color }} />
@@ -282,7 +282,7 @@ function Reports({ categories }: ReportsProps) {
       {thisWeek.length === 0 && (
         <Card>
           <div className="text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400">{t('reports.notEnoughData', 'Pas encore assez de données pour générer un rapport.')}</p>
+            <p className="text-gray-500 dark:text-slate-400">{t('reports.notEnoughData', 'Pas encore assez de données pour générer un rapport.')}</p>
           </div>
         </Card>
       )}

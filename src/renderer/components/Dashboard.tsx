@@ -134,8 +134,8 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
     })
 
     return [
-      { name: t('dashboard.billable', 'Facturable'), value: Math.round(billableSeconds / 3600), color: DESIGN.colors.secondary },
-      { name: t('dashboard.personal', 'Personnel'), value: Math.round(personalSeconds / 3600), color: DESIGN.colors.primary },
+      { name: t('dashboard.billable', 'Facturable'), value: billableSeconds, color: DESIGN.billing.professional },
+      { name: t('dashboard.personal', 'Personnel'), value: personalSeconds, color: DESIGN.billing.personal },
     ]
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryStats, t])
@@ -160,7 +160,7 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
                 {formatDayLabel(dayStart, t, language)}
               </span>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+            <p className="text-sm text-gray-600 dark:text-slate-400 mt-2">
               {tf(
                 daySessions.length === 1
                   ? t('dashboard.summarySingular', "{{time}} d'activité • {{count}} activités • {{sessions}} session active")
@@ -245,7 +245,7 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
               <CartesianGrid {...chart.grid} />
               <XAxis dataKey="name" {...chart.axis} />
               <YAxis {...chart.axis} />
-              <Tooltip {...chart.tooltip} formatter={(value: number) => [`${value}h`]} />
+              <Tooltip {...chart.tooltip} formatter={(value: number) => [formatDuration(Math.round(value * 3600)), t('common.duration', 'Durée')]} />
               <Bar dataKey="hours" radius={[8, 8, 0, 0]}>
                 {barChartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
@@ -260,12 +260,12 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
           <CardHeader title={t('dashboard.billableVsPersonal', 'Facturable vs Personnel')} icon={<Icon name="chart-pie" size={18} />} />
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
-              <Pie data={billableStats} cx="50%" cy="50%" labelLine={false} label={({ name, value }) => `${name} ${value}h`} outerRadius={80} fill="#8884d8" dataKey="value">
+              <Pie data={billableStats} cx="50%" cy="50%" labelLine={false} label={({ name, value }) => `${name} ${formatDuration(value)}`} outerRadius={80} fill="#8884d8" dataKey="value">
                 {billableStats.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip {...chart.tooltip} formatter={(value) => `${value}h`} />
+              <Tooltip {...chart.tooltip} formatter={(value: number) => formatDuration(value)} />
             </PieChart>
           </ResponsiveContainer>
         </Card>
@@ -290,7 +290,7 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
                       />
                       <p className="font-medium text-gray-900 dark:text-white truncate">{stat.name}</p>
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{tf(t('dashboard.activitiesCount', '{{n}} activités'), { n: stat.count })}</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">{tf(t('dashboard.activitiesCount', '{{n}} activités'), { n: stat.count })}</p>
                   </div>
                 </div>
                 <p className="text-right font-semibold text-gray-900 dark:text-white ml-4 flex-shrink-0">{formatDuration(stat.totalSeconds)}</p>

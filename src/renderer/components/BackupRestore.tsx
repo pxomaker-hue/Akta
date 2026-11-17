@@ -101,7 +101,7 @@ function BackupRestore() {
           {t('backupRestore.createTitle', 'Créer une sauvegarde')}
         </h3>
 
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">
           {t('backupRestore.createDescription', 'Téléchargez un fichier contenant toutes vos données (activités, catégories, tags, paramètres).')}
         </p>
 
@@ -129,7 +129,7 @@ function BackupRestore() {
           {t('backupRestore.csvTitle', 'Exporter en CSV')}
         </h3>
 
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">
           {t('backupRestore.csvDescription', 'Exporte tes activités au format tableur (Excel, Google Sheets...) — pratique pour un comptable ou une analyse manuelle.')}
         </p>
 
@@ -157,7 +157,7 @@ function BackupRestore() {
           {t('backupRestore.restoreTitle', 'Restaurer une sauvegarde')}
         </h3>
 
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">
           {t('backupRestore.restoreDescription', 'Chargez un fichier de sauvegarde pour restaurer vos données. Les données existantes seront fusionnées/remplacées.')}
         </p>
 

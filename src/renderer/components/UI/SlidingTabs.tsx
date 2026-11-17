@@ -21,7 +21,12 @@ function SlidingTabs<T extends string>({ tabs, activeId, onChange, className = '
   const measure = () => {
     const btn = buttonRefs.current.get(activeId)
     const container = containerRef.current
-    if (!btn || !container) return
+    if (!container) return
+    // Onglet actif hors de cette barre (ex. Mode Focus, ouvert depuis son propre bouton) : pas d'indicateur
+    if (!btn) {
+      setIndicator(null)
+      return
+    }
     const containerRect = container.getBoundingClientRect()
     const btnRect = btn.getBoundingClientRect()
     setIndicator({ left: btnRect.left - containerRect.left, width: btnRect.width })
