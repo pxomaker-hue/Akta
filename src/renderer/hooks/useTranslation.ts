@@ -92,3 +92,8 @@ export function useTranslation() {
   const language = useSyncExternalStore(subscribe, () => currentLanguage)
   return { language, t: translatorFor(language), setLanguage: applyLanguage }
 }
+
+// Remplace les {{clé}} d'un texte traduit par leurs valeurs : tf(t('x.count', '{{n}} jours'), { n: 3 })
+export function tf(text: string, values: Record<string, string | number>): string {
+  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
+}

@@ -3,8 +3,9 @@ import type { Activity, Category } from '../../shared/types'
 import { DESIGN } from '../../shared/design'
 import CategoryIcon from './CategoryIcon'
 import TagBadges from './TagBadges'
-import { Badge, Icon, Dropdown } from './UI'
+import { Badge, Icon, Dropdown, toast } from './UI'
 import { useTranslation, localeTag } from '../hooks/useTranslation'
+import { formatDuration } from '../utils/format'
 
 interface Tag {
   id: number
@@ -34,14 +35,6 @@ function ActivityListItem({ activity, categories, tags = [], allTags = [], onCat
   const formatTimeOnly = (ms: number) => new Date(ms).toLocaleTimeString(localeTag(language), { hour: '2-digit', minute: '2-digit' })
   const formatDateOnly = (ms: number) => new Date(ms).toLocaleDateString(localeTag(language), { day: '2-digit', month: '2-digit' })
 
-  const formatDuration = (seconds: number) => {
-    if (seconds < 60) return `${seconds}s`
-    const minutes = Math.floor(seconds / 60)
-    if (minutes < 60) return `${minutes}m`
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return `${hours}h ${mins}m`
-  }
 
   const selectedCategory = activity.category_id ? categories.find((c) => c.id === activity.category_id) : null
 
@@ -52,6 +45,7 @@ function ActivityListItem({ activity, categories, tags = [], allTags = [], onCat
       onCategoryChange()
     } catch (error) {
       console.error('Error updating category:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
     } finally {
       setIsUpdating(false)
     }
@@ -64,6 +58,7 @@ function ActivityListItem({ activity, categories, tags = [], allTags = [], onCat
       onCategoryChange()
     } catch (error) {
       console.error('Error deleting activity:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
       setIsUpdating(false)
     }
   }
@@ -75,6 +70,7 @@ function ActivityListItem({ activity, categories, tags = [], allTags = [], onCat
       onCategoryChange()
     } catch (error) {
       console.error('Error updating billable status:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
     } finally {
       setIsUpdating(false)
     }
@@ -128,7 +124,7 @@ function ActivityListItem({ activity, categories, tags = [], allTags = [], onCat
                   {activity.end_time && <span>→ {formatTimeOnly(activity.end_time)}</span>}
                 </>
               )}
-              <span className="ml-auto font-medium text-gray-700 dark:text-gray-200">{formatDuration(activity.duration_seconds)}</span>
+              <span className="ml-auto font-medium text-gray-700 dark:text-gray-200">{formatDuration(activity.duration_seconds, { showSeconds: true })}</span>
             </div>
 
             {/* Tags */}

@@ -1,11 +1,8 @@
 import { useEffect, useState } from 'react'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { Card, CardHeader, Stat, Icon } from './UI'
-import { useTranslation } from '../hooks/useTranslation'
-
-function tf(text: string, values: Record<string, string | number>): string {
-  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
-}
+import { useTranslation, tf } from '../hooks/useTranslation'
+import { useChartTheme } from '../hooks/useChartTheme'
 
 interface ProductivityMetrics {
   score: number
@@ -46,6 +43,7 @@ const DAY_DEFAULTS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendre
 
 function Analytics() {
   const { t } = useTranslation()
+  const chart = useChartTheme()
   const [metrics, setMetrics] = useState<ProductivityMetrics | null>(null)
   const [monthData, setMonthData] = useState<MonthData[]>([])
   const [weekData, setWeekData] = useState<WeekData[]>([])
@@ -152,16 +150,11 @@ function Analytics() {
           <CardHeader title={t('analytics.weeklyTrends', 'Tendances hebdomadaires')} icon={<Icon name="chart-line" size={18} />} />
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={weekData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.3} />
-              <XAxis dataKey="date" stroke="#9ca3af" style={{ fontSize: '12px' }} />
-              <YAxis stroke="#9ca3af" style={{ fontSize: '12px' }} />
+              <CartesianGrid {...chart.grid} />
+              <XAxis dataKey="date" {...chart.axis} />
+              <YAxis {...chart.axis} />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                  border: '1px solid #475569',
-                  borderRadius: '0.75rem',
-                  color: '#f1f5f9',
-                }}
+                {...chart.tooltip}
               />
               <Legend wrapperStyle={{ paddingTop: '12px' }} />
               <Line type="monotone" dataKey="productivity" stroke="#6366f1" strokeWidth={2} name={t('analytics.productivityPercent', 'Productivité %')} dot={false} />
@@ -178,16 +171,11 @@ function Analytics() {
             <CardHeader title={t('analytics.monthlyAnalysis', 'Analyse mensuelle')} icon={<Icon name="calendar" size={18} />} />
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={monthData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.3} />
-                <XAxis dataKey="month" stroke="#9ca3af" style={{ fontSize: '12px' }} />
-                <YAxis stroke="#9ca3af" style={{ fontSize: '12px' }} />
+                <CartesianGrid {...chart.grid} />
+                <XAxis dataKey="month" {...chart.axis} />
+                <YAxis {...chart.axis} />
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                    border: '1px solid #475569',
-                    borderRadius: '0.75rem',
-                    color: '#f1f5f9',
-                  }}
+                  {...chart.tooltip}
                 />
                 <Legend wrapperStyle={{ paddingTop: '12px' }} />
                 <Bar dataKey="totalDuration" fill="#6366f1" name={t('analytics.durationHours', 'Durée (h)')} radius={[8, 8, 0, 0]} />
@@ -258,7 +246,7 @@ function Analytics() {
                     <p className="text-lg font-bold accent-text">
                       {Math.round(time.avgDuration / 60)}min
                     </p>
-                    <p className="text-[11px] text-gray-400 dark:text-gray-500">{t('analytics.onAverage', 'en moyenne')}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">{t('analytics.onAverage', 'en moyenne')}</p>
                   </div>
                 </div>
                 <div className="w-full h-2 bg-gray-200 dark:bg-slate-700/50 rounded-full overflow-hidden">

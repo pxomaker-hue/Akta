@@ -1,11 +1,8 @@
 import { useMemo, useState, useEffect } from 'react'
 import type { WorkSession } from '../../shared/types'
 import { Icon, Stat } from './UI'
-import { useTranslation } from '../hooks/useTranslation'
-
-function tf(text: string, values: Record<string, string | number>): string {
-  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
-}
+import { useTranslation, tf } from '../hooks/useTranslation'
+import { formatDuration } from '../utils/format'
 
 interface LiveSessionStatProps {
   sessions: WorkSession[]
@@ -27,17 +24,11 @@ function LiveSessionStat({ sessions }: LiveSessionStatProps) {
     }, 0)
   }, [sessions, nowTick])
 
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    if (hours === 0) return `${minutes}m`
-    return `${hours}h ${minutes}m`
-  }
 
   return (
     <Stat
       label={t('liveSessionStat.sessionTime', 'Temps de session')}
-      value={formatTime(totalSessionSeconds)}
+      value={formatDuration(totalSessionSeconds)}
       icon={<Icon name="target" size={18} />}
       subtext={tf(
         sessions.length === 1 ? t('liveSessionStat.countSingular', '{{n}} session') : t('liveSessionStat.countPlural', '{{n}} sessions'),

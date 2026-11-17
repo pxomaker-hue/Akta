@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Icon, type IconName } from './UI'
 import { useTranslation, type Language } from '../hooks/useTranslation'
+import { useModalFocus } from '../hooks/useModalFocus'
 
 const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
   { value: 'fr', label: '🇫🇷 Français' },
@@ -128,9 +129,13 @@ function Onboarding({ onComplete }: OnboardingProps) {
     else setStep((s) => Math.min(s + 1, STEPS.length - 1))
   }
   const prev = () => setStep((s) => Math.max(s - 1, 0))
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useModalFocus(dialogRef, true)
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
+      // Entrée sur un bouton ou un champ garde son action propre (sinon double déclenchement)
+      if (e.key === 'Enter' && (e.target as HTMLElement | null)?.closest?.('button, select, input, [role="option"], [aria-haspopup]')) return
       if (e.key === 'Escape') onComplete()
       if (e.key === 'Enter' || e.key === 'ArrowRight') next()
       if (e.key === 'ArrowLeft') prev()
@@ -144,7 +149,12 @@ function Onboarding({ onComplete }: OnboardingProps) {
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       {/* Hauteur fixe (et contenu du milieu centré dedans) : sinon la fenêtre change de taille
           d'une slide à l'autre selon la longueur du texte, ce qui donne un effet de saut disgracieux. */}
-      <div className="relative w-full max-w-lg h-[560px] flex flex-col bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 p-8 animate-fade-in-scale">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="onboarding-title"
+        className="relative w-full max-w-lg h-[560px] flex flex-col bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 p-8 animate-fade-in-scale">
         <button
           onClick={onComplete}
           className="absolute top-5 right-5 text-xs text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 transition-colors"
@@ -156,7 +166,7 @@ function Onboarding({ onComplete }: OnboardingProps) {
           <div className="w-16 h-16 rounded-full accent-gradient-bg flex items-center justify-center text-white shadow-md flex-shrink-0">
             <Icon name={current.icon} size={28} />
           </div>
-          <h2 className="text-xl font-bold accent-gradient-text">{currentTitle}</h2>
+          <h2 id="onboarding-title" className="text-xl font-bold accent-gradient-text">{currentTitle}</h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed max-w-sm">{currentDescription}</p>
 
           {step === 0 && (

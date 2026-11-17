@@ -24,10 +24,11 @@ import TitleBar from './components/TitleBar'
 import AppCloseDialog from './components/AppCloseDialog'
 import { LiveSessionProvider } from './contexts/LiveSessionContext'
 import Logo from './components/Logo'
-import { SlidingTabs, Card, Icon, ConfirmDialogHost } from './components/UI'
+import { SlidingTabs, Card, Icon, ConfirmDialogHost, ToastHost } from './components/UI'
 import { useTheme } from './hooks/useTheme'
-import { useTranslation } from './hooks/useTranslation'
+import { useTranslation, tf } from './hooks/useTranslation'
 import { useAccentColor } from './hooks/useAccentColor'
+import { useChartTheme } from './hooks/useChartTheme'
 
 declare global {
   interface Window {
@@ -42,10 +43,6 @@ declare global {
 }
 
 type Tab = 'dashboard' | 'activities' | 'focus' | 'reports' | 'categories' | 'projects' | 'settings'
-
-function tf(text: string, values: Record<string, string | number>): string {
-  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
-}
 
 function App() {
   const [activities, setActivities] = useState<Activity[]>([])
@@ -63,6 +60,7 @@ function App() {
   const [isNarrowNav, setIsNarrowNav] = useState(() => window.innerWidth < 1090)
   const { theme, setTheme } = useTheme() // Initialize theme on app load
   const { t } = useTranslation() // Initialize translations
+  const chart = useChartTheme()
   const accentColor = useAccentColor() // Applique la couleur d'accent dès le démarrage (pas seulement dans Paramètres)
 
   useEffect(() => {
@@ -186,10 +184,20 @@ function App() {
     { id: 'settings', label: t('tabs.settings') },
   ]
 
+  const themeLabel = tf(t('app.themeTooltip', 'Thème : {{theme}}'), {
+    theme:
+      theme === 'light'
+        ? t('app.themeLight', 'clair')
+        : theme === 'dark'
+          ? t('app.themeDark', 'sombre')
+          : t('app.themeAuto', 'auto'),
+  })
+
   const focusButtonJsx = isFocusActive ? (
     <button
       onClick={() => setActiveTab('focus')}
       title={t('app.focusSessionActive', 'Session Mode Focus en cours — cliquer pour y accéder')}
+      aria-label={t('app.focusSessionActive', 'Session Mode Focus en cours — cliquer pour y accéder')}
       className="relative w-10 h-10 flex items-center justify-center flex-shrink-0"
     >
       <span className="absolute inset-0 rounded-full accent-gradient-bg animate-focus-glow-ring" aria-hidden="true" />
@@ -256,14 +264,8 @@ function App() {
                 setTheme(themes[nextIndex])
               }}
               className="w-10 h-10 flex items-center justify-center rounded-full text-lg bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors flex-shrink-0"
-              title={tf(t('app.themeTooltip', 'Thème : {{theme}}'), {
-                theme:
-                  theme === 'light'
-                    ? t('app.themeLight', 'clair')
-                    : theme === 'dark'
-                      ? t('app.themeDark', 'sombre')
-                      : t('app.themeAuto', 'auto'),
-              })}
+              title={themeLabel}
+              aria-label={themeLabel}
             >
               <Icon name={theme === 'light' ? 'sun' : theme === 'dark' ? 'moon' : 'sun-moon'} size={16} />
             </button>
@@ -284,7 +286,7 @@ function App() {
 
       {/* Content — seule cette zone défile, avec sa propre scrollbar (voir index.css pour son style) */}
       <div className="flex-1 overflow-y-auto">
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main key={activeTab} role="tabpanel" aria-label={tabs.find((tab) => tab.id === activeTab)?.label} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'activities' && (
           <div className="space-y-6">
             <TimelineV2
@@ -351,19 +353,8 @@ function App() {
                             <Cell fill="#9ca3af" />
                           </Pie>
                           <Tooltip
-                            contentStyle={{
-                              backgroundColor: '#fff',
-                              border: 'none',
-                              borderRadius: '6px',
-                              padding: '8px 12px',
-                              boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-                            }}
-                            formatter={(value: number, name: string, props: any) => [
-                              <span key="value" style={{ color: '#000', fontWeight: '500' }}>{tf(t('app.activitiesCount', '{{count}} activités'), { count: value })}</span>,
-                              <span key="name" style={{ color: '#666' }}>{props.payload.name}</span>
-                            ]}
-                            labelStyle={{ color: '#000' }}
-                            wrapperStyle={{ color: '#000' }}
+                            {...chart.tooltip}
+                            formatter={(value: number, name: string) => [tf(t('app.activitiesCount', '{{count}} activités'), { count: value }), name]}
                           />
                         </PieChart>
                       </ResponsiveContainer>
@@ -458,6 +449,7 @@ function App() {
       </div>
 
       <ConfirmDialogHost />
+      <ToastHost />
       <AppCloseDialog />
       {showOnboarding && <Onboarding onComplete={completeOnboarding} />}
     </div>

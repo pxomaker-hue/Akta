@@ -1,10 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Icon, Card, CardHeader } from './UI'
-import { useTranslation } from '../hooks/useTranslation'
-
-function tf(text: string, values: Record<string, string | number>): string {
-  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
-}
+import { useTranslation, tf } from '../hooks/useTranslation'
 
 interface FocusCoachingData {
   analysis: {
@@ -127,7 +123,7 @@ function FocusCoaching() {
       <CardHeader
         title={t('focusCoaching.title', 'Focus Coaching')}
         icon={<Icon name="activity" size={16} />}
-        subtitle={mode === 'tdah' ? t('focusCoaching.tdahSubtitle', '🧠 Mode TDAH (Optimisé courtes cycles)') : t('focusCoaching.standardSubtitle', '⏱️ Mode Standard (Pomodoro classique)')}
+        subtitle={mode === 'tdah' ? t('focusCoaching.tdahSubtitle', '🧠 Mode TDAH (optimisé pour les cycles courts)') : t('focusCoaching.standardSubtitle', '⏱️ Mode Standard (Pomodoro classique)')}
       />
 
       <div className="space-y-4">
@@ -219,7 +215,7 @@ function FocusCoaching() {
               <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
                 {Math.round(optimalCycle.duration / 60)}m
               </div>
-              <div className="text-[11px] text-indigo-600/80 dark:text-indigo-400/80 mt-0.5">
+              <div className="text-xs text-indigo-600/80 dark:text-indigo-400/80 mt-0.5">
                 {tf(t('focusCoaching.plusBreak', '+ pause de {{m}}m'), { m: Math.round(optimalCycle.breakDuration / 60) })}
               </div>
             </div>

@@ -1,15 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useTranslation } from '../hooks/useTranslation'
+import { useTranslation, tf } from '../hooks/useTranslation'
 import type { useAccentColor } from '../hooks/useAccentColor'
 import BackupRestore from './BackupRestore'
-import { Icon, SlidingTabs, Dropdown, confirmDialog } from './UI'
+import { Icon, SlidingTabs, Dropdown, confirmDialog, toast } from './UI'
 import SyncSettings from './SyncSettings'
 import UpdateSettings from './UpdateSettings'
 import InactivityExclusionsManager from './InactivityExclusionsManager'
-
-function tf(text: string, values: Record<string, string | number>): string {
-  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
-}
 
 interface SettingsState {
   theme: string
@@ -60,6 +56,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
       setLaunchAtStartup(next)
     } catch (error) {
       console.error('Error updating launch-at-startup setting:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
     } finally {
       setIsUpdatingLaunchAtStartup(false)
     }
@@ -82,6 +79,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
       setSettings((prev) => (prev ? { ...prev, [key]: value } : null))
     } catch (error) {
       console.error('Error updating setting:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
     }
   }
 
@@ -102,6 +100,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
       setDeleteAllResult(deleted)
     } catch (error) {
       console.error('Error deleting all activities:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
     } finally {
       setIsDeletingAll(false)
     }
@@ -428,6 +427,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
               </div>
               <input
                 type="range"
+                aria-label={t('settings.idle')}
                 min="60"
                 max="600"
                 step="30"

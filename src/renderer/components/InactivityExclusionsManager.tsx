@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Icon, confirmDialog, alertDialog } from './UI'
+import { Icon, confirmDialog, alertDialog, toast } from './UI'
 import { useTranslation } from '../hooks/useTranslation'
 
 interface Exclusion {
@@ -70,6 +70,7 @@ function InactivityExclusionsManager() {
       await loadExclusions()
     } catch (error) {
       console.error('Error deleting exclusion:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
       alertDialog(t('inactivityExclusions.deleteError', 'Erreur lors de la suppression'))
     }
   }
@@ -110,7 +111,7 @@ function InactivityExclusionsManager() {
               type="text"
               value={appPattern}
               onChange={(e) => setAppPattern(e.target.value)}
-              placeholder="youtube"
+              placeholder="youtube" aria-label={t('inactivityExclusions.appPatternLabel', "Pattern d'application (ex: youtube, vlc, netflix)")}
               className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 text-sm"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('inactivityExclusions.appPatternHint', "Recherche insensible à la casse sur le nom de l'app")}</p>
@@ -124,7 +125,7 @@ function InactivityExclusionsManager() {
               type="text"
               value={titlePattern}
               onChange={(e) => setTitlePattern(e.target.value)}
-              placeholder="video"
+              placeholder="video" aria-label={t('inactivityExclusions.titlePatternLabel', 'Pattern de titre de fenêtre (ex: "video")')}
               className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 text-sm"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('inactivityExclusions.titlePatternHint', 'Recherche insensible à la casse sur le titre')}</p>
@@ -138,7 +139,7 @@ function InactivityExclusionsManager() {
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder={t('inactivityExclusions.descriptionPlaceholder', 'Regarder des vidéos')}
+              placeholder={t('inactivityExclusions.descriptionPlaceholder', 'Regarder des vidéos')} aria-label={t('inactivityExclusions.descriptionPlaceholder', 'Regarder des vidéos')}
               className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 text-sm"
             />
           </div>

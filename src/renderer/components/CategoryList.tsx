@@ -1,11 +1,7 @@
 import { useState } from 'react'
 import type { Category } from '../../shared/types'
-import { Icon, confirmDialog } from './UI'
-import { useTranslation } from '../hooks/useTranslation'
-
-function tf(text: string, values: Record<string, string | number>): string {
-  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
-}
+import { Icon, confirmDialog, toast } from './UI'
+import { useTranslation, tf } from '../hooks/useTranslation'
 
 interface CategoryListProps {
   categories: Category[]
@@ -76,6 +72,7 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
       onUpdate()
     } catch (error) {
       console.error('Error saving category:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
     } finally {
       setIsSaving(false)
     }
@@ -89,6 +86,7 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
       onUpdate()
     } catch (error) {
       console.error('Error deleting category:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
     } finally {
       setIsDeleting(null)
     }
@@ -151,6 +149,7 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{t('categoryList.name', 'Nom')}</label>
                   <input
                     type="text"
+                    aria-label={t('categoryList.name', 'Nom')}
                     value={draftName}
                     onChange={(e) => setDraftName(e.target.value)}
                     className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -216,7 +215,7 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
                             handleAddKeyword()
                           }
                         }}
-                        placeholder={t('categoryForm.keywordsPlaceholder', 'ex : vscode, figma, slack')}
+                        placeholder={t('categoryForm.keywordsPlaceholder', 'ex : vscode, figma, slack')} aria-label={t('categoryForm.keywordsPlaceholder', 'ex : vscode, figma, slack')}
                         className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                         disabled={isSaving}
                       />
@@ -282,13 +281,13 @@ function CategoryList({ categories, onUpdate }: CategoryListProps) {
                     <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: category.color }} />
                     <span className="font-medium text-gray-900 dark:text-white truncate">{category.name}</span>
                     {category.is_distraction && (
-                      <span className="flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 flex-shrink-0">
+                      <span className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 flex-shrink-0">
                         <Icon name="alert" size={9} />
                         {t('liveSession.distractionOverride', 'Distraction')}
                       </span>
                     )}
                     {category.billable_default && !category.is_distraction && (
-                      <span className="flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex-shrink-0">
+                      <span className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex-shrink-0">
                         <Icon name="dollar" size={9} />
                         {t('sessionsList.billable', 'Facturable')}
                       </span>

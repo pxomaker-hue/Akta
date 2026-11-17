@@ -3,6 +3,7 @@ import type { ProjectPhase } from '../../shared/types'
 import { Icon, Dropdown } from './UI'
 import { useLiveSession } from '../contexts/LiveSessionContext'
 import { useTranslation } from '../hooks/useTranslation'
+import { formatClock } from '../utils/format'
 
 function LiveSession() {
   const { t } = useTranslation()
@@ -58,13 +59,6 @@ function LiveSession() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showCategoryPanel])
 
-  const formatDuration = (seconds: number) => {
-    const h = Math.floor(seconds / 3600)
-    const m = Math.floor((seconds % 3600) / 60)
-    const s = seconds % 60
-    if (h > 0) return `${h}h ${m.toString().padStart(2, '0')}m`
-    return `${m}:${s.toString().padStart(2, '0')}`
-  }
 
   if (!status) return null
 
@@ -83,7 +77,7 @@ function LiveSession() {
           <span className="text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">{t('liveSession.stopped', 'Suivi arrêté')}</span>
         ) : (
           <>
-            <span className="text-sm font-mono font-semibold text-gray-900 dark:text-white whitespace-nowrap">{formatDuration(elapsed)}</span>
+            <span className="text-sm font-mono font-semibold text-gray-900 dark:text-white whitespace-nowrap">{formatClock(elapsed)}</span>
             <span className="text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">
               {status.sessionState === 'paused'
                 ? t('liveSession.paused', 'en pause')

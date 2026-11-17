@@ -1,10 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Icon, confirmDialog } from './UI'
-import { useTranslation, localeTag } from '../hooks/useTranslation'
-
-function tf(text: string, values: Record<string, string | number>): string {
-  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
-}
+import { useTranslation, localeTag, tf } from '../hooks/useTranslation'
 
 function SyncSettings() {
   const { t, language } = useTranslation()

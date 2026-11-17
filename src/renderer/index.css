@@ -60,64 +60,12 @@ h1, h2, h3 {
   border-color: var(--accent-primary);
 }
 
-:root[data-theme="light"] {
-  color-scheme: light;
-}
-
-:root[data-theme="dark"] {
-  color-scheme: dark;
-}
-
-@media (prefers-color-scheme: light) {
-  :root[data-theme="auto"] {
-    color-scheme: light;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root[data-theme="auto"] {
-    color-scheme: dark;
-  }
-}
-
-/* Unified color palette for light and dark modes */
-:root {
-  /* Backgrounds */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f9fafb;
-  --bg-tertiary: #f3f4f6;
-
-  /* Text */
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
-  --text-tertiary: #9ca3af;
-
-  /* Borders */
-  --border-color: #e5e7eb;
-}
-
-:root[data-theme="dark"] {
-  /* Backgrounds */
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
-
-  /* Text */
-  --text-primary: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --text-tertiary: #94a3b8;
-
-  /* Borders */
-  --border-color: #334155;
-}
-
 body {
   @apply bg-white dark:bg-slate-950 text-gray-900 dark:text-slate-50 transition-colors duration-300;
 }
 
-/* Smooth tab transitions */
+/* Fondu à chaque changement d'onglet (le <main> porte role="tabpanel" et une key par onglet) */
 [role="tabpanel"] {
-  @apply transition-all duration-300 ease-in-out;
   animation: fadeIn 0.3s ease-in-out;
 }
 
@@ -313,4 +261,23 @@ body {
 
 .animate-focus-glow-ring {
   animation: focusGlowRing 1.8s ease-out infinite;
+}
+
+/* Windows « Afficher les animations » désactivé : on coupe les animations décoratives en boucle
+   (battement Focus, ECG, halo) et on raccourcit les transitions, sans casser les changements d'état. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Les indicateurs de chargement restent animés : figés, ils feraient croire à un blocage */
+  .animate-spin {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
+  }
 }

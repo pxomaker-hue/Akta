@@ -1,11 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Client, Project } from '../../shared/types'
-import { Icon, Card, CardHeader, confirmDialog } from './UI'
-import { useTranslation } from '../hooks/useTranslation'
-
-function tf(text: string, values: Record<string, string | number>): string {
-  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
-}
+import { Icon, Card, CardHeader, confirmDialog, toast } from './UI'
+import { useTranslation, tf } from '../hooks/useTranslation'
+import { formatHoursDecimal } from '../utils/format'
 
 interface ClientManagerProps {
   onClientsLoaded?: (clients: Client[]) => void
@@ -93,6 +90,7 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
       await loadClients()
     } catch (error) {
       console.error('Error creating client:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
     }
   }
 
@@ -103,6 +101,7 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
       await loadClients()
     } catch (error) {
       console.error('Error deleting client:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
     }
   }
 
@@ -120,6 +119,7 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
       await Promise.all([loadClients(), loadProjectsBilling()])
     } catch (error) {
       console.error('Error updating client:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
     }
   }
 
@@ -127,7 +127,6 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
     setExpandedClientId(expandedClientId === clientId ? null : clientId)
   }
 
-  const formatHours = (seconds: number) => (seconds / 3600).toFixed(1)
 
   const colors = ['#6366f1', '#06b6d4', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6']
 
@@ -153,7 +152,7 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
           value={newClientName}
           onChange={(e) => setNewClientName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && createClient()}
-          placeholder={t('clientManager.namePlaceholder', 'Nom du client')}
+          placeholder={t('clientManager.namePlaceholder', 'Nom du client')} aria-label={t('clientManager.namePlaceholder', 'Nom du client')}
           className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
         />
         <button
@@ -226,7 +225,7 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
                     <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: client.color }} />
                     <span className="text-sm font-medium text-gray-900 dark:text-white truncate">{client.name}</span>
                     {stats && stats.projects.length > 0 && (
-                      <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-slate-300 flex-shrink-0">
+                      <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-slate-300 flex-shrink-0">
                         {tf(
                           stats.projects.length === 1 ? t('clientManager.projectCountSingular', '{{n}} projet') : t('clientManager.projectCountPlural', '{{n}} projets'),
                           { n: stats.projects.length }
@@ -262,7 +261,7 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
                       className="w-full flex items-center justify-between text-xs pt-2 border-t border-gray-200/50 dark:border-slate-700/50 text-gray-500 dark:text-gray-400 hover:accent-text transition-colors"
                     >
                       <span>
-                        {tf(t('projectManager.hoursThisMonth', '{{h}}h ce mois'), { h: formatHours(stats.monthSeconds) })} • {tf(t('projectManager.hoursTotal', '{{h}}h au total'), { h: formatHours(stats.totalSeconds) })}
+                        {tf(t('projectManager.hoursThisMonth', '{{h}}h ce mois'), { h: formatHoursDecimal(stats.monthSeconds) })} • {tf(t('projectManager.hoursTotal', '{{h}}h au total'), { h: formatHoursDecimal(stats.totalSeconds) })}
                         {stats.amount > 0 && ` ≈ ${stats.amount.toFixed(2)} €`}
                       </span>
                       <Icon name={isExpanded ? 'x' : 'chart-bar'} size={11} />
@@ -279,7 +278,7 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
                                 <span className="truncate">{p.name}</span>
                               </span>
                               <span className="text-gray-500 dark:text-slate-400 flex-shrink-0 ml-2">
-                                {formatHours(p.totalSeconds)}h{p.amount > 0 && ` ≈ ${p.amount.toFixed(2)} €`}
+                                {formatHoursDecimal(p.totalSeconds)}h{p.amount > 0 && ` ≈ ${p.amount.toFixed(2)} €`}
                               </span>
                             </div>
                           ))}

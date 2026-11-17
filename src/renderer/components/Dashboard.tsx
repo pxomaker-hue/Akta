@@ -7,11 +7,9 @@ import CategoryIcon from './CategoryIcon'
 import TimelineV2, { getTodayStart, formatDayLabel } from './TimelineV2'
 import LiveSessionStat from './LiveSessionStat'
 import { Card, CardHeader, CardGrid, Stat, Icon } from './UI'
-import { useTranslation } from '../hooks/useTranslation'
-
-function tf(text: string, values: Record<string, string | number>): string {
-  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
-}
+import { useTranslation, tf } from '../hooks/useTranslation'
+import { useChartTheme } from '../hooks/useChartTheme'
+import { formatDuration } from '../utils/format'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -25,6 +23,7 @@ interface DashboardProps {
 
 function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusActive = false }: DashboardProps) {
   const { t, language } = useTranslation()
+  const chart = useChartTheme()
   // Jour affiché, partagé avec la Timeline (contrôlée par ce state) pour que les stats du dashboard
   // et le graphique restent toujours synchronisés sur la même journée.
   const [dayStart, setDayStart] = useState(() => getTodayStart())
@@ -113,12 +112,6 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
     return Array.from(stats.values()).sort((a, b) => b.totalSeconds - a.totalSeconds)
   }, [daySessions])
 
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    if (hours === 0) return `${minutes}m`
-    return `${hours}h ${minutes}m`
-  }
 
   const totalSeconds = dayActivities.reduce((sum, a) => sum + a.duration_seconds, 0)
   const categorizedSeconds = categoryStats.reduce((sum, stat) => sum + stat.totalSeconds, 0)
@@ -173,7 +166,7 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
                   ? t('dashboard.summarySingular', "{{time}} d'activité • {{count}} activités • {{sessions}} session active")
                   : t('dashboard.summaryPlural', "{{time}} d'activité • {{count}} activités • {{sessions}} sessions actives"),
                 {
-                  time: formatTime(totalSeconds),
+                  time: formatDuration(totalSeconds),
                   count: dayActivities.length,
                   sessions: daySessions.length,
                 }
@@ -216,7 +209,7 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Stat
           label={t('dashboard.totalTime', 'Temps total')}
-          value={formatTime(totalSeconds)}
+          value={formatDuration(totalSeconds)}
           icon={<Icon name="clock" size={18} />}
           gradient="from-indigo-50 to-indigo-100 dark:from-indigo-900/30 dark:to-indigo-800/20"
         />
@@ -229,7 +222,7 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
         />
         <Stat
           label={t('dashboard.billableLabel', 'Facturable')}
-          value={formatTime(billableSeconds)}
+          value={formatDuration(billableSeconds)}
           icon={<Icon name="briefcase" size={18} />}
           gradient="from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/20"
         />
@@ -249,22 +242,10 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
           <CardHeader title={t('dashboard.timeByCategory', 'Temps par catégorie')} icon={<Icon name="chart-bar" size={18} />} />
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={barChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="name" stroke="#9ca3af" style={{ fontSize: '12px' }} />
-              <YAxis stroke="#9ca3af" style={{ fontSize: '12px' }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '8px 12px'
-                }}
-                formatter={(value: number) => [
-                  <span key="value" style={{ color: '#fff', fontWeight: '500' }}>{value}h</span>
-                ]}
-                labelStyle={{ color: '#fff', fontWeight: 'bold', marginBottom: '4px' }}
-                wrapperStyle={{ color: '#fff' }}
-              />
+              <CartesianGrid {...chart.grid} />
+              <XAxis dataKey="name" {...chart.axis} />
+              <YAxis {...chart.axis} />
+              <Tooltip {...chart.tooltip} formatter={(value: number) => [`${value}h`]} />
               <Bar dataKey="hours" radius={[8, 8, 0, 0]}>
                 {barChartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
@@ -284,17 +265,7 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip
-                formatter={(value) => `${value}h`}
-                contentStyle={{
-                  backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '8px 12px'
-                }}
-                labelStyle={{ color: '#fff', fontWeight: 'bold' }}
-                wrapperStyle={{ color: '#fff' }}
-              />
+              <Tooltip {...chart.tooltip} formatter={(value) => `${value}h`} />
             </PieChart>
           </ResponsiveContainer>
         </Card>
@@ -322,7 +293,7 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
                     <p className="text-xs text-gray-500 dark:text-gray-400">{tf(t('dashboard.activitiesCount', '{{n}} activités'), { n: stat.count })}</p>
                   </div>
                 </div>
-                <p className="text-right font-semibold text-gray-900 dark:text-white ml-4 flex-shrink-0">{formatTime(stat.totalSeconds)}</p>
+                <p className="text-right font-semibold text-gray-900 dark:text-white ml-4 flex-shrink-0">{formatDuration(stat.totalSeconds)}</p>
               </div>
             ))}
           </div>
@@ -340,7 +311,7 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
                   <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: stat.color }} />
                   <p className="font-medium text-gray-900 dark:text-white truncate">{stat.name}</p>
                 </div>
-                <p className="text-right font-semibold text-gray-900 dark:text-white ml-4 flex-shrink-0">{formatTime(stat.totalSeconds)}</p>
+                <p className="text-right font-semibold text-gray-900 dark:text-white ml-4 flex-shrink-0">{formatDuration(stat.totalSeconds)}</p>
               </div>
             ))}
           </div>

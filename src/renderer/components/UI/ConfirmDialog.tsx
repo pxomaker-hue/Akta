@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Icon from './Icon'
 import { useTranslation } from '../../hooks/useTranslation'
+import { useModalFocus } from '../../hooks/useModalFocus'
 
 interface ConfirmOptions {
   title?: string
@@ -46,6 +47,8 @@ export function alertDialog(message: string, options: Omit<ConfirmOptions, 'aler
 export function ConfirmDialogHost() {
   const { t } = useTranslation()
   const [pending, setPending] = useState<PendingConfirm | null>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useModalFocus(dialogRef, !!pending)
 
   useEffect(() => {
     currentSetter = setPending
@@ -78,6 +81,7 @@ export function ConfirmDialogHost() {
       onMouseDown={() => handle(false)}
     >
       <div
+        ref={dialogRef}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={pending.title ? 'confirm-dialog-title' : 'confirm-dialog-message'}
