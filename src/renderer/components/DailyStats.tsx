@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { Activity, Category } from '../../shared/types'
 import { Card, CardHeader, Icon } from './UI'
 import { useTranslation } from '../hooks/useTranslation'
+import { formatDuration } from '../utils/format'
 
 interface DailyStatsProps {
   activities: Activity[]
@@ -16,12 +17,6 @@ function DailyStats({ activities, categories }: DailyStatsProps) {
     return map
   }, [categories])
 
-  const formatTime = (seconds: number) => {
-    const h = Math.floor(seconds / 3600)
-    const m = Math.floor((seconds % 3600) / 60)
-    if (h === 0) return `${m}m`
-    return `${h}h ${m}m`
-  }
 
   const categoryStats = useMemo(() => {
     const stats = new Map<number, { name: string; color: string; duration: number }>()
@@ -62,7 +57,7 @@ function DailyStats({ activities, categories }: DailyStatsProps) {
                   <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: stat.color }} />
                   <span className="text-sm text-gray-700 dark:text-slate-300">{stat.name}</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-900 dark:text-white">{formatTime(stat.duration)}</span>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">{formatDuration(stat.duration)}</span>
               </div>
             ))}
           </div>
@@ -79,7 +74,7 @@ function DailyStats({ activities, categories }: DailyStatsProps) {
             {appStats.map((stat) => (
               <div key={stat.name} className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800/50">
                 <span className="text-sm text-gray-700 dark:text-slate-300 truncate">{stat.name}</span>
-                <span className="text-sm font-semibold text-gray-900 dark:text-white ml-2">{formatTime(stat.duration)}</span>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white ml-2">{formatDuration(stat.duration)}</span>
               </div>
             ))}
           </div>

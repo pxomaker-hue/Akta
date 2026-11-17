@@ -1,10 +1,6 @@
 import { useRef, useState } from 'react'
 import { Icon } from './UI'
-import { useTranslation } from '../hooks/useTranslation'
-
-function tf(text: string, values: Record<string, string | number>): string {
-  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
-}
+import { useTranslation, tf } from '../hooks/useTranslation'
 
 function BackupRestore() {
   const { t } = useTranslation()

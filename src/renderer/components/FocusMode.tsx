@@ -4,15 +4,12 @@ import FocusHistory from './FocusHistory'
 import FocusCoaching from './FocusCoaching'
 import FocusChallenges from './FocusChallenges'
 import { Icon, Card, alertDialog } from './UI'
-import { useTranslation } from '../hooks/useTranslation'
+import { useTranslation, tf } from '../hooks/useTranslation'
 import type { FocusSession } from '../../shared/types'
 
 // Le système de traduction est un simple dictionnaire clé→texte (pas de moteur ICU), donc les
 // phrases avec variables utilisent un jeton {{...}} remplacé après coup — ça permet à chaque
 // langue de garder son propre ordre des mots plutôt que de figer une concaténation à la française.
-function tf(text: string, values: Record<string, string | number>): string {
-  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
-}
 
 const QUICK_DURATIONS = [15, 25, 45, 90]
 
@@ -600,11 +597,14 @@ function FocusMode({ onBack }: FocusModeProps) {
         <div className="mb-6 flex items-center justify-between p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800">
           <div className="flex items-center gap-2">
             <Icon name="briefcase" size={16} className="text-indigo-600 dark:text-indigo-400" />
-            <label className="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
+            <span id="focus-create-work-session" className="text-sm font-medium text-gray-900 dark:text-white">
               {t('focusMode.createWorkSession', 'Créer une session de travail')}
-            </label>
+            </span>
           </div>
           <button
+            role="switch"
+            aria-checked={createWorkSession}
+            aria-labelledby="focus-create-work-session"
             onClick={() => setCreateWorkSession(!createWorkSession)}
             className={`relative w-11 h-6 rounded-full transition-colors ${
               createWorkSession ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-slate-700'
@@ -627,7 +627,7 @@ function FocusMode({ onBack }: FocusModeProps) {
               value={newBlockedApp}
               onChange={(e) => setNewBlockedApp(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddBlockedApp()}
-              placeholder={t('focusMode.blockedAppsPlaceholder', 'ex : Discord, Slack, Chrome')}
+              placeholder={t('focusMode.blockedAppsPlaceholder', 'ex : Discord, Slack, Chrome')} aria-label={t('focusMode.blockedAppsPlaceholder', 'ex : Discord, Slack, Chrome')}
               disabled={isActive}
               className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] disabled:opacity-50"
             />

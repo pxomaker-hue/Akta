@@ -2,11 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import type { Activity, Category } from '../../shared/types'
 import ActivityListItem from './ActivityListItem'
 import { Icon, confirmDialog } from './UI'
-import { useTranslation } from '../hooks/useTranslation'
-
-function tf(text: string, values: Record<string, string | number>): string {
-  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
-}
+import { useTranslation, tf } from '../hooks/useTranslation'
 
 interface Tag {
   id: number
@@ -239,7 +235,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={t('activityList.searchPlaceholder', 'Rechercher par application ou titre de fenêtre...')}
+          placeholder={t('activityList.searchPlaceholder', 'Rechercher par application ou titre de fenêtre...')} aria-label={t('activityList.searchPlaceholder', 'Rechercher par application ou titre de fenêtre...')}
           className="w-full pl-9 pr-9 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
         />
         <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -321,6 +317,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
             <span className="text-xs text-gray-600 dark:text-gray-400">{t('activityList.dateFrom', 'De:')}</span>
             <input
               type="date"
+              aria-label={t('activityList.dateFrom', 'De:').replace(':', '').trim()}
               value={selectedDateStart}
               onChange={(e) => setSelectedDateStart(e.target.value)}
               className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
@@ -338,6 +335,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
             <span className="text-xs text-gray-600 dark:text-gray-400">{t('activityList.dateTo', 'À:')}</span>
             <input
               type="date"
+              aria-label={t('activityList.dateTo', 'À:').replace(':', '').trim()}
               value={selectedDateEnd}
               onChange={(e) => setSelectedDateEnd(e.target.value)}
               className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"

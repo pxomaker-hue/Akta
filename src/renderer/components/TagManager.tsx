@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Icon, confirmDialog } from './UI'
+import { Icon, confirmDialog, toast } from './UI'
 import { useTranslation } from '../hooks/useTranslation'
 
 interface Tag {
@@ -45,6 +45,7 @@ function TagManager({ onTagsLoaded }: TagManagerProps) {
       await loadTags()
     } catch (error) {
       console.error('Error creating tag:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
     }
   }
 
@@ -56,6 +57,7 @@ function TagManager({ onTagsLoaded }: TagManagerProps) {
       await loadTags()
     } catch (error) {
       console.error('Error deleting tag:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
     }
   }
 
@@ -95,7 +97,7 @@ function TagManager({ onTagsLoaded }: TagManagerProps) {
               value={newTagName}
               onChange={(e) => setNewTagName(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && createTag()}
-              placeholder={t('tagManager.namePlaceholder', 'Entrer le nom du tag...')}
+              placeholder={t('tagManager.namePlaceholder', 'Entrer le nom du tag...')} aria-label={t('tagManager.namePlaceholder', 'Entrer le nom du tag...')}
               className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>

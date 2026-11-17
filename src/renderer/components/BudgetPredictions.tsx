@@ -3,11 +3,7 @@ import { Icon, Card, CardHeader } from './UI'
 
 const dotClass = (level: 'high' | 'medium' | 'low') =>
   `inline-block w-2 h-2 rounded-full flex-shrink-0 ${level === 'high' ? 'bg-red-500' : level === 'medium' ? 'bg-amber-400' : 'bg-emerald-500'}`
-import { useTranslation } from '../hooks/useTranslation'
-
-function tf(text: string, values: Record<string, string | number>): string {
-  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
-}
+import { useTranslation, tf } from '../hooks/useTranslation'
 
 interface Prediction {
   projectId: number

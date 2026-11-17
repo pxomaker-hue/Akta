@@ -2,12 +2,9 @@ import { useMemo, useState, useRef, useCallback, useEffect } from 'react'
 import type { Activity, Category, WorkSession } from '../../shared/types'
 import { computeDeepWorkSessions } from '../../shared/deepwork'
 import { DESIGN } from '../../shared/design'
-import { Icon } from './UI'
-import { useTranslation, localeTag, type Language } from '../hooks/useTranslation'
-
-function tf(text: string, values: Record<string, string | number>): string {
-  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
-}
+import { Icon, toast } from './UI'
+import { useTranslation, localeTag, type Language, tf } from '../hooks/useTranslation'
+import { formatDuration } from '../utils/format'
 
 interface TimelineV2Props {
   activities: Activity[]
@@ -371,6 +368,7 @@ function TimelineV2({ activities, categories, onUpdate, dayStart, onDayChange }:
       onUpdate?.()
     } catch (error) {
       console.error('Error toggling work session billable:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
     } finally {
       setUpdatingWorkSession(null)
     }
@@ -405,6 +403,7 @@ function TimelineV2({ activities, categories, onUpdate, dayStart, onDayChange }:
       onUpdate?.()
     } catch (error) {
       console.error('Error updating session billable status:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
     } finally {
       setUpdatingSession(null)
     }
@@ -474,12 +473,6 @@ function TimelineV2({ activities, categories, onUpdate, dayStart, onDayChange }:
     const hh = Math.floor(h) % 24
     const mm = Math.round((h % 1) * 60)
     return mm === 0 ? `${hh}h` : `${hh}h${mm.toString().padStart(2, '0')}`
-  }
-  const formatDuration = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    if (hours === 0) return `${minutes}m`
-    return `${hours}h ${minutes}m`
   }
 
   return (

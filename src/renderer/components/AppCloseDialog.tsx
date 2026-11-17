@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '../hooks/useTranslation'
+import { useModalFocus } from '../hooks/useModalFocus'
 
 type CloseAction = 'quit' | 'minimize' | 'cancel'
 
@@ -10,6 +11,8 @@ function AppCloseDialog() {
   const { t } = useTranslation()
   const [visible, setVisible] = useState(false)
   const [remember, setRemember] = useState(false)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useModalFocus(dialogRef, visible)
 
   useEffect(() => {
     const handler = () => {
@@ -42,11 +45,16 @@ function AppCloseDialog() {
       onMouseDown={() => respond('cancel')}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="app-close-dialog-title"
+        aria-describedby="app-close-dialog-description"
         className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-700 w-full max-w-sm p-5 animate-fade-in-scale"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{t('appCloseDialog.title', 'Fermer Akta')}</p>
-        <p className="text-sm text-gray-600 dark:text-slate-300 leading-relaxed mb-4">
+        <p id="app-close-dialog-title" className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{t('appCloseDialog.title', 'Fermer Akta')}</p>
+        <p id="app-close-dialog-description" className="text-sm text-gray-600 dark:text-slate-300 leading-relaxed mb-4">
           {t('appCloseDialog.description', "Tu peux quitter complètement l'application ou la garder active en arrière-plan (icône dans la zone de notification).")}
         </p>
 

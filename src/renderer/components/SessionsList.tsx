@@ -2,12 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import type { WorkSession, Project, ProjectPhase } from '../../shared/types'
 import { Card, CardHeader, Icon, Badge, Dropdown, confirmDialog } from './UI'
 import { getTodayStart } from './TimelineV2'
-import { useTranslation, localeTag } from '../hooks/useTranslation'
+import { useTranslation, localeTag, tf } from '../hooks/useTranslation'
 import ManualSessionForm from './ManualSessionForm'
-
-function tf(text: string, values: Record<string, string | number>): string {
-  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
-}
+import { formatDuration } from '../utils/format'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -206,12 +203,6 @@ function SessionsList() {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
   }
   const formatTime = (ms: number) => new Date(ms).toLocaleTimeString(localeTag(language), { hour: '2-digit', minute: '2-digit' })
-  const formatDuration = (seconds: number) => {
-    const h = Math.floor(seconds / 3600)
-    const m = Math.floor((seconds % 3600) / 60)
-    if (h === 0) return `${m}m`
-    return `${h}h ${m}m`
-  }
   const toLocalDateString = (ms: number) => {
     const d = new Date(ms)
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -310,6 +301,7 @@ function SessionsList() {
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <input
               type="checkbox"
+              aria-label={session.label || t('sessionsList.selectSession', 'Sélectionner la session')}
               checked={isSelected}
               onChange={(e) => {
                 const newSelected = new Set(selectedSessions)
@@ -327,7 +319,7 @@ function SessionsList() {
                   {session.label || `${formatSessionTime(session.start_time)}${!isOpen && session.end_time ? ` → ${formatTime(session.end_time)}` : ` (${t('sessionsList.inProgress', 'en cours')})`}`}
                   {session.project_name && (
                     <span
-                      className="text-[11px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0"
+                      className="text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0"
                       style={{ backgroundColor: `${session.project_color}20`, color: session.project_color || undefined }}
                     >
                       {session.project_name}
@@ -368,7 +360,7 @@ function SessionsList() {
                 type="text"
                 value={draftLabel}
                 onChange={(e) => setDraftLabel(e.target.value)}
-                placeholder={t('sessionsList.namePlaceholder', 'Nom de la session (ex : Rédaction proposition)')}
+                placeholder={t('sessionsList.namePlaceholder', 'Nom de la session (ex : Rédaction proposition)')} aria-label={t('sessionsList.namePlaceholder', 'Nom de la session (ex : Rédaction proposition)')}
                 className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
               />
               <Dropdown
@@ -578,7 +570,7 @@ function SessionsList() {
               value={dateFilterStart}
               onChange={(e) => setDateFilterStart(e.target.value)}
               className="pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
-              placeholder={t('sessionsList.dateFrom', 'De')}
+              placeholder={t('sessionsList.dateFrom', 'De')} aria-label={t('sessionsList.dateFrom', 'De')}
             />
             <Icon name="calendar" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
@@ -589,7 +581,7 @@ function SessionsList() {
               value={dateFilterEnd}
               onChange={(e) => setDateFilterEnd(e.target.value)}
               className="pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
-              placeholder={t('sessionsList.dateTo', 'À')}
+              placeholder={t('sessionsList.dateTo', 'À')} aria-label={t('sessionsList.dateTo', 'À')}
             />
             <Icon name="calendar" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>

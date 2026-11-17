@@ -3,13 +3,11 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import type { Activity, Category } from '../../shared/types'
 import { computeDeepWorkSessions } from '../../shared/deepwork'
 import CategoryIcon from './CategoryIcon'
-import { Card, CardHeader, Stat, Icon } from './UI'
+import { Card, CardHeader, Stat, Icon, toast } from './UI'
 import { downloadBase64File, downloadTextFile } from '../utils/download'
-import { useTranslation, localeTag } from '../hooks/useTranslation'
-
-function tf(text: string, values: Record<string, string | number>): string {
-  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
-}
+import { useTranslation, localeTag, tf } from '../hooks/useTranslation'
+import { useChartTheme } from '../hooks/useChartTheme'
+import { formatDuration } from '../utils/format'
 
 interface ReportsProps {
   categories: Category[]
@@ -33,6 +31,7 @@ interface ProjectBreakdown {
 
 function Reports({ categories }: ReportsProps) {
   const { t, language } = useTranslation()
+  const chart = useChartTheme()
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
   const [dayRefresh, setDayRefresh] = useState(0)
@@ -83,6 +82,7 @@ function Reports({ categories }: ReportsProps) {
       downloadTextFile(csv, `akta-rapport-${exportMonth}.csv`, 'text/csv')
     } catch (error) {
       console.error('Error exporting monthly CSV:', error)
+      toast.error(t('common.exportFailed', "L'export a échoué. Réessaie."))
     }
   }
 
@@ -93,6 +93,7 @@ function Reports({ categories }: ReportsProps) {
       downloadBase64File(base64, `akta-rapport-${exportMonth}.pdf`, 'application/pdf')
     } catch (error) {
       console.error('Error exporting monthly PDF:', error)
+      toast.error(t('common.exportFailed', "L'export a échoué. Réessaie."))
     }
   }
 
@@ -141,12 +142,6 @@ function Reports({ categories }: ReportsProps) {
     return Math.round(((curr - prev) / prev) * 100)
   }
 
-  const formatTime = (seconds: number) => {
-    const h = Math.floor(seconds / 3600)
-    const m = Math.floor((seconds % 3600) / 60)
-    if (h === 0) return `${m}m`
-    return `${h}h ${m}m`
-  }
 
   const dailyData = useMemo(() => {
     const days: { label: string; hours: number }[] = []
@@ -193,21 +188,21 @@ function Reports({ categories }: ReportsProps) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Stat
           label={t('reports.timeThisWeek', 'Temps cette semaine')}
-          value={formatTime(totalThisWeek)}
+          value={formatDuration(totalThisWeek)}
           icon={<Icon name="chart-bar" size={18} />}
           gradient="from-indigo-50/80 to-indigo-100/60 dark:from-indigo-900/20 dark:to-indigo-800/10"
           subtext={`${timeTrend >= 0 ? '▲' : '▼'} ${tf(t('reports.vsLastWeek', '{{pct}}% vs semaine dernière'), { pct: Math.abs(timeTrend) })}`}
         />
         <Stat
           label={t('reports.deepWork', 'Deep Work')}
-          value={formatTime(deepWorkThisWeek)}
+          value={formatDuration(deepWorkThisWeek)}
           icon={<Icon name="target" size={18} />}
           gradient="from-rose-50/80 to-rose-100/60 dark:from-rose-900/20 dark:to-rose-800/10"
           subtext={`${deepWorkTrend >= 0 ? '▲' : '▼'} ${tf(t('reports.vsLastWeek', '{{pct}}% vs semaine dernière'), { pct: Math.abs(deepWorkTrend) })}`}
         />
         <Stat
           label={t('reports.billableTime', 'Temps facturable')}
-          value={formatTime(billableThisWeek)}
+          value={formatDuration(billableThisWeek)}
           icon={<Icon name="briefcase" size={18} />}
           gradient="from-cyan-50/80 to-cyan-100/60 dark:from-cyan-900/20 dark:to-cyan-800/10"
           subtext={tf(t('reports.percentOfTime', '{{pct}}% du temps'), { pct: totalThisWeek > 0 ? Math.round((billableThisWeek / totalThisWeek) * 100) : 0 })}
@@ -219,16 +214,11 @@ function Reports({ categories }: ReportsProps) {
         <CardHeader title={t('reports.last7DaysBreakdown', 'Répartition des 7 derniers jours')} icon={<Icon name="chart-line" size={18} />} />
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={dailyData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.3} />
-            <XAxis dataKey="label" stroke="#9ca3af" style={{ fontSize: '12px' }} />
-            <YAxis stroke="#9ca3af" style={{ fontSize: '12px' }} label={{ value: t('reports.hoursAxis', 'Heures'), angle: -90, position: 'insideLeft' }} />
+            <CartesianGrid {...chart.grid} />
+            <XAxis dataKey="label" {...chart.axis} />
+            <YAxis {...chart.axis} label={{ value: t('reports.hoursAxis', 'Heures'), angle: -90, position: 'insideLeft' }} />
             <Tooltip
-              contentStyle={{
-                backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                border: '1px solid #475569',
-                borderRadius: '0.75rem',
-                color: '#f1f5f9',
-              }}
+              {...chart.tooltip}
               formatter={(value) => `${value}h`}
             />
             <Bar dataKey="hours" fill="var(--accent-primary)" radius={[8, 8, 0, 0]} />
@@ -251,7 +241,7 @@ function Reports({ categories }: ReportsProps) {
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{tf(t('reports.categoryRank', '#{{n}} catégorie'), { n: idx + 1 })}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-sm font-bold text-gray-900 dark:text-white">{formatTime(cat.seconds)}</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">{formatDuration(cat.seconds)}</p>
                 </div>
               </div>
             ))}
@@ -275,7 +265,7 @@ function Reports({ categories }: ReportsProps) {
                       <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{proj.name}</p>
                     </div>
                     <p className="text-sm font-bold text-gray-900 dark:text-white flex-shrink-0">
-                      {formatTime(proj.seconds)}
+                      {formatDuration(proj.seconds)}
                       {amount && <span className="text-gray-400 dark:text-slate-500 font-normal"> · {amount} €</span>}
                     </p>
                   </div>
@@ -303,6 +293,7 @@ function Reports({ categories }: ReportsProps) {
         <div className="flex items-center gap-2 flex-wrap">
           <input
             type="month"
+            aria-label={t('reports.monthlyExport', 'Export mensuel')}
             value={exportMonth}
             onChange={(e) => setExportMonth(e.target.value)}
             className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"

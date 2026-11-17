@@ -90,13 +90,31 @@ app.on('second-instance', (_event, argv) => {
   }
 })
 
+// Fond natif des fenêtres (visible au redimensionnement, avant que le contenu soit repeint) :
+// recalculé quand le thème change, ou quand Windows bascule clair/sombre en mode Auto.
+function isDarkTheme(): boolean {
+  const theme = getSetting('theme') || 'auto'
+  return theme === 'dark' || (theme === 'auto' && nativeTheme.shouldUseDarkColors)
+}
+
+function syncWindowBackgrounds() {
+  const isDark = isDarkTheme()
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setBackgroundColor(isDark ? '#020617' : '#f9fafb')
+  if (trayWidgetWindow && !trayWidgetWindow.isDestroyed()) trayWidgetWindow.setBackgroundColor(isDark ? '#0f172a' : '#ffffff')
+}
+
+let nativeThemeListenerAdded = false
+
 function createWindow() {
+  if (!nativeThemeListenerAdded) {
+    nativeThemeListenerAdded = true
+    nativeTheme.on('updated', syncWindowBackgrounds)
+  }
+
   // Évite le flash blanc/noir au démarrage : on choisit un fond qui matche déjà le thème
   // avant même que le renderer ait chargé quoi que ce soit, et on ne montre la fenêtre
   // qu'une fois son contenu prêt à être peint (au lieu de l'afficher vide puis la remplir).
-  const theme = getSetting('theme') || 'auto'
-  const isDark = theme === 'dark' || (theme === 'auto' && nativeTheme.shouldUseDarkColors)
-  const backgroundColor = isDark ? '#020617' : '#f9fafb'
+  const backgroundColor = isDarkTheme() ? '#020617' : '#f9fafb'
 
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -411,9 +429,7 @@ function positionTrayWidgetWindow() {
 }
 
 function createTrayWidgetWindow() {
-  const theme = getSetting('theme') || 'auto'
-  const isDark = theme === 'dark' || (theme === 'auto' && nativeTheme.shouldUseDarkColors)
-  const backgroundColor = isDark ? '#0f172a' : '#ffffff'
+  const backgroundColor = isDarkTheme() ? '#0f172a' : '#ffffff'
 
   trayWidgetWindow = new BrowserWindow({
     width: 320,
@@ -1586,9 +1602,10 @@ function setupIpcHandlers() {
     try {
       setSetting(key, value)
       if (key === 'idle_timeout') refreshIdleTimeout()
-      // Notify renderer of setting change
-      if (mainWindow) {
-        mainWindow.webContents.send('setting-changed', { key, value })
+      if (key === 'theme') syncWindowBackgrounds()
+      // Prévenir les deux fenêtres : le widget tray suit lui aussi le thème, la langue et l'accent
+      for (const win of [mainWindow, trayWidgetWindow]) {
+        if (win && !win.isDestroyed()) win.webContents.send('setting-changed', { key, value })
       }
       return true
     } catch (error) {

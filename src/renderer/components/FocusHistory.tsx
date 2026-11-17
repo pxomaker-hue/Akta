@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { FocusSession } from '../../shared/types'
-import { Icon, confirmDialog } from './UI'
+import { Icon, confirmDialog, toast } from './UI'
 import { useTranslation, localeTag } from '../hooks/useTranslation'
+import { formatDuration } from '../utils/format'
 
 interface FocusHistoryProps {
   sessions: FocusSession[]
@@ -35,12 +36,6 @@ function FocusHistory({ sessions, onDelete }: FocusHistoryProps) {
     return `${date} ${time}`
   }
 
-  const formatDuration = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    if (hours === 0) return `${minutes}m`
-    return `${hours}h ${minutes}m`
-  }
 
   const handleDelete = async (session: FocusSession) => {
     if (!(await confirmDialog(t('focusHistory.confirmDelete', "Supprimer cette session focus de l'historique ?"), { danger: true }))) return
@@ -50,6 +45,7 @@ function FocusHistory({ sessions, onDelete }: FocusHistoryProps) {
       onDelete?.()
     } catch (error) {
       console.error('Error deleting focus session:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
     } finally {
       setDeletingId(null)
     }

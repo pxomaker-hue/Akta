@@ -6,6 +6,7 @@ import { useAccentColor } from '../hooks/useAccentColor'
 import { useTranslation } from '../hooks/useTranslation'
 import { Icon, Dropdown } from './UI'
 import Logo from './Logo'
+import { formatClock } from '../utils/format'
 
 // Reprend exactement la charte des Card/Stat de l'app (bordure + dégradé subtil) plutôt que
 // d'inventer une variante : ce popup doit avoir l'air d'un morceau d'Akta, pas d'un widget à part.
@@ -121,13 +122,6 @@ function TrayWidgetInner() {
     window.electron.ipc.invoke('show-main-window').catch(() => {})
   }
 
-  const formatDuration = (seconds: number) => {
-    const h = Math.floor(seconds / 3600)
-    const m = Math.floor((seconds % 3600) / 60)
-    const s = seconds % 60
-    if (h > 0) return `${h}h ${m.toString().padStart(2, '0')}m`
-    return `${m}:${s.toString().padStart(2, '0')}`
-  }
 
   const formatShort = (seconds: number) => {
     const h = Math.floor(seconds / 3600)
@@ -225,7 +219,7 @@ function TrayWidgetInner() {
 
             <div key={isStopped ? 'stopped' : 'active'} className="mb-3 text-center animate-pop-in">
               <p className="text-3xl font-mono font-black tabular-nums leading-none text-gray-900 dark:text-white">
-                {isStopped ? '—' : formatDuration(elapsed)}
+                {isStopped ? '—' : formatClock(elapsed)}
               </p>
               {!isStopped && status?.currentApp && (
                 <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-1.5 truncate">{status.currentApp}</p>
@@ -354,7 +348,7 @@ function TrayWidgetInner() {
                 <span className="text-xs font-semibold accent-text">{t('trayWidget.focusModeActive', 'Mode Focus en cours')}</span>
               </div>
               <p className="text-2xl font-mono font-black tabular-nums accent-gradient-text leading-none mb-2 text-center">
-                {formatDuration(focusTimeLeft)}
+                {formatClock(focusTimeLeft)}
               </p>
               <div className="w-full h-1.5 rounded-full bg-white/50 dark:bg-black/20 overflow-hidden">
                 <div className="h-full accent-gradient-bg transition-all" style={{ width: `${focusProgress}%` }} />

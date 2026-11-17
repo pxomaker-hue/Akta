@@ -1,10 +1,22 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 type Theme = 'light' | 'dark' | 'auto'
 
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>('dark')
   const [isDark, setIsDark] = useState(false)
+  // Thème choisi courant, lu par l'écouteur système (qui ne doit pas être réabonné à chaque changement)
+  const themeRef = useRef<Theme>('dark')
+
+  // En mode Auto, suivre en direct le basculement clair/sombre de Windows (sans redémarrer l'app)
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const handleSystemChange = () => {
+      if (themeRef.current === 'auto') applyTheme('auto')
+    }
+    media.addEventListener('change', handleSystemChange)
+    return () => media.removeEventListener('change', handleSystemChange)
+  }, [])
 
   useEffect(() => {
     // Load theme from settings
@@ -38,6 +50,7 @@ export function useTheme() {
   }
 
   function applyTheme(newTheme: Theme) {
+    themeRef.current = newTheme
     setTheme(newTheme)
 
     let shouldBeDark = false

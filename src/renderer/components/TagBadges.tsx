@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { toast } from './UI'
 import { useTranslation } from '../hooks/useTranslation'
 
 interface Tag {
@@ -42,6 +43,7 @@ function TagBadges({ activityId, tags = [], allTags = [], onTagsChange, editable
       setShowDropdown(false)
     } catch (error) {
       console.error('Error adding tag:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
     }
   }
 
@@ -53,6 +55,7 @@ function TagBadges({ activityId, tags = [], allTags = [], onTagsChange, editable
       onTagsChange?.(updated)
     } catch (error) {
       console.error('Error removing tag:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
     }
   }
 

@@ -1,12 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { Client, Project, ProjectPhase, WorkSession } from '../../shared/types'
-import { Icon, Card, CardHeader, Dropdown, confirmDialog } from './UI'
+import { Icon, Card, CardHeader, Dropdown, confirmDialog, toast } from './UI'
 import { downloadBase64File, downloadTextFile, slugify } from '../utils/download'
-import { useTranslation, localeTag } from '../hooks/useTranslation'
-
-function tf(text: string, values: Record<string, string | number>): string {
-  return Object.entries(values).reduce((acc, [key, value]) => acc.replaceAll(`{{${key}}}`, String(value)), text)
-}
+import { useTranslation, localeTag, tf } from '../hooks/useTranslation'
+import { formatHoursDecimal } from '../utils/format'
 
 interface ProjectManagerProps {
   clients: Client[]
@@ -322,6 +319,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
       await loadPhases(projectId)
     } catch (error) {
       console.error('Error deleting project phase:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
     }
   }
 
@@ -331,6 +329,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
       downloadTextFile(csv, `akta-${slugify(project.name)}.csv`, 'text/csv')
     } catch (error) {
       console.error('Error exporting project CSV:', error)
+      toast.error(t('common.exportFailed', "L'export a échoué. Réessaie."))
     }
   }
 
@@ -340,6 +339,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
       downloadBase64File(base64, `akta-${slugify(project.name)}.pdf`, 'application/pdf')
     } catch (error) {
       console.error('Error exporting project PDF:', error)
+      toast.error(t('common.exportFailed', "L'export a échoué. Réessaie."))
     }
   }
 
@@ -350,6 +350,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
       await loadProjects()
     } catch (error) {
       console.error('Error deleting project:', error)
+      toast.error(t('common.actionFailed', "L'action a échoué. Réessaie."))
     }
   }
 
@@ -360,7 +361,6 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
     { value: 'archived', label: t('projectManager.statusArchived', 'Archivé') },
   ]
 
-  const formatHours = (seconds: number) => (seconds / 3600).toFixed(1)
   const formatAmount = (seconds: number, rate: number | null) => {
     if (!rate) return null
     return ((seconds / 3600) * rate).toFixed(2)
@@ -399,7 +399,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && createProject()}
-          placeholder={t('projectManager.namePlaceholder', 'Nom du projet')}
+          placeholder={t('projectManager.namePlaceholder', 'Nom du projet')} aria-label={t('projectManager.namePlaceholder', 'Nom du projet')}
           className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
         />
 
@@ -407,7 +407,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
           type="text"
           value={newKeywords}
           onChange={(e) => setNewKeywords(e.target.value)}
-          placeholder={t('projectManager.keywordsPlaceholderLong', 'Mots-clefs (ex: Valros, APD) - séparés par virgules')}
+          placeholder={t('projectManager.keywordsPlaceholderLong', 'Mots-clefs (ex: Valros, APD) - séparés par virgules')} aria-label={t('projectManager.keywordsPlaceholderLong', 'Mots-clefs (ex: Valros, APD) - séparés par virgules')}
           title={t('projectManager.keywordsTitle', "Mots-clefs pour l'auto-détection par nom de fenêtre")}
           className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
         />
@@ -420,7 +420,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
             step="0.01"
             value={newRate}
             onChange={(e) => setNewRate(e.target.value)}
-            placeholder={t('projectManager.ratePlaceholder', 'Taux €/h')}
+            placeholder={t('projectManager.ratePlaceholder', 'Taux €/h')} aria-label={t('projectManager.ratePlaceholder', 'Taux €/h')}
             className="w-24 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
           />
           <input
@@ -429,7 +429,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
             step="1"
             value={newGoal}
             onChange={(e) => setNewGoal(e.target.value)}
-            placeholder={t('projectManager.goalPlaceholder', 'Objectif h/mois')}
+            placeholder={t('projectManager.goalPlaceholder', 'Objectif h/mois')} aria-label={t('projectManager.goalPlaceholder', 'Objectif h/mois')}
             className="w-28 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
           />
         </div>
@@ -441,7 +441,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
             step="1"
             value={newBudgetHours}
             onChange={(e) => setNewBudgetHours(e.target.value)}
-            placeholder={t('projectManager.budgetHoursPlaceholder', 'Budget h (forfait)')}
+            placeholder={t('projectManager.budgetHoursPlaceholder', 'Budget h (forfait)')} aria-label={t('projectManager.budgetHoursPlaceholder', 'Budget h (forfait)')}
             title={t('projectManager.budgetHoursTitle', 'Budget total en heures pour ce projet')}
             className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
           />
@@ -451,12 +451,13 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
             step="0.01"
             value={newBudgetAmount}
             onChange={(e) => setNewBudgetAmount(e.target.value)}
-            placeholder={t('projectManager.budgetAmountPlaceholder', 'Budget € (forfait)')}
+            placeholder={t('projectManager.budgetAmountPlaceholder', 'Budget € (forfait)')} aria-label={t('projectManager.budgetAmountPlaceholder', 'Budget € (forfait)')}
             title={t('projectManager.budgetAmountTitle', 'Budget total en euros pour ce projet')}
             className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
           />
           <input
             type="date"
+            aria-label={t('projectManager.deadlineTitle', 'Échéance du projet')}
             value={newDeadline}
             onChange={(e) => setNewDeadline(e.target.value)}
             title={t('projectManager.deadlineTitle', 'Échéance du projet')}
@@ -514,6 +515,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                   <div className="space-y-2">
                     <input
                       type="text"
+                      aria-label={t('projectManager.namePlaceholder', 'Nom du projet')}
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       className="w-full px-2 py-1.5 text-sm rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
@@ -522,7 +524,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                       type="text"
                       value={editKeywords}
                       onChange={(e) => setEditKeywords(e.target.value)}
-                      placeholder={t('projectManager.keywordsPlaceholderShort', 'Mots-clefs (ex: Valros, APD)')}
+                      placeholder={t('projectManager.keywordsPlaceholderShort', 'Mots-clefs (ex: Valros, APD)')} aria-label={t('projectManager.keywordsPlaceholderShort', 'Mots-clefs (ex: Valros, APD)')}
                       title={t('projectManager.keywordsTitle', "Mots-clefs pour l'auto-détection par nom de fenêtre")}
                       className="w-full px-2 py-1.5 text-sm rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                     />
@@ -542,7 +544,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                         step="0.01"
                         value={editRate}
                         onChange={(e) => setEditRate(e.target.value)}
-                        placeholder={t('projectManager.ratePlaceholder', 'Taux €/h')}
+                        placeholder={t('projectManager.ratePlaceholder', 'Taux €/h')} aria-label={t('projectManager.ratePlaceholder', 'Taux €/h')}
                         className="flex-1 px-2 py-1.5 text-sm rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                       />
                       <input
@@ -551,7 +553,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                         step="1"
                         value={editGoal}
                         onChange={(e) => setEditGoal(e.target.value)}
-                        placeholder={t('projectManager.goalPlaceholder', 'Objectif h/mois')}
+                        placeholder={t('projectManager.goalPlaceholder', 'Objectif h/mois')} aria-label={t('projectManager.goalPlaceholder', 'Objectif h/mois')}
                         className="flex-1 px-2 py-1.5 text-sm rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                       />
                     </div>
@@ -562,7 +564,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                         step="1"
                         value={editBudgetHours}
                         onChange={(e) => setEditBudgetHours(e.target.value)}
-                        placeholder={t('projectManager.budgetHoursPlaceholder', 'Budget h (forfait)')}
+                        placeholder={t('projectManager.budgetHoursPlaceholder', 'Budget h (forfait)')} aria-label={t('projectManager.budgetHoursPlaceholder', 'Budget h (forfait)')}
                         title={t('projectManager.budgetHoursTitle', 'Budget total en heures pour ce projet')}
                         className="flex-1 px-2 py-1.5 text-sm rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                       />
@@ -572,12 +574,13 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                         step="0.01"
                         value={editBudgetAmount}
                         onChange={(e) => setEditBudgetAmount(e.target.value)}
-                        placeholder={t('projectManager.budgetAmountPlaceholder', 'Budget € (forfait)')}
+                        placeholder={t('projectManager.budgetAmountPlaceholder', 'Budget € (forfait)')} aria-label={t('projectManager.budgetAmountPlaceholder', 'Budget € (forfait)')}
                         title={t('projectManager.budgetAmountTitle', 'Budget total en euros pour ce projet')}
                         className="flex-1 px-2 py-1.5 text-sm rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                       />
                       <input
                         type="date"
+                        aria-label={t('projectManager.deadlineTitle', 'Échéance du projet')}
                         value={editDeadline}
                         onChange={(e) => setEditDeadline(e.target.value)}
                         title={t('projectManager.deadlineTitle', 'Échéance du projet')}
@@ -602,13 +605,13 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                           <p className="text-sm font-medium text-gray-900 dark:text-white truncate flex items-center gap-1.5">
                             {project.name}
                             {project.status === 'archived' && (
-                              <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-slate-300 flex-shrink-0">
+                              <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-slate-300 flex-shrink-0">
                                 {t('projectManager.statusArchived', 'Archivé')}
                               </span>
                             )}
                             {project.deadline && project.status === 'active' && (
                               <span
-                                className={`text-[11px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                                className={`text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 ${
                                   project.deadline < Date.now()
                                     ? 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400'
                                     : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-300'
@@ -653,14 +656,14 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                     {stats && (stats.monthSeconds > 0 || stats.totalSeconds > 0) && (
                       <div className="mt-2.5 pt-2.5 border-t border-gray-200/50 dark:border-slate-700/50 flex items-center justify-between text-xs">
                         <span className="text-gray-500 dark:text-gray-400">
-                          {tf(t('projectManager.hoursThisMonth', '{{h}}h ce mois'), { h: formatHours(stats.monthSeconds) })}
+                          {tf(t('projectManager.hoursThisMonth', '{{h}}h ce mois'), { h: formatHoursDecimal(stats.monthSeconds) })}
                           {formatAmount(stats.monthSeconds, project.hourly_rate) && ` ≈ ${formatAmount(stats.monthSeconds, project.hourly_rate)} €`}
                         </span>
                         <button
                           onClick={() => toggleSessionsExpand(project)}
                           className="flex items-center gap-1 text-gray-400 dark:text-slate-500 hover:accent-text transition-colors"
                         >
-                          {tf(t('projectManager.hoursTotal', '{{h}}h au total'), { h: formatHours(stats.totalSeconds) })}
+                          {tf(t('projectManager.hoursTotal', '{{h}}h au total'), { h: formatHoursDecimal(stats.totalSeconds) })}
                           {formatAmount(stats.totalSeconds, project.hourly_rate) && ` ≈ ${formatAmount(stats.totalSeconds, project.hourly_rate)} €`}
                           <Icon name={expandedProjectId === project.id ? 'x' : 'chart-bar'} size={11} />
                         </button>
@@ -684,7 +687,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                 {session.end_time === null && ` (${t('sessionsList.inProgress', 'en cours')})`}
                               </span>
                               <span className="text-gray-500 dark:text-slate-400 flex-shrink-0 ml-2">
-                                {formatHours(session.duration_seconds || Math.floor((Date.now() - session.start_time) / 1000))}h
+                                {formatHoursDecimal(session.duration_seconds || Math.floor((Date.now() - session.start_time) / 1000))}h
                                 {formatAmount(session.billable_seconds, project.hourly_rate) &&
                                   ` ≈ ${formatAmount(session.billable_seconds, project.hourly_rate)} €`}
                               </span>
@@ -769,6 +772,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                 <div key={phase.id} className="space-y-1.5">
                                   <input
                                     type="text"
+                                    aria-label={t('projectManager.phaseNameLabel', 'Nom de la phase')}
                                     value={editPhaseName}
                                     onChange={(e) => setEditPhaseName(e.target.value)}
                                     className="w-full px-2 py-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
@@ -777,7 +781,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                     type="text"
                                     value={editPhaseKeywords}
                                     onChange={(e) => setEditPhaseKeywords(e.target.value)}
-                                    placeholder={t('projectManager.phaseKeywordsPlaceholder', 'Mots-clefs (ex: Esquisse, Étude)')}
+                                    placeholder={t('projectManager.phaseKeywordsPlaceholder', 'Mots-clefs (ex: Esquisse, Étude)')} aria-label={t('projectManager.phaseKeywordsPlaceholder', 'Mots-clefs (ex: Esquisse, Étude)')}
                                     title={t('projectManager.keywordsTitle', "Mots-clefs pour l'auto-détection par nom de fenêtre")}
                                     className="w-full px-2 py-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                                   />
@@ -788,7 +792,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                       step="1"
                                       value={editPhaseBudgetHours}
                                       onChange={(e) => setEditPhaseBudgetHours(e.target.value)}
-                                      placeholder={t('projectManager.budgetHoursPlaceholderShort', 'Budget h')}
+                                      placeholder={t('projectManager.budgetHoursPlaceholderShort', 'Budget h')} aria-label={t('projectManager.budgetHoursPlaceholderShort', 'Budget h')}
                                       title={t('projectManager.phaseBudgetHoursTitle', 'Budget en heures pour cette phase')}
                                       className="flex-1 min-w-0 px-2 py-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                                     />
@@ -798,7 +802,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                       step="0.01"
                                       value={editPhaseBudgetAmount}
                                       onChange={(e) => setEditPhaseBudgetAmount(e.target.value)}
-                                      placeholder={t('projectManager.budgetAmountPlaceholderShort', 'Budget €')}
+                                      placeholder={t('projectManager.budgetAmountPlaceholderShort', 'Budget €')} aria-label={t('projectManager.budgetAmountPlaceholderShort', 'Budget €')}
                                       title={t('projectManager.phaseBudgetAmountTitle', 'Budget en euros pour cette phase')}
                                       className="flex-1 min-w-0 px-2 py-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                                     />
@@ -806,6 +810,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                   <div className="flex items-center gap-1.5">
                                     <input
                                       type="date"
+                                      aria-label={t('projectManager.deadlineTitle', 'Échéance du projet')}
                                       value={editPhaseDeadline}
                                       onChange={(e) => setEditPhaseDeadline(e.target.value)}
                                       title={t('projectManager.phaseDeadlineTitle', 'Échéance de cette phase')}
@@ -862,13 +867,13 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                           <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: phase.color }} />
                                           <span className="truncate">{phase.name}</span>
                                           {phase.status === 'archived' && (
-                                            <span className="text-[10px] px-1 py-0.5 rounded-full bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-slate-300 flex-shrink-0">
+                                            <span className="text-[11px] px-1 py-0.5 rounded-full bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-slate-300 flex-shrink-0">
                                               {t('projectManager.statusArchived', 'Archivé')}
                                             </span>
                                           )}
                                           {phase.deadline && phase.status === 'active' && (
                                             <span
-                                              className={`text-[10px] px-1 py-0.5 rounded-full flex-shrink-0 ${
+                                              className={`text-[11px] px-1 py-0.5 rounded-full flex-shrink-0 ${
                                                 phase.deadline < Date.now()
                                                   ? 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400'
                                                   : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-300'
@@ -880,7 +885,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                           )}
                                         </span>
                                         <span className="flex items-center gap-2 flex-shrink-0 text-gray-500 dark:text-slate-400">
-                                          {formatHours(phase.billable_seconds)}h
+                                          {formatHoursDecimal(phase.billable_seconds)}h
                                           <button aria-label={phase.status === 'active' ? t('projectManager.archive', 'Archiver') : t('projectManager.reactivate', 'Réactiver')}
                                             onClick={() => togglePhaseArchive(phase, project.id)}
                                             title={phase.status === 'active' ? t('projectManager.archive', 'Archiver') : t('projectManager.reactivate', 'Réactiver')}
@@ -903,7 +908,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                       {phaseBudgetHoursProgress !== null && (
                                         <div className="mt-1.5">
                                           <div
-                                            className={`flex items-center justify-between text-[11px] mb-0.5 ${
+                                            className={`flex items-center justify-between text-xs mb-0.5 ${
                                               phaseBudgetHoursOver ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-gray-400'
                                             }`}
                                           >
@@ -927,7 +932,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                       {phaseBudgetAmountProgress !== null && (
                                         <div className="mt-1.5">
                                           <div
-                                            className={`flex items-center justify-between text-[11px] mb-0.5 ${
+                                            className={`flex items-center justify-between text-xs mb-0.5 ${
                                               phaseBudgetAmountOver ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-gray-400'
                                             }`}
                                           >
@@ -960,7 +965,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                   value={newPhaseName}
                                   onChange={(e) => setNewPhaseName(e.target.value)}
                                   onKeyDown={(e) => e.key === 'Enter' && createPhase(project.id)}
-                                  placeholder={t('projectManager.newPhasePlaceholder', 'Nouvelle phase (ex : Esquisse)')}
+                                  placeholder={t('projectManager.newPhasePlaceholder', 'Nouvelle phase (ex : Esquisse)')} aria-label={t('projectManager.newPhasePlaceholder', 'Nouvelle phase (ex : Esquisse)')}
                                   className="flex-1 min-w-0 px-2 py-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                                 />
                               </div>
@@ -968,7 +973,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                 type="text"
                                 value={newPhaseKeywords}
                                 onChange={(e) => setNewPhaseKeywords(e.target.value)}
-                                placeholder={t('projectManager.phaseKeywordsPlaceholder', 'Mots-clefs (ex: Esquisse, Étude)')}
+                                placeholder={t('projectManager.phaseKeywordsPlaceholder', 'Mots-clefs (ex: Esquisse, Étude)')} aria-label={t('projectManager.phaseKeywordsPlaceholder', 'Mots-clefs (ex: Esquisse, Étude)')}
                                 title={t('projectManager.keywordsTitle', "Mots-clefs pour l'auto-détection par nom de fenêtre")}
                                 className="w-full px-2 py-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                               />
@@ -979,7 +984,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                   step="1"
                                   value={newPhaseBudgetHours}
                                   onChange={(e) => setNewPhaseBudgetHours(e.target.value)}
-                                  placeholder={t('projectManager.budgetHoursPlaceholderShort', 'Budget h')}
+                                  placeholder={t('projectManager.budgetHoursPlaceholderShort', 'Budget h')} aria-label={t('projectManager.budgetHoursPlaceholderShort', 'Budget h')}
                                   title={t('projectManager.phaseBudgetHoursTitle', 'Budget en heures pour cette phase')}
                                   className="flex-1 min-w-0 px-2 py-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                                 />
@@ -989,12 +994,13 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                   step="0.01"
                                   value={newPhaseBudgetAmount}
                                   onChange={(e) => setNewPhaseBudgetAmount(e.target.value)}
-                                  placeholder={t('projectManager.budgetAmountPlaceholderShort', 'Budget €')}
+                                  placeholder={t('projectManager.budgetAmountPlaceholderShort', 'Budget €')} aria-label={t('projectManager.budgetAmountPlaceholderShort', 'Budget €')}
                                   title={t('projectManager.phaseBudgetAmountTitle', 'Budget en euros pour cette phase')}
                                   className="flex-1 min-w-0 px-2 py-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                                 />
                                 <input
                                   type="date"
+                                  aria-label={t('projectManager.deadlineTitle', 'Échéance du projet')}
                                   value={newPhaseDeadline}
                                   onChange={(e) => setNewPhaseDeadline(e.target.value)}
                                   title={t('projectManager.phaseDeadlineTitle', 'Échéance de cette phase')}
