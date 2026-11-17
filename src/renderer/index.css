@@ -264,35 +264,38 @@ body {
 }
 
 
-/* Identité Akta : palette dynamique, dessin fixe et respiration limitée au pulse. */
+/* Identité Akta : le A, le cercle et le contour suivent l'accentuation.
+   La respiration lumineuse s'applique uniquement au signal ECG blanc. */
 .akta-logo__background {
   fill: #f8fafc;
 }
 .dark .akta-logo__background {
-  fill: #0b1430;
-}
-.akta-logo__dot {
-  fill: #fff;
-  stroke: var(--accent-primary, #6366f1);
+  fill: #0b1328;
 }
 .akta-logo__pulse-contrast {
-  stroke: #1e293b;
-  opacity: 0.65;
+  stroke: var(--accent-primary, #6366f1);
+  opacity: .38;
+  filter: blur(.7px);
 }
 .dark .akta-logo__pulse-contrast {
   opacity: 0;
 }
 .akta-logo__pulse {
-  transform-origin: 64px 82px;
   animation: aktaPulseBreath 2.5s ease-in-out infinite;
 }
-.akta-logo__pulse-glow {
-  filter: blur(2.4px);
-  opacity: 0.52;
+.akta-logo__pulse-halo {
+  filter: blur(2px);
+  opacity: .46;
 }
 @keyframes aktaPulseBreath {
-  0%, 100% { opacity: 0.74; }
-  50% { opacity: 1; }
+  0%, 100% {
+    opacity: .78;
+    filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, .42));
+  }
 }
 
 /* Windows « Afficher les animations » désactivé : on coupe les animations décoratives en boucle
