@@ -24,3 +24,52 @@
     CreateShortCut "$DESKTOP\${PRODUCT_NAME}.lnk" "$INSTDIR\${PRODUCT_FILENAME}.exe"
   FunctionEnd
 !endif
+
+; Akta ouvert pendant l'installation / la désinstallation.
+;
+; Remplace la vérification par défaut d'electron-builder (_CHECK_APP_RUNNING) : elle se contente d'un
+; taskkill "poli" (WM_CLOSE) qu'Akta intercepte pour se réduire dans le tray, et finit souvent par
+; demander de fermer l'app à la main. Ici :
+;   1. on demande à l'utilisateur s'il veut fermer Akta (sauf mise à jour auto ou mode silencieux) ;
+;   2. on relance Akta avec --akta-quit : l'instance ouverte quitte proprement et enregistre la
+;      session en cours (voir QUIT_FLAG dans src/main/index.ts) ;
+;   3. si elle tourne encore après ~5 s (ancienne version sans ce drapeau, app bloquée…), on force.
+; Aucune étiquette (label) ici : la macro peut être insérée plusieurs fois dans la même fonction,
+; on passe donc uniquement par LogicLib qui génère des étiquettes uniques.
+!macro customCheckAppRunning
+  !insertmacro FIND_PROCESS "${APP_EXECUTABLE_FILENAME}" $R0
+  ${If} $R0 == 0
+    ${IfNot} ${isUpdated}
+      ${IfNot} ${Cmd} `MessageBox MB_YESNO|MB_ICONQUESTION "${PRODUCT_NAME} est en cours d'exécution.$\r$\n$\r$\nLe fermer pour continuer ? La session en cours sera enregistrée." /SD IDYES IDYES`
+        Quit
+      ${EndIf}
+    ${EndIf}
+
+    DetailPrint `Fermeture de "${PRODUCT_NAME}"...`
+    ${If} ${FileExists} "$INSTDIR\${APP_EXECUTABLE_FILENAME}"
+      Exec `"$INSTDIR\${APP_EXECUTABLE_FILENAME}" --akta-quit`
+    ${EndIf}
+
+    ; Laisse jusqu'à ~5 s à l'app pour quitter d'elle-même.
+    StrCpy $R1 0
+    ${Do}
+      Sleep 500
+      IntOp $R1 $R1 + 1
+      !insertmacro FIND_PROCESS "${APP_EXECUTABLE_FILENAME}" $R0
+    ${LoopUntil} $R0 != 0
+    ${OrIf} $R1 >= 10
+
+    ; Toujours là : fermeture forcée (processus de l'utilisateur courant uniquement).
+    ${DoWhile} $R0 == 0
+      nsExec::Exec `%SYSTEMROOT%\System32\cmd.exe /c taskkill /f /t /im "${APP_EXECUTABLE_FILENAME}" /fi "USERNAME eq %USERNAME%"`
+      Pop $R2
+      Sleep 1000
+      !insertmacro FIND_PROCESS "${APP_EXECUTABLE_FILENAME}" $R0
+      ${If} $R0 == 0
+        ${IfNot} ${Cmd} `MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "Impossible de fermer ${PRODUCT_NAME}. Fermez-le manuellement puis cliquez sur Réessayer." /SD IDCANCEL IDRETRY`
+          Quit
+        ${EndIf}
+      ${EndIf}
+    ${Loop}
+  ${EndIf}
+!macroend
