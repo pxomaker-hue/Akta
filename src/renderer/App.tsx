@@ -265,7 +265,7 @@ function App() {
                       : t('app.themeAuto', 'auto'),
               })}
             >
-              <Icon name={theme === 'light' ? 'sun' : theme === 'dark' ? 'moon' : 'refresh'} size={16} />
+              <Icon name={theme === 'light' ? 'sun' : theme === 'dark' ? 'moon' : 'sun-moon'} size={16} />
             </button>
 
             <SyncButton />
