@@ -63,14 +63,26 @@ function buildMatchRules(keywords: string[]) {
 // process.exit() est volontaire : app.quit() seul ne stoppe pas immédiatement l'exécution du
 // script, qui continuerait sinon jusqu'à app.on('ready', ...) et créerait brièvement une
 // fenêtre avant de se fermer.
-if (!app.requestSingleInstanceLock()) {
+//
+// QUIT_FLAG : l'installeur (build/installer.nsh) relance Akta avec ce drapeau pour demander à
+// l'instance déjà ouverte de se fermer proprement (session en cours enregistrée) avant la mise à
+// jour. Si aucune instance ne tourne, ce lancement ne doit surtout pas démarrer l'app.
+const QUIT_FLAG = '--akta-quit'
+if (!app.requestSingleInstanceLock() || process.argv.includes(QUIT_FLAG)) {
   app.quit()
   process.exit(0)
 }
 
 // Un second lancement (double-clic sur le raccourci, etc.) arrive ici : on ramène la fenêtre
 // existante au premier plan plutôt que de laisser une deuxième instance s'installer.
-app.on('second-instance', () => {
+app.on('second-instance', (_event, argv) => {
+  if (argv.includes(QUIT_FLAG)) {
+    // Fermeture demandée par l'installeur : on quitte vraiment (pas de réduction dans le tray).
+    // Le handler 'quit' arrête le tracker, ce qui clôt la session et les activités en cours.
+    isQuitting = true
+    app.quit()
+    return
+  }
   if (mainWindow) {
     if (mainWindow.isMinimized()) mainWindow.restore()
     if (!mainWindow.isVisible()) mainWindow.show()
