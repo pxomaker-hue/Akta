@@ -6,6 +6,7 @@
   "main": "dist/main/main/index.js",
   "homepage": "./",
   "scripts": {
+    "icons": "node scripts/generate-icons.cjs",
     "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
     "dev:main": "npm run build:main && cross-env NODE_ENV=development electron dist/main/main/index.js",
     "dev:renderer": "vite",
