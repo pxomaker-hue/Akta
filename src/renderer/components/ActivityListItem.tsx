@@ -80,8 +80,8 @@ function ActivityListItem({ activity, categories, tags = [], allTags = [], onCat
     <div
       className={`rounded-xl border p-4 transition-all hover:shadow-md ${
         selectedCategory
-          ? `bg-gradient-to-r from-white dark:from-gray-800 border-l-4`
-          : 'bg-gradient-to-br from-gray-50 to-white dark:from-gray-800/50 dark:to-gray-800 border-gray-200 dark:border-gray-700'
+          ? `bg-gradient-to-r from-white dark:from-slate-800 border-l-4`
+          : 'bg-gradient-to-br from-gray-50 to-white dark:from-slate-800/50 dark:to-slate-800 border-gray-200 dark:border-slate-700'
       }`}
       style={selectedCategory ? { borderLeftColor: selectedCategory.color } : {}}
     >
@@ -96,15 +96,15 @@ function ActivityListItem({ activity, categories, tags = [], allTags = [], onCat
 
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-gray-900 dark:text-white">{activity.app_name}</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 truncate mt-0.5">{activity.window_title}</p>
+            <p className="text-sm text-gray-600 dark:text-slate-400 truncate mt-0.5">{activity.window_title}</p>
 
-            <div className="flex items-center gap-2 mt-2 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
+            <div className="flex items-center gap-2 mt-2 text-xs text-gray-500 dark:text-slate-400 flex-wrap">
               {activity.end_time && !isSameCalendarDay(activity.start_time, activity.end_time) ? (
                 // L'activité s'étend sur plusieurs jours : plage de dates puis plage d'heures,
                 // affichées séparément pour rester lisibles (concaténer date+heure sur chaque borne
                 // est redondant et brouille la lecture).
                 <>
-                  <span className="font-medium text-gray-600 dark:text-gray-300">
+                  <span className="font-medium text-gray-600 dark:text-slate-300">
                     {formatDateOnly(activity.start_time)} → {formatDateOnly(activity.end_time)}
                   </span>
                   <span className="flex items-center gap-1">
@@ -115,7 +115,7 @@ function ActivityListItem({ activity, categories, tags = [], allTags = [], onCat
               ) : (
                 <>
                   {!isToday(activity.start_time) && (
-                    <span className="font-medium text-gray-600 dark:text-gray-300 mr-1">{formatDateOnly(activity.start_time)}</span>
+                    <span className="font-medium text-gray-600 dark:text-slate-300 mr-1">{formatDateOnly(activity.start_time)}</span>
                   )}
                   <span className="flex items-center gap-1">
                     <Icon name="clock" size={12} />
@@ -124,7 +124,7 @@ function ActivityListItem({ activity, categories, tags = [], allTags = [], onCat
                   {activity.end_time && <span>→ {formatTimeOnly(activity.end_time)}</span>}
                 </>
               )}
-              <span className="ml-auto font-medium text-gray-700 dark:text-gray-200">{formatDuration(activity.duration_seconds, { showSeconds: true })}</span>
+              <span className="ml-auto font-medium text-gray-700 dark:text-slate-200">{formatDuration(activity.duration_seconds, { showSeconds: true })}</span>
             </div>
 
             {/* Tags */}

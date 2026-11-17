@@ -88,7 +88,7 @@ function InactivityExclusionsManager() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('inactivityExclusions.title', "Exclusions d'inactivité")}</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">
             {t('inactivityExclusions.description', 'Applications/fenêtres où tu ne bouges pas mais où tu es actif (vidéos, tutos, etc.)')}
           </p>
         </div>
@@ -104,7 +104,7 @@ function InactivityExclusionsManager() {
       {showForm && (
         <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg border border-gray-200 dark:border-slate-700 space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               {t('inactivityExclusions.appPatternLabel', "Pattern d'application (ex: youtube, vlc, netflix)")}
             </label>
             <input
@@ -112,13 +112,13 @@ function InactivityExclusionsManager() {
               value={appPattern}
               onChange={(e) => setAppPattern(e.target.value)}
               placeholder="youtube" aria-label={t('inactivityExclusions.appPatternLabel', "Pattern d'application (ex: youtube, vlc, netflix)")}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 text-sm"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 text-sm"
             />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('inactivityExclusions.appPatternHint', "Recherche insensible à la casse sur le nom de l'app")}</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{t('inactivityExclusions.appPatternHint', "Recherche insensible à la casse sur le nom de l'app")}</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               {t('inactivityExclusions.titlePatternLabel', 'Pattern de titre de fenêtre (ex: "video")')}
             </label>
             <input
@@ -126,13 +126,13 @@ function InactivityExclusionsManager() {
               value={titlePattern}
               onChange={(e) => setTitlePattern(e.target.value)}
               placeholder="video" aria-label={t('inactivityExclusions.titlePatternLabel', 'Pattern de titre de fenêtre (ex: "video")')}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 text-sm"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 text-sm"
             />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('inactivityExclusions.titlePatternHint', 'Recherche insensible à la casse sur le titre')}</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{t('inactivityExclusions.titlePatternHint', 'Recherche insensible à la casse sur le titre')}</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               {t('inactivityExclusions.descriptionLabel', 'Description (optionnel)')}
             </label>
             <input
@@ -140,7 +140,7 @@ function InactivityExclusionsManager() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t('inactivityExclusions.descriptionPlaceholder', 'Regarder des vidéos')} aria-label={t('inactivityExclusions.descriptionPlaceholder', 'Regarder des vidéos')}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 text-sm"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 text-sm"
             />
           </div>
 
@@ -163,7 +163,7 @@ function InactivityExclusionsManager() {
       )}
 
       {exclusions.length === 0 ? (
-        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+        <div className="text-center py-8 text-gray-500 dark:text-slate-400">
           <p className="text-sm">{t('inactivityExclusions.empty', 'Aucune exclusion d\'inactivité configurée')}</p>
         </div>
       ) : (
@@ -187,7 +187,7 @@ function InactivityExclusionsManager() {
                   )}
                 </div>
                 {exclusion.description && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{exclusion.description}</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400 mt-2">{exclusion.description}</p>
                 )}
               </div>
               <button aria-label={t('common.delete', 'Supprimer')}

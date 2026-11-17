@@ -95,7 +95,7 @@ function SyncSettings() {
         <Icon name="refresh" size={18} className="accent-text" />
         {t('syncSettings.title', 'Synchronisation entre ordinateurs')}
       </h3>
-      <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+      <p className="text-xs text-gray-500 dark:text-slate-400 mb-4">
         {t('syncSettings.description', "Optionnel : pointe vers un fichier sur un dossier partagé (NAS, disque réseau...) pour combiner tes données entre plusieurs machines. Chaque appli garde sa propre base en local — seul un fichier de synchro est lu/écrit, à la demande, via l'icône dans la barre de nav.")}
       </p>
 
@@ -124,7 +124,7 @@ function SyncSettings() {
       {syncPath ? (
         <div className="p-3 rounded-lg bg-gray-50 dark:bg-slate-800/60">
           <div className="min-w-0 mb-3">
-            <p className="text-xs text-gray-500 dark:text-gray-400">{t('syncSettings.filePathLabel', 'Fichier de synchronisation')}</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400">{t('syncSettings.filePathLabel', 'Fichier de synchronisation')}</p>
             <p className="text-sm font-mono text-gray-900 dark:text-white truncate" title={syncPath}>{syncPath}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">

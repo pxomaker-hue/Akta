@@ -71,7 +71,7 @@ function UpdateSettings() {
         <Icon name="download" size={18} className="accent-text" />
         {t('updateSettings.title', 'Mises à jour')}
       </h3>
-      <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+      <p className="text-xs text-gray-500 dark:text-slate-400 mb-4">
         {t('updateSettings.installedVersion', 'Version installée :')} <span className="font-mono">{version || '…'}</span>
       </p>
 

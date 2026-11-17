@@ -389,7 +389,7 @@ function FocusMode({ onBack }: FocusModeProps) {
             <Icon name="target" size={22} className="accent-text flex-shrink-0" />
             <span className="accent-gradient-text">{t('focusMode.title', 'Mode focus')}</span>
           </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+          <p className="text-sm text-gray-600 dark:text-slate-400 mt-2">
             {t('focusMode.subtitle', 'Bloque les applis qui te distraient et reste concentré sur une durée définie.')}
           </p>
         </div>
@@ -410,7 +410,7 @@ function FocusMode({ onBack }: FocusModeProps) {
                     pomodoroState.isBreak ? 'bg-white/30' : 'bg-white/25'
                   }`}
                 >
-                  {pomodoroState.isBreak ? t('focusMode.pauseBadge', '☕ PAUSE') : t('focusMode.focusBadge', '🎯 FOCUS')} • {t('focusMode.sessionLabel', 'Session')} {pomodoroState.sessionNum}/{numSessions}
+                  {pomodoroState.isBreak ? t('focusMode.pauseBadge', 'PAUSE') : t('focusMode.focusBadge', 'FOCUS')} • {t('focusMode.sessionLabel', 'Session')} {pomodoroState.sessionNum}/{numSessions}
                 </span>
               </div>
             )}
@@ -437,15 +437,15 @@ function FocusMode({ onBack }: FocusModeProps) {
               <p key={completedSessions} className="text-lg font-bold accent-text animate-pop-in">
                 {completedSessions}/{numSessions}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('focusMode.completedStat', 'terminées')}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{t('focusMode.completedStat', 'terminées')}</p>
             </div>
             <div className="bg-gray-50 dark:bg-slate-800/50 rounded-lg py-3">
-              <p className="text-lg font-bold text-gray-800 dark:text-gray-100 font-mono tabular-nums">{formatTime(totalElapsedSec)}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('focusMode.elapsedStat', 'écoulé au total')}</p>
+              <p className="text-lg font-bold text-gray-800 dark:text-slate-100 font-mono tabular-nums">{formatTime(totalElapsedSec)}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{t('focusMode.elapsedStat', 'écoulé au total')}</p>
             </div>
             <div className="bg-gray-50 dark:bg-slate-800/50 rounded-lg py-3">
-              <p className="text-lg font-bold text-gray-800 dark:text-gray-100 font-mono tabular-nums">{formatTime(timeLeft)}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('focusMode.remainingStat', 'restant au total')}</p>
+              <p className="text-lg font-bold text-gray-800 dark:text-slate-100 font-mono tabular-nums">{formatTime(timeLeft)}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{t('focusMode.remainingStat', 'restant au total')}</p>
             </div>
           </div>
         )}
@@ -493,7 +493,7 @@ function FocusMode({ onBack }: FocusModeProps) {
           <div className="mb-6 min-h-[180px] flex flex-col justify-center">
             {focusMode === 'simple' ? (
               <div key="simple" className="animate-fade-in-scale">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('focusMode.sessionDurationLabel', 'Durée de la session')}</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">{t('focusMode.sessionDurationLabel', 'Durée de la session')}</label>
                 <div className="flex gap-2">
                   {QUICK_DURATIONS.map((mins) => (
                     <button
@@ -515,7 +515,7 @@ function FocusMode({ onBack }: FocusModeProps) {
                 <div className="grid grid-cols-3 gap-4">
                   {/* Nombre de sessions */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('focusMode.sessionsCountLabel', 'Sessions')}</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">{t('focusMode.sessionsCountLabel', 'Sessions')}</label>
                     <div className="flex items-center gap-2">
                       <button aria-label={t('common.decrease', 'Diminuer')} title={t('common.decrease', 'Diminuer')}
                         onClick={() => setNumSessions(Math.max(1, numSessions - 1))}
@@ -537,7 +537,7 @@ function FocusMode({ onBack }: FocusModeProps) {
 
                   {/* Durée session focus */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('focusMode.focusMinutesLabel', 'Focus (min)')}</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">{t('focusMode.focusMinutesLabel', 'Focus (min)')}</label>
                     <div className="flex items-center gap-2">
                       <button aria-label={t('common.decrease', 'Diminuer')} title={t('common.decrease', 'Diminuer')}
                         onClick={() => setSessionDuration(Math.max(5, sessionDuration - 5))}
@@ -559,7 +559,7 @@ function FocusMode({ onBack }: FocusModeProps) {
 
                   {/* Durée pause */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('focusMode.pauseMinutesLabel', 'Pause (min)')}</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">{t('focusMode.pauseMinutesLabel', 'Pause (min)')}</label>
                     <div className="flex items-center gap-2">
                       <button aria-label={t('common.decrease', 'Diminuer')} title={t('common.decrease', 'Diminuer')}
                         onClick={() => setPauseDuration(Math.max(1, pauseDuration - 1))}
@@ -582,7 +582,7 @@ function FocusMode({ onBack }: FocusModeProps) {
 
                 {/* Résumé */}
                 <div className="bg-gray-50 dark:bg-slate-800/50 rounded p-3 text-sm">
-                  <p className="text-gray-600 dark:text-gray-400">
+                  <p className="text-gray-600 dark:text-slate-400">
                     <strong>{numSessions} {t('focusMode.summary.sessionsWord', 'sessions')}</strong> {t('focusMode.summary.ofWord', 'de')} {sessionDuration}m
                     + <strong>{numSessions - 1} {t('focusMode.summary.pausesWord', 'pauses')}</strong> {t('focusMode.summary.ofWord', 'de')} {pauseDuration}m
                     = <strong className="text-accent">{numSessions * sessionDuration + (numSessions - 1) * pauseDuration}m {t('focusMode.summary.totalWord', 'total')}</strong>
@@ -620,7 +620,7 @@ function FocusMode({ onBack }: FocusModeProps) {
 
         {/* Apps bloquées */}
         <div className="mb-8">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">{t('focusMode.blockedAppsLabel', 'Apps à bloquer pendant la session')}</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-3">{t('focusMode.blockedAppsLabel', 'Apps à bloquer pendant la session')}</label>
           <div className="flex gap-2 mb-3">
             <input
               type="text"

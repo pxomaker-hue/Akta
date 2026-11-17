@@ -29,6 +29,7 @@ import { useTheme } from './hooks/useTheme'
 import { useTranslation, tf } from './hooks/useTranslation'
 import { useAccentColor } from './hooks/useAccentColor'
 import { useChartTheme } from './hooks/useChartTheme'
+import { DESIGN } from '../shared/design'
 
 declare global {
   interface Window {
@@ -193,19 +194,42 @@ function App() {
           : t('app.themeAuto', 'auto'),
   })
 
-  const focusButtonJsx = isFocusActive ? (
+  // Toujours visible : c'est la seule porte d'entrée du Mode Focus (pas d'onglet dédié pour ne pas
+  // surcharger la barre). Anneau d'accent quand l'onglet est ouvert, battement quand une session tourne.
+  const isFocusTab = activeTab === 'focus'
+  const focusButtonLabel = isFocusActive
+    ? t('app.focusSessionActive', 'Session Mode Focus en cours — cliquer pour y accéder')
+    : t('app.openFocusMode', 'Ouvrir le Mode Focus')
+  const focusButtonJsx = (
     <button
       onClick={() => setActiveTab('focus')}
-      title={t('app.focusSessionActive', 'Session Mode Focus en cours — cliquer pour y accéder')}
-      aria-label={t('app.focusSessionActive', 'Session Mode Focus en cours — cliquer pour y accéder')}
-      className="relative w-10 h-10 flex items-center justify-center flex-shrink-0"
+      title={focusButtonLabel}
+      aria-label={focusButtonLabel}
+      aria-current={isFocusTab ? 'page' : undefined}
+      className={`relative w-10 h-10 flex items-center justify-center flex-shrink-0 rounded-full ${
+        isFocusTab ? 'ring-2 ring-[var(--accent-primary)] ring-offset-2 ring-offset-white dark:ring-offset-slate-800' : ''
+      }`}
     >
-      <span className="absolute inset-0 rounded-full accent-gradient-bg animate-focus-glow-ring" aria-hidden="true" />
-      <span className="relative w-10 h-10 rounded-full accent-gradient-bg flex items-center justify-center text-white shadow-md hover:brightness-110 transition-all animate-focus-heartbeat">
-        <Icon name="target" size={16} />
-      </span>
+      {isFocusActive ? (
+        <>
+          <span className="absolute inset-0 rounded-full accent-gradient-bg animate-focus-glow-ring" aria-hidden="true" />
+          <span className="relative w-10 h-10 rounded-full accent-gradient-bg flex items-center justify-center text-white shadow-md hover:brightness-110 transition-all animate-focus-heartbeat">
+            <Icon name="target" size={16} />
+          </span>
+        </>
+      ) : (
+        <span
+          className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+            isFocusTab
+              ? 'accent-gradient-bg text-white'
+              : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-slate-600'
+          }`}
+        >
+          <Icon name="target" size={16} />
+        </span>
+      )}
     </button>
-  ) : null
+  )
 
   return (
     <LiveSessionProvider>
@@ -213,9 +237,9 @@ function App() {
       <TitleBar />
       {/* Header */}
       <header className="bg-white dark:bg-slate-900 shadow flex-shrink-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3.5">
-            <Logo size={58} />
+            <Logo size={46} />
             <div>
               <h1 className="text-2xl font-extrabold tracking-tight accent-gradient-text leading-tight">
                 {t('app.title')}
@@ -308,26 +332,26 @@ function App() {
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{t('activities.summary.total')}</p>
+                      <p className="text-sm text-gray-600 dark:text-slate-400">{t('activities.summary.total')}</p>
                       <p className="text-2xl font-bold text-gray-900 dark:text-white">{daySummary.total}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{t('activities.summary.categories')}</p>
+                      <p className="text-sm text-gray-600 dark:text-slate-400">{t('activities.summary.categories')}</p>
                       <p className="text-2xl font-bold text-gray-900 dark:text-white">{categories.length}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{t('app.professional', 'Professionnel')}</p>
+                      <p className="text-sm text-gray-600 dark:text-slate-400">{t('app.professional', 'Professionnel')}</p>
                       <p className="text-2xl font-bold text-gray-900 dark:text-white">{daySummary.pro}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{t('app.personal', 'Personnel')}</p>
+                      <p className="text-sm text-gray-600 dark:text-slate-400">{t('app.personal', 'Personnel')}</p>
                       <p className="text-2xl font-bold text-gray-900 dark:text-white">{daySummary.perso}</p>
                     </div>
                     {daySummary.unclassified > 0 && (
                       <div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{t('app.unclassified', 'Non classé')}</p>
+                        <p className="text-sm text-gray-600 dark:text-slate-400">{t('app.unclassified', 'Non classé')}</p>
                         <p className="text-2xl font-bold text-gray-900 dark:text-white">{daySummary.unclassified}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('app.unclassifiedHint', 'Activités sans catégorie : facturées seulement si la session est facturable.')}</p>
+                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{t('app.unclassifiedHint', 'Activités sans catégorie : facturées seulement si la session est facturable.')}</p>
                       </div>
                     )}
                   </div>
@@ -348,9 +372,9 @@ function App() {
                             paddingAngle={2}
                             dataKey="value"
                           >
-                            <Cell fill="#3b82f6" />
-                            <Cell fill="#8b5cf6" />
-                            <Cell fill="#9ca3af" />
+                            <Cell fill={DESIGN.billing.professional} />
+                            <Cell fill={DESIGN.billing.personal} />
+                            <Cell fill={DESIGN.billing.unclassified} />
                           </Pie>
                           <Tooltip
                             {...chart.tooltip}
@@ -387,7 +411,7 @@ function App() {
                   <Icon name="layers" size={22} className="accent-text flex-shrink-0" />
                   <span className="accent-gradient-text">{t('app.reportsTitle', 'Rapports & Analyses')}</span>
                 </h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                <p className="text-sm text-gray-600 dark:text-slate-400 mt-2">
                   {t('app.reportsDescription', "Ta semaine en un coup d'œil, puis une analyse plus approfondie de tes habitudes.")}
                 </p>
               </div>
@@ -427,7 +451,7 @@ function App() {
                   <Icon name="briefcase" size={22} className="accent-text flex-shrink-0" />
                   <span className="accent-gradient-text">{t('app.projectManagementTitle', 'Gestion de projet')}</span>
                 </h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                <p className="text-sm text-gray-600 dark:text-slate-400 mt-2">
                   {t('app.projectManagementDescription', 'Organise tes sessions actives par client et par projet, avec un taux horaire pour préparer ta facturation.')}
                 </p>
               </div>

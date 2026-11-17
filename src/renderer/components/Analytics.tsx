@@ -133,7 +133,7 @@ function Analytics() {
           label={t('analytics.uncategorized', 'Non catégorisé')}
           value={`${metrics.uncategorizedTime}h`}
           icon={<Icon name="chart-pie" size={18} />}
-          gradient="from-gray-50/80 to-gray-100/60 dark:from-gray-800/40 dark:to-gray-700/20"
+          gradient="from-gray-50/80 to-gray-100/60 dark:from-slate-800/40 dark:to-slate-700/20"
         />
         <Stat
           label={t('analytics.deepWork', 'Deep Work')}
@@ -191,20 +191,20 @@ function Analytics() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-slate-700">
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">{t('analytics.month', 'Mois')}</th>
-                    <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">{t('analytics.activities', 'Activités')}</th>
-                    <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">{t('analytics.durationHours', 'Durée (h)')}</th>
-                    <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">{t('analytics.focusHours', 'Focus (h)')}</th>
-                    <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">{t('analytics.productivity', 'Productivité')}</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-slate-300">{t('analytics.month', 'Mois')}</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-slate-300">{t('analytics.activities', 'Activités')}</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-slate-300">{t('analytics.durationHours', 'Durée (h)')}</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-slate-300">{t('analytics.focusHours', 'Focus (h)')}</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-slate-300">{t('analytics.productivity', 'Productivité')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {monthData.map((month, idx) => (
                     <tr key={idx} className="border-b border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors">
                       <td className="py-3 px-4 text-gray-900 dark:text-white font-medium">{month.month}</td>
-                      <td className="text-right py-3 px-4 text-gray-600 dark:text-gray-400">{month.totalActivities}</td>
-                      <td className="text-right py-3 px-4 text-gray-600 dark:text-gray-400">{month.totalDuration}</td>
-                      <td className="text-right py-3 px-4 text-gray-600 dark:text-gray-400">{month.focusedTime}</td>
+                      <td className="text-right py-3 px-4 text-gray-600 dark:text-slate-400">{month.totalActivities}</td>
+                      <td className="text-right py-3 px-4 text-gray-600 dark:text-slate-400">{month.totalDuration}</td>
+                      <td className="text-right py-3 px-4 text-gray-600 dark:text-slate-400">{month.focusedTime}</td>
                       <td className="text-right py-3 px-4">
                         <span
                           className="inline-block px-3 py-1 rounded-lg text-xs font-semibold text-white"
@@ -238,7 +238,7 @@ function Analytics() {
                     <p className="font-semibold text-gray-900 dark:text-white">
                       {String(time.hour).padStart(2, '0')}:00 • {t(DAY_KEYS[time.dayOfWeek], DAY_DEFAULTS[time.dayOfWeek])}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                       {tf(t('analytics.seenTimes', 'Vu {{n}} fois ({{count}} activités)'), { n: time.distinctDays, count: time.activities })}
                     </p>
                   </div>
@@ -246,7 +246,7 @@ function Analytics() {
                     <p className="text-lg font-bold accent-text">
                       {Math.round(time.avgDuration / 60)}min
                     </p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">{t('analytics.onAverage', 'en moyenne')}</p>
+                    <p className="text-xs text-gray-400 dark:text-slate-500">{t('analytics.onAverage', 'en moyenne')}</p>
                   </div>
                 </div>
                 <div className="w-full h-2 bg-gray-200 dark:bg-slate-700/50 rounded-full overflow-hidden">

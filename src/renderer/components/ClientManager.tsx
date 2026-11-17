@@ -176,7 +176,7 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
       </div>
 
       {clients.length === 0 ? (
-        <p className="text-center text-gray-500 dark:text-gray-400 py-4 text-sm">{t('clientManager.noClient', 'Aucun client créé')}</p>
+        <p className="text-center text-gray-500 dark:text-slate-400 py-4 text-sm">{t('clientManager.noClient', 'Aucun client créé')}</p>
       ) : (
         <div className="space-y-2">
           {clients.map((client) => {
@@ -258,7 +258,7 @@ function ClientManager({ onClientsLoaded }: ClientManagerProps) {
                   <div className="px-2.5 pb-2.5">
                     <button
                       onClick={() => toggleExpand(client.id)}
-                      className="w-full flex items-center justify-between text-xs pt-2 border-t border-gray-200/50 dark:border-slate-700/50 text-gray-500 dark:text-gray-400 hover:accent-text transition-colors"
+                      className="w-full flex items-center justify-between text-xs pt-2 border-t border-gray-200/50 dark:border-slate-700/50 text-gray-500 dark:text-slate-400 hover:accent-text transition-colors"
                     >
                       <span>
                         {tf(t('projectManager.hoursThisMonth', '{{h}}h ce mois'), { h: formatHoursDecimal(stats.monthSeconds) })} • {tf(t('projectManager.hoursTotal', '{{h}}h au total'), { h: formatHoursDecimal(stats.totalSeconds) })}

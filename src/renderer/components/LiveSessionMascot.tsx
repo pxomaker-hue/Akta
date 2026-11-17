@@ -6,7 +6,7 @@ function LiveSessionMascot() {
 
   if (!status) return null
 
-  return <Mascot mood={mood} size={110} />
+  return <Mascot mood={mood} size={84} />
 }
 
 export default LiveSessionMascot

@@ -72,17 +72,17 @@ function FocusChallenges() {
 
   return (
     <Card>
-      <CardHeader title={t('focusChallenges.title', '🏆 Défis Focus')} icon={<Icon name="award" size={18} />} />
+      <CardHeader title={t('focusChallenges.title', 'Défis Focus')} icon={<Icon name="award" size={18} />} />
 
       {/* Streak Header */}
       <div className="mb-4 p-3 rounded-lg bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20 border border-orange-200 dark:border-orange-800">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-orange-700 dark:text-orange-300 font-medium">{t('focusChallenges.currentStreak', '🔥 Streak Actuelle')}</p>
+            <p className="text-xs text-orange-700 dark:text-orange-300 font-medium">{t('focusChallenges.currentStreak', 'Streak Actuelle')}</p>
             <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{tf(t('focusChallenges.streakDays', '{{n}} jours'), { n: streak })}</p>
           </div>
           <div className="text-right text-xs text-orange-600 dark:text-orange-400">
-            <p>{t('focusChallenges.keepGoing', 'Garde la série ! 💪')}</p>
+            <p>{t('focusChallenges.keepGoing', 'Garde la série !')}</p>
           </div>
         </div>
       </div>
@@ -103,14 +103,14 @@ function FocusChallenges() {
       {tab === 'challenges' && (
         <div className="space-y-3">
           {challenges.length === 0 ? (
-            <p className="text-center text-gray-500 dark:text-gray-400 py-4 text-sm">{t('focusChallenges.noActiveChallenge', 'Aucun défi actif')}</p>
+            <p className="text-center text-gray-500 dark:text-slate-400 py-4 text-sm">{t('focusChallenges.noActiveChallenge', 'Aucun défi actif')}</p>
           ) : (
             challenges.map((item) => (
               <div key={item.challenge.id} className="rounded-lg border border-gray-200 dark:border-slate-700 p-4">
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <h3 className="font-semibold text-gray-900 dark:text-white">{item.challenge.name}</h3>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">{item.challenge.description}</p>
+                    <p className="text-xs text-gray-600 dark:text-slate-400">{item.challenge.description}</p>
                   </div>
                   {item.progress?.completed && <Icon name="check" size={18} className="text-emerald-500 flex-shrink-0" />}
                 </div>
@@ -118,10 +118,10 @@ function FocusChallenges() {
                 {item.progress && (
                   <>
                     <div className="flex items-center justify-between mb-2 text-sm">
-                      <span className="text-gray-700 dark:text-gray-300">
+                      <span className="text-gray-700 dark:text-slate-300">
                         {item.progress.current} / {item.progress.target}
                       </span>
-                      <span className="text-gray-500 dark:text-gray-400 text-xs">
+                      <span className="text-gray-500 dark:text-slate-400 text-xs">
                         {Math.round(item.progress.percentage)}%
                         {item.progress.days_remaining !== undefined && item.progress.days_remaining !== null && (
                           <> • {tf(t('focusChallenges.daysRemaining', '{{n}}j restants'), { n: item.progress.days_remaining })}</>
@@ -154,7 +154,7 @@ function FocusChallenges() {
       {tab === 'milestones' && (
         <div className="space-y-2">
           {milestones.length === 0 ? (
-            <p className="text-center text-gray-500 dark:text-gray-400 py-4 text-sm">{t('focusChallenges.noMilestone', 'Aucun jalon')}</p>
+            <p className="text-center text-gray-500 dark:text-slate-400 py-4 text-sm">{t('focusChallenges.noMilestone', 'Aucun jalon')}</p>
           ) : (
             milestones.map((milestone) => {
               const progressPercent = Math.min((milestone.progress / milestone.threshold) * 100, 100)
@@ -171,10 +171,10 @@ function FocusChallenges() {
                       <p className="font-semibold text-sm text-gray-900 dark:text-white mb-1">
                         {milestone.name}
                       </p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                      <p className="text-xs text-gray-600 dark:text-slate-400 mb-2">
                         {typeLabel}
                       </p>
-                      <div className="space-y-1 text-xs text-gray-700 dark:text-gray-300">
+                      <div className="space-y-1 text-xs text-gray-700 dark:text-slate-300">
                         <div className="flex justify-between gap-3">
                           <span>{t('focusChallenges.progress', 'Progrès:')}</span>
                           <span className="font-medium">{milestone.progress} / {milestone.threshold}</span>
@@ -196,7 +196,7 @@ function FocusChallenges() {
                     <div className="flex items-center gap-3 flex-1">
                       <Icon name={milestone.unlocked_at ? 'trophy' : 'award'} size={18} className={milestone.unlocked_at ? 'text-amber-500 flex-shrink-0' : 'text-gray-300 dark:text-slate-600 flex-shrink-0'} />
                       <div className="flex-1">
-                        <p className={`font-medium text-sm ${milestone.unlocked_at ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'}`}>
+                        <p className={`font-medium text-sm ${milestone.unlocked_at ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-slate-400'}`}>
                           {milestone.name}
                         </p>
                         <div className="w-32 bg-gray-200 dark:bg-slate-700 rounded-full h-1.5 mt-1">
@@ -209,7 +209,7 @@ function FocusChallenges() {
                         </div>
                       </div>
                     </div>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                    <span className="text-xs text-gray-500 dark:text-slate-400 ml-2">
                       {milestone.progress} / {milestone.threshold}
                     </span>
                   </div>

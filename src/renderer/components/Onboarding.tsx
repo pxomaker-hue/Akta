@@ -4,9 +4,9 @@ import { useTranslation, type Language } from '../hooks/useTranslation'
 import { useModalFocus } from '../hooks/useModalFocus'
 
 const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
-  { value: 'fr', label: '🇫🇷 Français' },
-  { value: 'en', label: '🇬🇧 English' },
-  { value: 'de', label: '🇩🇪 Deutsch' },
+  { value: 'fr', label: 'Français' },
+  { value: 'en', label: 'English' },
+  { value: 'de', label: 'Deutsch' },
 ]
 
 interface OnboardingStep {
@@ -167,7 +167,7 @@ function Onboarding({ onComplete }: OnboardingProps) {
             <Icon name={current.icon} size={28} />
           </div>
           <h2 id="onboarding-title" className="text-xl font-bold accent-gradient-text">{currentTitle}</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed max-w-sm">{currentDescription}</p>
+          <p className="text-sm text-gray-600 dark:text-slate-400 leading-relaxed max-w-sm">{currentDescription}</p>
 
           {step === 0 && (
             <div className="flex gap-2 mt-1">

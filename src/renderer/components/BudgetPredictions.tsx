@@ -26,7 +26,8 @@ function PredictionRow({ pred, t }: { pred: Prediction; t: (key: string, default
     <div className="flex items-center justify-between">
       <div className="flex-1 min-w-0">
         <div className="text-gray-600 dark:text-slate-300">
-          {pred.type === 'hours' ? `⏱ ${t('budgetPredictions.hours', 'Heures')}` : `💰 ${t('budgetPredictions.amount', 'Montant')}`}
+          <Icon name={pred.type === 'hours' ? 'clock' : 'dollar'} size={12} className="inline-block align-[-1px] mr-1" />
+          {pred.type === 'hours' ? t('budgetPredictions.hours', 'Heures') : t('budgetPredictions.amount', 'Montant')}
         </div>
         <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-1.5 mt-1">
           <div
@@ -109,7 +110,7 @@ function BudgetPredictions() {
     return (
       <Card>
         <CardHeader title={t('budgetPredictions.title', 'Budget — Prédictions')} icon={<Icon name="trending-up" size={18} />} subtitle={t('budgetPredictions.noBudgetProject', 'Aucun projet avec budget')} />
-        <p className="text-center text-gray-500 dark:text-gray-400 py-4 text-sm">{t('budgetPredictions.createBudgetHint', 'Créez un budget sur un projet pour voir les prédictions')}</p>
+        <p className="text-center text-gray-500 dark:text-slate-400 py-4 text-sm">{t('budgetPredictions.createBudgetHint', 'Créez un budget sur un projet pour voir les prédictions')}</p>
       </Card>
     )
   }

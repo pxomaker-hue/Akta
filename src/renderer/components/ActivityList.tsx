@@ -126,7 +126,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-gray-200/50 dark:border-slate-700/50 p-6">
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">{t('activityList.loading', 'Chargement des activités...')}</p>
+          <p className="text-gray-600 dark:text-slate-400 mt-2">{t('activityList.loading', 'Chargement des activités...')}</p>
         </div>
       </div>
     )
@@ -136,7 +136,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
     return (
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-gray-200/50 dark:border-slate-700/50 p-6">
         <div className="text-center py-12">
-          <p className="text-gray-600 dark:text-gray-400">{t('activityList.empty', 'Aucune activité pour le moment. Utilise ton ordinateur pour démarrer le suivi !')}</p>
+          <p className="text-gray-600 dark:text-slate-400">{t('activityList.empty', 'Aucune activité pour le moment. Utilise ton ordinateur pour démarrer le suivi !')}</p>
         </div>
       </div>
     )
@@ -176,7 +176,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
     <div className="space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('activityList.title', 'Activités récentes')}</h2>
-        <span className="text-sm text-gray-600 dark:text-gray-400">
+        <span className="text-sm text-gray-600 dark:text-slate-400">
           {isFiltered ? `${filteredActivities.length} / ${activities.length}` : activities.length} {t('activityList.activitiesWord', 'activités')}
         </span>
       </div>
@@ -254,7 +254,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
 
       {/* Pills de filtres */}
       <div className="flex gap-1.5 flex-wrap items-center">
-        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('activityList.filters', 'Filtres :')}</span>
+        <span className="text-xs font-medium text-gray-600 dark:text-slate-400">{t('activityList.filters', 'Filtres :')}</span>
 
         {/* Date */}
         <button
@@ -314,7 +314,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
       {showFilters === 'date' && (
         <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-slate-800/50 rounded-lg flex-wrap">
           <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-600 dark:text-gray-400">{t('activityList.dateFrom', 'De:')}</span>
+            <span className="text-xs text-gray-600 dark:text-slate-400">{t('activityList.dateFrom', 'De:')}</span>
             <input
               type="date"
               aria-label={t('activityList.dateFrom', 'De:').replace(':', '').trim()}
@@ -332,7 +332,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
             )}
           </div>
           <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-600 dark:text-gray-400">{t('activityList.dateTo', 'À:')}</span>
+            <span className="text-xs text-gray-600 dark:text-slate-400">{t('activityList.dateTo', 'À:')}</span>
             <input
               type="date"
               aria-label={t('activityList.dateTo', 'À:').replace(':', '').trim()}
@@ -433,7 +433,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
             onClick={() => setSelectedBillableFilter('professional')}
             className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
               selectedBillableFilter === 'professional'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-[var(--accent-secondary)] text-white'
                 : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'
             }`}
           >
@@ -443,7 +443,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
             onClick={() => setSelectedBillableFilter('personal')}
             className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
               selectedBillableFilter === 'personal'
-                ? 'bg-purple-600 text-white'
+                ? 'bg-indigo-600 text-white'
                 : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'
             }`}
           >
@@ -454,7 +454,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
 
       <div className="space-y-2">
         {filteredActivities.length === 0 && isFiltered ? (
-          <p className="text-center text-gray-500 dark:text-gray-400 py-8">{t('activityList.noMatch', 'Aucune activité ne correspond à ce filtre')}</p>
+          <p className="text-center text-gray-500 dark:text-slate-400 py-8">{t('activityList.noMatch', 'Aucune activité ne correspond à ce filtre')}</p>
         ) : (
           filteredActivities.slice(0, visibleCount).map((activity) => (
           <ActivityListItem
