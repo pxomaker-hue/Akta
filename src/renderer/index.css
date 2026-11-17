@@ -263,6 +263,38 @@ body {
   animation: focusGlowRing 1.8s ease-out infinite;
 }
 
+
+/* Identité Akta : palette dynamique, dessin fixe et respiration limitée au pulse. */
+.akta-logo__background {
+  fill: #f8fafc;
+}
+.dark .akta-logo__background {
+  fill: #0b1430;
+}
+.akta-logo__dot {
+  fill: #fff;
+  stroke: var(--accent-primary, #6366f1);
+}
+.akta-logo__pulse-contrast {
+  stroke: #1e293b;
+  opacity: 0.65;
+}
+.dark .akta-logo__pulse-contrast {
+  opacity: 0;
+}
+.akta-logo__pulse {
+  transform-origin: 64px 82px;
+  animation: aktaPulseBreath 2.5s ease-in-out infinite;
+}
+.akta-logo__pulse-glow {
+  filter: blur(2.4px);
+  opacity: 0.52;
+}
+@keyframes aktaPulseBreath {
+  0%, 100% { opacity: 0.74; }
+  50% { opacity: 1; }
+}
+
 /* Windows « Afficher les animations » désactivé : on coupe les animations décoratives en boucle
    (battement Focus, ECG, halo) et on raccourcit les transitions, sans casser les changements d'état. */
 @media (prefers-reduced-motion: reduce) {
