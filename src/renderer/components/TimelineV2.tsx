@@ -547,8 +547,8 @@ function TimelineV2({ activities, categories, onUpdate, dayStart, onDayChange }:
         >
           <defs>
             <linearGradient id="ecgGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor={DESIGN.colors.primary} stopOpacity="1" />
-              <stop offset="100%" stopColor={DESIGN.colors.secondary} stopOpacity="1" />
+              <stop offset="0%" stopColor="var(--accent-primary)" stopOpacity="1" />
+              <stop offset="100%" stopColor="var(--accent-secondary)" stopOpacity="1" />
             </linearGradient>
 
             {/* Comète lumineuse qui parcourt la ligne ECG */}
