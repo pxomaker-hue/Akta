@@ -7,10 +7,10 @@ interface CardProps {
 }
 
 export function Card({ children, gradient = true, className = '' }: CardProps) {
-  const baseClass = 'rounded-2xl shadow-md transition-all hover:shadow-lg'
-  const borderClass = 'border border-gray-200/50 dark:border-slate-700/50'
+  const baseClass = 'rounded-2xl shadow-sm transition-shadow duration-200'
+  const borderClass = 'border border-gray-200/70 dark:border-slate-700/70'
   const bgClass = gradient
-    ? 'bg-gradient-to-br from-white via-gray-50/80 to-gray-100/60 dark:from-slate-900 dark:via-slate-900/90 dark:to-slate-800/80'
+    ? 'bg-gradient-to-br from-white via-white to-gray-50/90 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800/60'
     : 'bg-white dark:bg-slate-900'
 
   return (
@@ -38,7 +38,7 @@ export function CardHeader({
             {title}
           </h3>
         </div>
-        {subtitle && <p className="text-sm text-gray-500 dark:text-slate-400 mt-1.5 ml-7">{subtitle}</p>}
+        {subtitle && <p className={`text-sm text-gray-600 dark:text-slate-400 mt-1.5 ${icon ? 'ml-7' : ''}`}>{subtitle}</p>}
       </div>
     </div>
   )
