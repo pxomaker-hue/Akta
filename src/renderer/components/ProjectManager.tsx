@@ -841,7 +841,9 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                       <button
                                         key={color}
                                         onClick={() => setEditPhaseColor(color)}
-                                        className={`w-4 h-4 rounded-full transition-transform ${editPhaseColor === color ? 'ring-2 ring-offset-1 ring-gray-400 scale-110' : 'hover:scale-110'}`}
+                                        aria-label={`${t('projectManager.projectColor', 'Couleur du projet')} : ${color}`}
+                                        aria-pressed={editPhaseColor === color}
+                                        className={`w-7 h-7 rounded-full transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)] ${editPhaseColor === color ? 'ring-2 ring-offset-1 ring-gray-400 scale-110' : 'hover:scale-110'}`}
                                         style={{ backgroundColor: color }}
                                       />
                                     ))}
@@ -1025,7 +1027,9 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                   <button
                                     key={color}
                                     onClick={() => setNewPhaseColor(color)}
-                                    className={`w-4 h-4 rounded-full transition-transform ${newPhaseColor === color ? 'ring-2 ring-offset-1 ring-gray-400 scale-110' : 'hover:scale-110'}`}
+                                        aria-label={`${t('projectManager.projectColor', 'Couleur du projet')} : ${color}`}
+                                        aria-pressed={newPhaseColor === color}
+                                    className={`w-7 h-7 rounded-full transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)] ${newPhaseColor === color ? 'ring-2 ring-offset-1 ring-gray-400 scale-110' : 'hover:scale-110'}`}
                                     style={{ backgroundColor: color }}
                                   />
                                 ))}
