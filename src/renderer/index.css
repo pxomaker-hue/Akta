@@ -52,6 +52,15 @@ h1, h2, h3 {
   background-image: linear-gradient(to right, var(--accent-primary), var(--accent-secondary));
 }
 
+/* When white text sits on an accent gradient, darken both stops enough for all 6
+   built-in palettes (including amber and emerald) to meet WCAG AA contrast. */
+.accent-gradient-bg.text-white {
+  background-image: linear-gradient(110deg,
+    color-mix(in srgb, var(--accent-primary) 60%, #0b1220),
+    color-mix(in srgb, var(--accent-secondary) 60%, #0b1220));
+}
+
+
 .accent-text {
   color: var(--accent-primary);
 }
@@ -298,6 +307,14 @@ body {
   }
 }
 
+/* Keyboard users can activate work-session bars on the timeline. */
+.timeline-session-action:focus-visible {
+  outline: 3px solid var(--accent-primary);
+  outline-offset: 3px;
+  stroke: white;
+  stroke-width: 2;
+}
+
 /* Windows « Afficher les animations » désactivé : on coupe les animations décoratives en boucle
    (battement Focus, ECG, halo) et on raccourcit les transitions, sans casser les changements d'état. */
 @media (prefers-reduced-motion: reduce) {
@@ -309,6 +326,9 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+
+  /* Leave the static ECG trace visible, hide only its decorative comet. */
+  .timeline-comet { display: none !important; }
 
   /* Les indicateurs de chargement restent animés : figés, ils feraient croire à un blocage */
   .animate-spin {

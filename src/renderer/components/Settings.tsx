@@ -182,13 +182,15 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
           {t('settings.accentColor', "Couleur d'accent")}
         </h3>
         <p className="text-xs text-gray-500 dark:text-slate-400 mb-4">{t('settings.accentColorHint', "Personnalise la teinte principale utilisée dans toute l'application.")}</p>
-        <div className="flex gap-3 flex-wrap">
+        <div className="flex gap-3 flex-wrap" role="group" aria-label={t('settings.accentColor', "Couleur d'accent")}>
           {presets.map((preset) => (
             <button
               key={preset.id}
               onClick={() => setAccent(preset.id)}
               title={preset.name}
-              className={`w-7 h-7 rounded-full border-2 transition-all ${
+              aria-label={preset.name}
+              aria-pressed={accentId === preset.id}
+              className={`w-9 h-9 rounded-full border-2 transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)] ${
                 accentId === preset.id ? 'border-gray-900 dark:border-white scale-110' : 'border-transparent hover:scale-105'
               }`}
               style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }}
