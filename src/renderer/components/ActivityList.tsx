@@ -209,7 +209,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
         <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-gray-600 dark:text-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-primary)]">
           {t('activityList.maintenance', 'Nettoyage et suppression des activités')}
         </summary>
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex gap-1.5 flex-wrap px-3 pb-3 pt-1">
           {hasInvalidActivities && (
             <button
               onClick={handleCleanup}
