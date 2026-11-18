@@ -519,6 +519,8 @@ function TimelineV2({ activities, categories, onUpdate, dayStart, onDayChange }:
             <button
               key={hours}
               onClick={() => selectPreset(hours)}
+              aria-pressed={activePreset === hours}
+              aria-label={`${hours} h`}
               className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
                 activePreset === hours
                   ? 'bg-white dark:bg-slate-700 accent-text shadow-sm'
