@@ -184,6 +184,14 @@ function Reports({ categories }: ReportsProps) {
 
   return (
     <div className="space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+          {t('reports.overviewTitle', 'Bilan de la semaine')}
+        </h2>
+        <p className="text-sm text-gray-600 dark:text-slate-400">
+          {t('reports.overviewSubtitle', 'Temps travaillé, concentration et répartition des activités')}
+        </p>
+      </div>
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Stat

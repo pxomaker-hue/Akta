@@ -205,8 +205,12 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
       {/* Timeline - Flux du jour */}
       <TimelineV2 activities={activities} categories={categories} onUpdate={onUpdate} dayStart={dayStart} onDayChange={setDayStart} />
 
-      {/* Stats principales */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Sous la timeline, la zone des indicateurs devient une section accessible. */}
+      <section aria-label={t('dashboard.metrics', 'Indicateurs de la journée')} className="space-y-3">
+        <h3 className="text-base font-bold text-gray-900 dark:text-slate-100">
+          {t('dashboard.metrics', 'Indicateurs de la journée')}
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
         <Stat
           label={t('dashboard.totalTime', 'Temps total')}
           value={formatDuration(totalSeconds)}
@@ -216,7 +220,7 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
         <LiveSessionStat sessions={daySessions} />
         <Stat
           label={t('dashboard.categorized', 'Catégorisé')}
-          value={`${Math.round((categorizedSeconds / totalSeconds) * 100)}%`}
+          value={`${totalSeconds > 0 ? Math.round((categorizedSeconds / totalSeconds) * 100) : 0}%`}
           icon={<Icon name="chart-pie" size={18} />}
           gradient="from-cyan-50 to-cyan-100 dark:from-cyan-900/30 dark:to-cyan-800/20"
         />
@@ -234,6 +238,8 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
           gradient="from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/20"
         />
       </div>
+
+      </section>
 
       {/* Graphiques */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

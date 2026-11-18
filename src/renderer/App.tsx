@@ -294,10 +294,9 @@ function App() {
               <Icon name={theme === 'light' ? 'sun' : theme === 'dark' ? 'moon' : 'sun-moon'} size={16} />
             </button>
 
-            <SyncButton />
-
-            {/* Toujours ici, jamais dans l'en-tête : seule la pill se déplace en dessous de 1090px */}
+            {/* Focus reste dans la navigation, avant la synchronisation. */}
             {focusButtonJsx}
+            <SyncButton />
 
             {!isNarrowNav && (
               <div className="ml-auto">
@@ -320,8 +319,8 @@ function App() {
               dayStart={activitiesTabDayStart}
               onDayChange={setActivitiesTabDayStart}
             />
-            <SessionsList />
             <DailyStats activities={activitiesTabDayActivities} categories={categories} />
+            <SessionsList />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <ActivityList activities={activities} categories={categories} loading={loading} onActivityUpdate={() => loadData(false)} />

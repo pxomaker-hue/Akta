@@ -403,6 +403,14 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
           className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
         />
 
+        <div className="flex gap-2">
+          <Dropdown value={newClientId} onChange={setNewClientId} options={clientOptions} className="flex-1" placeholder={t('projectManager.noClient', 'Aucun client')} />
+        </div>
+        <details className="group rounded-lg border border-gray-200/70 dark:border-slate-700/70 bg-white/60 dark:bg-slate-900/40">
+          <summary className="cursor-pointer select-none rounded-lg px-3 py-2.5 text-sm font-semibold text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-primary)]">
+            {t('projectManager.advancedOptions', 'Options avancées : mots-clés, budget et échéance')}
+          </summary>
+          <div className="space-y-3 px-3 pb-3">
         <input
           type="text"
           value={newKeywords}
@@ -413,7 +421,6 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
         />
 
         <div className="flex gap-2">
-          <Dropdown value={newClientId} onChange={setNewClientId} options={clientOptions} className="flex-1" placeholder={t('projectManager.noClient', 'Aucun client')} />
           <input
             type="number"
             min="0"
@@ -465,13 +472,18 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
           />
         </div>
 
+          </div>
+        </details>
+
         <div className="flex items-center justify-between">
           <div className="flex gap-2 flex-wrap">
             {colors.map((color) => (
               <button
                 key={color}
                 onClick={() => setNewColor(color)}
-                className={`w-6 h-6 rounded-full transition-transform ${newColor === color ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'hover:scale-110'}`}
+                aria-label={`${t('projectManager.projectColor', 'Couleur du projet')} : ${color}`}
+                aria-pressed={newColor === color}
+                className={`w-9 h-9 rounded-full transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)] ${newColor === color} ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'hover:scale-110'}`}
                 style={{ backgroundColor: color }}
               />
             ))}
