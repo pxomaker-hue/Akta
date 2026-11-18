@@ -7,7 +7,7 @@ const OUT = path.resolve(__dirname, '..', 'assets')
 const clamp = (x,a=0,b=1) => Math.max(a,Math.min(b,x))
 const mix = (a,b,t) => a+(b-a)*t
 const colors = {
-  bg:[11,20,48], g:[16,185,129], gm:[70,208,162],
+  bg:[16,185,129], g:[255,255,255], gm:[255,255,255],
   light:[134,229,186], light2:[178,241,216],
   white:[255,255,255], glow:[168,246,218]
 }
@@ -23,7 +23,7 @@ const roundedRectSDF = (x,y,cx,cy,hx,hy,r) => {
   return Math.hypot(Math.max(qx,0),Math.max(qy,0))+Math.min(Math.max(qx,qy),0)-r
 }
 function draw(n) {
-  const out = new Uint8Array(n*n*4), scale=n/128, aa=0.56/scale
+  const out=new Uint8Array(n*n*4), scale=n/128, aa=0.56/scale
   const cy=89-Math.sqrt(45*45-36.5*36.5)
   const pulse=[[28,81],[61,81],[65,72],[70,89],[75,81],[100,81]]
   for(let py=0;py<n;py++) for(let px=0;px<n;px++) {
@@ -32,38 +32,25 @@ function draw(n) {
     const alpha=clamp(.5-d/aa)
     let p=[...colors.bg,alpha]
     if(alpha>0) {
-      // Incomplete circular progression ring; no outer colored border.
       const angle=(Math.atan2(y-cy,x-64)*180/Math.PI+360)%360
       const radius=Math.abs(Math.hypot(x-64,y-cy)-45)
       const cap=Math.min(Math.hypot(x-27.5,y-89),Math.hypot(x-100.5,y-89))
       const arc=(angle>=144||angle<=36)?Math.min(radius,cap):cap
-      const r=smooth(arc,3.8,aa)
-      if(r>0) {
-        const t=clamp((x+y-30)/177)
-        p=blend(p,colors.g.map((v,i)=>mix(v,colors.gm[i],t)),r)
-      }
-
-      // One smoothly rounded A, orange/green/blue etc. uses the same hue on both sides.
+      const ring=smooth(arc,3.8,aa)
+      if(ring>0)p=blend(p,colors.white,ring*.72)
       const left=smooth(seg(x,y,35,101,64,49),8.5,aa)
       const right=smooth(seg(x,y,64,49,93,101),8.5,aa)
       const mark=Math.max(left,right)
-      if(mark>0) {
-        const q=clamp((x-59)/8)
-        const tint=colors.g.map((v,i)=>mix(v,colors.light[i],q))
-        p=blend(p,tint,mark)
-      }
-
+      if(mark>0)p=blend(p,colors.white,mark)
       const dot=smooth(Math.hypot(x-94,y-34),5.4,aa)
       if(dot>0)p=blend(p,colors.white,dot)
-
       let pulseD=1e9
       for(let j=1;j<pulse.length;j++)
         pulseD=Math.min(pulseD,seg(x,y,...pulse[j-1],...pulse[j]))
-      if(n>=32) {
-        const halo=smooth(pulseD,4.3,aa)*.29
-        if(halo>0)p=blend(p,colors.white,halo)
-      }
-      const core=smooth(pulseD,n<=24?2.35:1.9,aa)
+      // Green keyline keeps the white pulse legible when it crosses the white A.
+      const cutout=smooth(pulseD,4,aa)
+      if(cutout>0)p=blend(p,colors.bg,cutout)
+      const core=smooth(pulseD,1.65,aa)
       if(core>0)p=blend(p,colors.white,core)
     }
     const k=(py*n+px)*4
@@ -130,4 +117,4 @@ function ico(entries) {
 fs.writeFileSync(path.join(OUT,'icon.png'),png(512))
 const sizes=[16,24,32,48,64,128,256]
 fs.writeFileSync(path.join(OUT,'icon.ico'),ico(sizes.map(n=>[n,png(n)])))
-console.log('Generated assets/icon.png and assets/icon.ico (emerald identity)')
+console.log('Generated assets/icon.png and assets/icon.ico (emerald background, white mark)')
