@@ -213,7 +213,7 @@ function App() {
       {isFocusActive ? (
         <>
           <span className="absolute inset-0 rounded-full accent-gradient-bg animate-focus-glow-ring" aria-hidden="true" />
-          <span className="relative w-10 h-10 rounded-full accent-gradient-bg flex items-center justify-center text-white shadow-md hover:brightness-110 transition-all animate-focus-heartbeat">
+          <span className="relative w-10 h-10 rounded-full accent-gradient-bg akta-focus-action flex items-center justify-center text-white shadow-md hover:brightness-110 transition-all animate-focus-heartbeat">
             <Icon name="target" size={16} />
           </span>
         </>
@@ -221,7 +221,7 @@ function App() {
         <span
           className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
             isFocusTab
-              ? 'accent-gradient-bg text-white'
+              ? 'accent-gradient-bg akta-focus-action text-white'
               : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-slate-600'
           }`}
         >
@@ -274,10 +274,14 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* gap-4 sur tout le conteneur (et non plus justify-between entre deux groupes) : ça
               garantit un espacement minimum constant entre chaque élément, y compris entre le
-              bouton de synchro et le bouton Focus qui le suit directement — sinon justify-between
+              bouton de synchro et le bouton Focus qui le précède directement — sinon justify-between
               pouvait les coller l'un à l'autre à mesure que la fenêtre rétrécit. */}
           <nav className="flex items-center gap-4" aria-label={t('app.tabsAriaLabel', 'Onglets')}>
             <SlidingTabs tabs={tabs} activeId={activeTab} onChange={setActiveTab} />
+
+            {/* Focus reste dans la navigation, avant la synchronisation. */}
+            {focusButtonJsx}
+            <SyncButton />
 
             {/* Theme Toggle Icon */}
             <button
@@ -293,10 +297,6 @@ function App() {
             >
               <Icon name={theme === 'light' ? 'sun' : theme === 'dark' ? 'moon' : 'sun-moon'} size={16} />
             </button>
-
-            {/* Focus reste dans la navigation, avant la synchronisation. */}
-            {focusButtonJsx}
-            <SyncButton />
 
             {!isNarrowNav && (
               <div className="ml-auto">
