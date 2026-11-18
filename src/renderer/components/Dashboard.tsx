@@ -187,7 +187,7 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
                   <span className="absolute inset-0 rounded-full accent-gradient-bg animate-focus-glow-ring" aria-hidden="true" />
                 )}
                 <span
-                  className={`relative w-16 h-16 rounded-full accent-gradient-bg flex items-center justify-center text-white shadow-md group-hover:brightness-110 group-hover:scale-105 transition-all ${
+                  className={`relative w-16 h-16 rounded-full accent-gradient-bg akta-focus-action flex items-center justify-center text-white shadow-md group-hover:brightness-110 group-hover:scale-105 transition-all ${
                     isFocusActive ? 'animate-focus-heartbeat' : ''
                   }`}
                 >

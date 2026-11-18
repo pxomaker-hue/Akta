@@ -81,11 +81,19 @@ h1, h2, h3 {
 }
 
 /* When white text sits on an accent gradient, darken both stops enough for all 6
-   built-in palettes (including amber and emerald) to meet WCAG AA contrast. */
+   built-in palettes (including amber and emerald) to meet WCAG AA contrast.
+   The icon-only Focus actions use their original vivid gradient below. */
 .accent-gradient-bg.text-white {
   background-image: linear-gradient(110deg,
     color-mix(in srgb, var(--accent-primary) 60%, #0b1220),
     color-mix(in srgb, var(--accent-secondary) 60%, #0b1220));
+}
+
+/* Restore the vivid original colors only for the circular Focus buttons
+   (navbar selected/active and dashboard hero), preserving their motions.
+   Other white-text CTAs retain their contrast-safe darker gradient. */
+.accent-gradient-bg.text-white.akta-focus-action {
+  background-image: linear-gradient(to right, var(--accent-primary), var(--accent-secondary));
 }
 
 
