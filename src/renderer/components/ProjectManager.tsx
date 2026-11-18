@@ -483,7 +483,7 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                 onClick={() => setNewColor(color)}
                 aria-label={`${t('projectManager.projectColor', 'Couleur du projet')} : ${color}`}
                 aria-pressed={newColor === color}
-                className={`w-9 h-9 rounded-full transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)] ${newColor === color} ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'hover:scale-110'}`}
+                className={`w-9 h-9 rounded-full transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)] ${newColor === color ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'hover:scale-110'}}`}
                 style={{ backgroundColor: color }}
               />
             ))}
