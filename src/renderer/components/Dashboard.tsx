@@ -211,34 +211,33 @@ function Dashboard({ activities, categories, onUpdate, onOpenFocusMode, isFocusA
           {t('dashboard.metrics', 'Indicateurs de la journée')}
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
-        <Stat
-          label={t('dashboard.totalTime', 'Temps total')}
-          value={formatDuration(totalSeconds)}
-          icon={<Icon name="clock" size={18} />}
-          gradient="from-indigo-50 to-indigo-100 dark:from-indigo-900/30 dark:to-indigo-800/20"
-        />
-        <LiveSessionStat sessions={daySessions} />
-        <Stat
-          label={t('dashboard.categorized', 'Catégorisé')}
-          value={`${totalSeconds > 0 ? Math.round((categorizedSeconds / totalSeconds) * 100) : 0}%`}
-          icon={<Icon name="chart-pie" size={18} />}
-          gradient="from-cyan-50 to-cyan-100 dark:from-cyan-900/30 dark:to-cyan-800/20"
-        />
-        <Stat
-          label={t('dashboard.billableLabel', 'Facturable')}
-          value={formatDuration(billableSeconds)}
-          icon={<Icon name="briefcase" size={18} />}
-          gradient="from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/20"
-        />
-        <Stat
-          label={t('dashboard.deepWork', 'Deep Work')}
-          value={deepWorkSessions.length}
-          icon={<Icon name="target" size={18} />}
-          subtext={t('dashboard.sessionsSubtext', 'sessions')}
-          gradient="from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/20"
-        />
-      </div>
-
+          <Stat
+            label={t('dashboard.totalTime', 'Temps total')}
+            value={formatDuration(totalSeconds)}
+            icon={<Icon name="clock" size={18} />}
+            gradient="from-indigo-50 to-indigo-100 dark:from-indigo-900/30 dark:to-indigo-800/20"
+          />
+          <LiveSessionStat sessions={daySessions} />
+          <Stat
+            label={t('dashboard.categorized', 'Catégorisé')}
+            value={`${totalSeconds > 0 ? Math.round((categorizedSeconds / totalSeconds) * 100) : 0}%`}
+            icon={<Icon name="chart-pie" size={18} />}
+            gradient="from-cyan-50 to-cyan-100 dark:from-cyan-900/30 dark:to-cyan-800/20"
+          />
+          <Stat
+            label={t('dashboard.billableLabel', 'Facturable')}
+            value={formatDuration(billableSeconds)}
+            icon={<Icon name="briefcase" size={18} />}
+            gradient="from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/20"
+          />
+          <Stat
+            label={t('dashboard.deepWork', 'Deep Work')}
+            value={deepWorkSessions.length}
+            icon={<Icon name="target" size={18} />}
+            subtext={t('dashboard.sessionsSubtext', 'sessions')}
+            gradient="from-emerald-50 to-emerald-100 dark:from-emerald-900/30 dark:to-emerald-800/20"
+          />
+        </div>
       </section>
 
       {/* Graphiques */}
