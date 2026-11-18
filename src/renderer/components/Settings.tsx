@@ -133,7 +133,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
       {tab === 'general' && (
         <>
           {/* Affichage */}
-      <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
+      <div className="akta-panel p-6">
         <h3 className="text-lg font-bold accent-gradient-text mb-4">{t('settings.display')}</h3>
 
         <div className="space-y-4">
@@ -176,29 +176,34 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
       </div>
 
       {/* Couleur d'accent */}
-      <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
+      <div className="akta-panel p-6">
         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
           <Icon name="palette" size={18} className="accent-text" />
           {t('settings.accentColor', "Couleur d'accent")}
         </h3>
         <p className="text-xs text-gray-500 dark:text-slate-400 mb-4">{t('settings.accentColorHint', "Personnalise la teinte principale utilisée dans toute l'application.")}</p>
-        <div className="flex gap-3 flex-wrap">
+        <div className="flex gap-3 flex-wrap" role="group" aria-label={t('settings.accentColor', "Couleur d'accent")}>
           {presets.map((preset) => (
             <button
               key={preset.id}
               onClick={() => setAccent(preset.id)}
               title={preset.name}
-              className={`w-7 h-7 rounded-full border-2 transition-all ${
+              aria-label={preset.name}
+              aria-pressed={accentId === preset.id}
+              className={`w-9 h-9 rounded-full border-2 transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)] ${
                 accentId === preset.id ? 'border-gray-900 dark:border-white scale-110' : 'border-transparent hover:scale-105'
               }`}
               style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }}
             />
           ))}
         </div>
+        <p className="mt-2 text-xs font-medium text-gray-600 dark:text-slate-300" aria-live="polite">
+          {presets.find((preset) => preset.id === accentId)?.name}
+        </p>
       </div>
 
       {/* Démarrage */}
-      <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
+      <div className="akta-panel p-6">
         <h3 className="text-lg font-bold accent-gradient-text mb-4">{t('settings.startup', 'Démarrage')}</h3>
         <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer">
           <input
@@ -229,7 +234,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
       </div>
 
       {/* Fermeture */}
-      <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
+      <div className="akta-panel p-6">
         <h3 className="text-lg font-bold accent-gradient-text mb-4">{t('settings.closeSection', "Fermeture de l'application")}</h3>
         <p className="text-xs text-gray-500 dark:text-slate-400 mb-3 -mt-2">
           {t('settings.closeSectionHint', 'Comportement du bouton de fermeture de la fenêtre. Si tu as coché "Se souvenir de mon choix" dans la modale, change-le ici.')}
@@ -268,7 +273,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
       <UpdateSettings />
 
       {/* À propos */}
-      <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700 text-center">
+      <div className="akta-panel p-6 text-center">
         <p className="text-sm text-gray-600 dark:text-slate-400">
           <strong>{t('settings.version')}</strong> • {t('settings.description')}
         </p>
@@ -282,7 +287,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
       {tab === 'focus' && (
         <>
       {/* Raccourcis clavier globaux */}
-      <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
+      <div className="akta-panel p-6">
         <h3 className="text-lg font-bold accent-gradient-text mb-1">{t('settings.globalShortcuts', 'Raccourcis clavier globaux')}</h3>
         <p className="text-xs text-gray-500 dark:text-slate-400 mb-4">
           {t('settings.globalShortcutsHint', "Fonctionnent même si Akta n'est pas au premier plan (réduit dans le tray).")}
@@ -300,7 +305,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
       </div>
 
       {/* Notifications */}
-      <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
+      <div className="akta-panel p-6">
         <h3 className="text-lg font-bold accent-gradient-text mb-4">{t('settings.notifications')}</h3>
 
         <div className="space-y-3">
@@ -349,7 +354,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
       </div>
 
       {/* Focus Coaching Mode */}
-      <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
+      <div className="akta-panel p-6">
         <h3 className="text-lg font-bold accent-gradient-text mb-4">{t('focusCoaching.title', 'Focus Coaching')}</h3>
 
         <div className="space-y-3">
@@ -387,7 +392,7 @@ function Settings({ accentColor, onReplayOnboarding }: SettingsProps) {
       {tab === 'inactivity' && (
         <div className="space-y-6">
           {/* Détection d'inactivité */}
-          <div className="bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-slate-700">
+          <div className="akta-panel p-6">
             <h3 className="text-lg font-bold accent-gradient-text mb-4">{t('settings.tracking')}</h3>
 
             <div className="p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">

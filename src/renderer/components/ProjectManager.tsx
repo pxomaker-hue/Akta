@@ -403,67 +403,77 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
           className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
         />
 
-        <input
-          type="text"
-          value={newKeywords}
-          onChange={(e) => setNewKeywords(e.target.value)}
-          placeholder={t('projectManager.keywordsPlaceholderLong', 'Mots-clefs (ex: Valros, APD) - séparés par virgules')} aria-label={t('projectManager.keywordsPlaceholderLong', 'Mots-clefs (ex: Valros, APD) - séparés par virgules')}
-          title={t('projectManager.keywordsTitle', "Mots-clefs pour l'auto-détection par nom de fenêtre")}
-          className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
-        />
-
         <div className="flex gap-2">
           <Dropdown value={newClientId} onChange={setNewClientId} options={clientOptions} className="flex-1" placeholder={t('projectManager.noClient', 'Aucun client')} />
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={newRate}
-            onChange={(e) => setNewRate(e.target.value)}
-            placeholder={t('projectManager.ratePlaceholder', 'Taux €/h')} aria-label={t('projectManager.ratePlaceholder', 'Taux €/h')}
-            className="w-24 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
-          />
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value={newGoal}
-            onChange={(e) => setNewGoal(e.target.value)}
-            placeholder={t('projectManager.goalPlaceholder', 'Objectif h/mois')} aria-label={t('projectManager.goalPlaceholder', 'Objectif h/mois')}
-            className="w-28 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
-          />
         </div>
+        <details className="group rounded-lg border border-gray-200/70 dark:border-slate-700/70 bg-white/60 dark:bg-slate-900/40">
+          <summary className="cursor-pointer select-none rounded-lg px-3 py-2.5 text-sm font-semibold text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-primary)]">
+            {t('projectManager.advancedOptions', 'Options avancées : mots-clés, budget et échéance')}
+          </summary>
+          <div className="space-y-3 px-3 pb-3">
+            <input
+              type="text"
+              value={newKeywords}
+              onChange={(e) => setNewKeywords(e.target.value)}
+              placeholder={t('projectManager.keywordsPlaceholderLong', 'Mots-clefs (ex: Valros, APD) - séparés par virgules')} aria-label={t('projectManager.keywordsPlaceholderLong', 'Mots-clefs (ex: Valros, APD) - séparés par virgules')}
+              title={t('projectManager.keywordsTitle', "Mots-clefs pour l'auto-détection par nom de fenêtre")}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+            />
 
-        <div className="flex gap-2">
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value={newBudgetHours}
-            onChange={(e) => setNewBudgetHours(e.target.value)}
-            placeholder={t('projectManager.budgetHoursPlaceholder', 'Budget h (forfait)')} aria-label={t('projectManager.budgetHoursPlaceholder', 'Budget h (forfait)')}
-            title={t('projectManager.budgetHoursTitle', 'Budget total en heures pour ce projet')}
-            className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
-          />
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={newBudgetAmount}
-            onChange={(e) => setNewBudgetAmount(e.target.value)}
-            placeholder={t('projectManager.budgetAmountPlaceholder', 'Budget € (forfait)')} aria-label={t('projectManager.budgetAmountPlaceholder', 'Budget € (forfait)')}
-            title={t('projectManager.budgetAmountTitle', 'Budget total en euros pour ce projet')}
-            className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
-          />
-          <input
-            type="date"
-            aria-label={t('projectManager.deadlineTitle', 'Échéance du projet')}
-            value={newDeadline}
-            onChange={(e) => setNewDeadline(e.target.value)}
-            title={t('projectManager.deadlineTitle', 'Échéance du projet')}
-            className="w-36 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
-          />
-        </div>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={newRate}
+                onChange={(e) => setNewRate(e.target.value)}
+                placeholder={t('projectManager.ratePlaceholder', 'Taux €/h')} aria-label={t('projectManager.ratePlaceholder', 'Taux €/h')}
+                className="w-24 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+              />
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={newGoal}
+                onChange={(e) => setNewGoal(e.target.value)}
+                placeholder={t('projectManager.goalPlaceholder', 'Objectif h/mois')} aria-label={t('projectManager.goalPlaceholder', 'Objectif h/mois')}
+                className="w-28 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={newBudgetHours}
+                onChange={(e) => setNewBudgetHours(e.target.value)}
+                placeholder={t('projectManager.budgetHoursPlaceholder', 'Budget h (forfait)')} aria-label={t('projectManager.budgetHoursPlaceholder', 'Budget h (forfait)')}
+                title={t('projectManager.budgetHoursTitle', 'Budget total en heures pour ce projet')}
+                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+              />
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={newBudgetAmount}
+                onChange={(e) => setNewBudgetAmount(e.target.value)}
+                placeholder={t('projectManager.budgetAmountPlaceholder', 'Budget € (forfait)')} aria-label={t('projectManager.budgetAmountPlaceholder', 'Budget € (forfait)')}
+                title={t('projectManager.budgetAmountTitle', 'Budget total en euros pour ce projet')}
+                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+              />
+              <input
+                type="date"
+                aria-label={t('projectManager.deadlineTitle', 'Échéance du projet')}
+                value={newDeadline}
+                onChange={(e) => setNewDeadline(e.target.value)}
+                title={t('projectManager.deadlineTitle', 'Échéance du projet')}
+                className="w-36 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+              />
+            </div>
+
+          </div>
+        </details>
 
         <div className="flex items-center justify-between">
           <div className="flex gap-2 flex-wrap">
@@ -471,7 +481,9 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
               <button
                 key={color}
                 onClick={() => setNewColor(color)}
-                className={`w-6 h-6 rounded-full transition-transform ${newColor === color ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'hover:scale-110'}`}
+                aria-label={`${t('projectManager.projectColor', 'Couleur du projet')} : ${color}`}
+                aria-pressed={newColor === color}
+                className={`w-9 h-9 rounded-full transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)] ${newColor === color ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'hover:scale-110'}`}
                 style={{ backgroundColor: color }}
               />
             ))}
@@ -829,7 +841,9 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                       <button
                                         key={color}
                                         onClick={() => setEditPhaseColor(color)}
-                                        className={`w-4 h-4 rounded-full transition-transform ${editPhaseColor === color ? 'ring-2 ring-offset-1 ring-gray-400 scale-110' : 'hover:scale-110'}`}
+                                        aria-label={`${t('projectManager.projectColor', 'Couleur du projet')} : ${color}`}
+                                        aria-pressed={editPhaseColor === color}
+                                        className={`w-7 h-7 rounded-full transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)] ${editPhaseColor === color ? 'ring-2 ring-offset-1 ring-gray-400 scale-110' : 'hover:scale-110'}`}
                                         style={{ backgroundColor: color }}
                                       />
                                     ))}
@@ -1013,7 +1027,9 @@ function ProjectManager({ clients, onProjectsLoaded }: ProjectManagerProps) {
                                   <button
                                     key={color}
                                     onClick={() => setNewPhaseColor(color)}
-                                    className={`w-4 h-4 rounded-full transition-transform ${newPhaseColor === color ? 'ring-2 ring-offset-1 ring-gray-400 scale-110' : 'hover:scale-110'}`}
+                                        aria-label={`${t('projectManager.projectColor', 'Couleur du projet')} : ${color}`}
+                                        aria-pressed={newPhaseColor === color}
+                                    className={`w-7 h-7 rounded-full transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent-primary)] ${newPhaseColor === color ? 'ring-2 ring-offset-1 ring-gray-400 scale-110' : 'hover:scale-110'}`}
                                     style={{ backgroundColor: color }}
                                   />
                                 ))}

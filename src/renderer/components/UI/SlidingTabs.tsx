@@ -62,9 +62,12 @@ function SlidingTabs<T extends string>({ tabs, activeId, onChange, className = '
         role="tablist"
         className="flex space-x-8"
         onKeyDown={(e) => {
-          if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+          if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(e.key)) return
           const index = tabs.findIndex((tab) => tab.id === activeId)
-          const next = tabs[(index + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]
+          const nextIndex = e.key === 'Home' ? 0
+            : e.key === 'End' ? tabs.length - 1
+            : (index + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length
+          const next = tabs[nextIndex]
           e.preventDefault()
           onChange(next.id)
           buttonRefs.current.get(next.id)?.focus()

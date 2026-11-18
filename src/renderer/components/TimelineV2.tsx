@@ -519,9 +519,11 @@ function TimelineV2({ activities, categories, onUpdate, dayStart, onDayChange }:
             <button
               key={hours}
               onClick={() => selectPreset(hours)}
+              aria-pressed={activePreset === hours}
+              aria-label={`${hours} h`}
               className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
                 activePreset === hours
-                  ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                  ? 'bg-white dark:bg-slate-700 accent-text shadow-sm'
                   : 'text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200'
               }`}
             >
@@ -547,8 +549,8 @@ function TimelineV2({ activities, categories, onUpdate, dayStart, onDayChange }:
         >
           <defs>
             <linearGradient id="ecgGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor={DESIGN.colors.primary} stopOpacity="1" />
-              <stop offset="100%" stopColor={DESIGN.colors.secondary} stopOpacity="1" />
+              <stop offset="0%" stopColor="var(--accent-primary)" stopOpacity="1" />
+              <stop offset="100%" stopColor="var(--accent-secondary)" stopOpacity="1" />
             </linearGradient>
 
             {/* Comète lumineuse qui parcourt la ligne ECG */}
@@ -617,7 +619,7 @@ function TimelineV2({ activities, categories, onUpdate, dayStart, onDayChange }:
               height={LIVE_BAND_H}
               rx={6}
               ry={6}
-              fill={DESIGN.colors.primary}
+              fill="var(--accent-primary)"
               opacity={
                 updatingWorkSession === bar.session.id
                   ? 0.2
@@ -631,7 +633,19 @@ function TimelineV2({ activities, categories, onUpdate, dayStart, onDayChange }:
               }
               stroke={bar.billable ? 'white' : 'none'}
               strokeWidth={bar.billable ? 1 : 0}
-              className={`cursor-pointer transition-opacity ${bar.isLive && !bar.isPaused ? 'animate-pulse' : ''}`}
+              className={`timeline-session-action cursor-pointer transition-opacity ${bar.isLive && !bar.isPaused ? 'animate-pulse' : ''}`}
+              role="button"
+              tabIndex={0}
+              aria-pressed={bar.billable}
+              aria-label={bar.billable
+                ? t('timeline.markNonBillable', 'Marquer la session non facturable')
+                : t('timeline.markBillable', 'Marquer la session facturable')}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  handleToggleWorkSessionBillable(bar)
+                }
+              }}
               onClick={() => handleToggleWorkSessionBillable(bar)}
               onMouseEnter={() => setHoveredWorkSession(bar.session.id)}
               onMouseLeave={() => setHoveredWorkSession(null)}
@@ -671,11 +685,12 @@ function TimelineV2({ activities, categories, onUpdate, dayStart, onDayChange }:
             strokeLinejoin="round"
             vectorEffect="non-scaling-stroke"
             mask="url(#pulseMask)"
+            className="timeline-comet"
           />
 
           {/* Repère "maintenant" (ligne uniquement — le point est rendu en HTML pour rester parfaitement rond) */}
           {isNowVisible && (
-            <line x1={currentX} y1={APPS_TOP} x2={currentX} y2={SESSIONS_TOP + SESSIONS_H} stroke="currentColor" strokeWidth={1.5} className="text-indigo-500" strokeDasharray="3,3" opacity={0.6} />
+            <line x1={currentX} y1={APPS_TOP} x2={currentX} y2={SESSIONS_TOP + SESSIONS_H} stroke="var(--accent-primary)" strokeWidth={1.5} strokeDasharray="3,3" opacity={0.6} />
           )}
 
           {/* ---- Bande 3 : sessions actives (cliquer pour marquer facturable) ---- */}

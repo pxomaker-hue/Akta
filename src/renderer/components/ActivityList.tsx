@@ -181,9 +181,35 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
         </span>
       </div>
 
+      {/* Recherche rapide */}
+      <div className="relative">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder={t('activityList.searchPlaceholder', 'Rechercher par application ou titre de fenêtre...')} aria-label={t('activityList.searchPlaceholder', 'Rechercher par application ou titre de fenêtre...')}
+          className="w-full pl-9 pr-9 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+        />
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="8" />
+          <path d="M21 21l-4.35-4.35" />
+        </svg>
+        {searchQuery && (
+          <button aria-label={t('common.clear', 'Effacer')} title={t('common.clear', 'Effacer')}
+            onClick={() => setSearchQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition-colors"
+          >
+            <Icon name="x" size={14} />
+          </button>
+        )}
+      </div>
+
       {/* Boutons de suppression */}
-      {(hasInvalidActivities || uncategorizedCount > 0 || true) && (
-        <div className="flex gap-1.5 flex-wrap">
+      <details className="rounded-xl border border-gray-200/70 dark:border-slate-700/60 bg-gray-50/70 dark:bg-slate-800/40">
+        <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-gray-600 dark:text-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-primary)]">
+          {t('activityList.maintenance', 'Nettoyage et suppression des activités')}
+        </summary>
+        <div className="flex gap-1.5 flex-wrap px-3 pb-3 pt-1">
           {hasInvalidActivities && (
             <button
               onClick={handleCleanup}
@@ -227,30 +253,7 @@ function ActivityList({ activities, categories, loading, onActivityUpdate }: Act
             </p>
           )}
         </div>
-      )}
-
-      {/* Recherche rapide */}
-      <div className="relative">
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={t('activityList.searchPlaceholder', 'Rechercher par application ou titre de fenêtre...')} aria-label={t('activityList.searchPlaceholder', 'Rechercher par application ou titre de fenêtre...')}
-          className="w-full pl-9 pr-9 py-2 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
-        />
-        <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="8" />
-          <path d="M21 21l-4.35-4.35" />
-        </svg>
-        {searchQuery && (
-          <button aria-label={t('common.clear', 'Effacer')} title={t('common.clear', 'Effacer')}
-            onClick={() => setSearchQuery('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition-colors"
-          >
-            <Icon name="x" size={14} />
-          </button>
-        )}
-      </div>
+      </details>
 
       {/* Pills de filtres */}
       <div className="flex gap-1.5 flex-wrap items-center">

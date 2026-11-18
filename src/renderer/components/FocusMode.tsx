@@ -397,7 +397,7 @@ function FocusMode({ onBack }: FocusModeProps) {
         {/* Timer */}
         <div
           data-focus-timer
-          className={`rounded-2xl p-10 mb-6 bg-gradient-to-br from-indigo-600 to-indigo-700 dark:from-indigo-700 dark:to-indigo-800 flex items-center justify-center shadow-xl transition-all duration-300 ${
+          className={`akta-focus-timer rounded-2xl p-6 sm:p-8 xl:p-10 mb-6 flex items-center justify-center shadow-lg transition-all duration-300 ${
             phaseBump ? 'scale-105' : 'scale-100'
           } ${justCompleted ? 'ring-2 ring-green-400 ring-offset-4 dark:ring-offset-slate-900' : ''}`}
         >
@@ -414,7 +414,7 @@ function FocusMode({ onBack }: FocusModeProps) {
                 </span>
               </div>
             )}
-            <div key={displayTime} className="text-8xl font-mono font-black text-white mb-3 tabular-nums tracking-tighter drop-shadow-lg">
+            <div key={displayTime} className="text-5xl md:text-6xl xl:text-8xl font-mono font-black text-white mb-3 tabular-nums tracking-tighter drop-shadow-lg">
               {formatTime(displayTime)}
             </div>
             <p className="text-white/90 text-base font-medium">

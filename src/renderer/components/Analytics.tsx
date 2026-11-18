@@ -99,12 +99,12 @@ function Analytics() {
       {/* Séparateur de section */}
       <div className="flex items-center gap-3">
         <Icon name="brain" size={18} className="accent-text flex-shrink-0" />
-        <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400">{t('analytics.deepAnalysis', 'Analyses approfondies')}</h3>
+        <h3 className="text-base font-bold text-gray-800 dark:text-slate-100">{t('analytics.deepAnalysis', 'Analyses approfondies')}</h3>
         <div className="flex-1 h-px bg-gray-200 dark:bg-slate-700" />
       </div>
 
       {/* Metrics principales */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
         <Stat
           label={t('analytics.overallScore', 'Score global')}
           value={`${metrics.score}%`}
