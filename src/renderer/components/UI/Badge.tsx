@@ -6,7 +6,7 @@ interface BadgeProps {
 
 export function Badge({ children, variant = 'primary', icon }: BadgeProps) {
   const variants = {
-    primary: 'bg-indigo-50/80 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/50',
+    primary: 'akta-badge--primary',
     success: 'bg-emerald-50/80 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/50',
     warning: 'bg-amber-50/80 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border border-amber-200/50 dark:border-amber-800/50',
     danger: 'bg-red-50/80 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200/50 dark:border-red-800/50',
