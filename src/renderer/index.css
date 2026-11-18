@@ -15,6 +15,34 @@
   --accent-secondary: #06b6d4;
 }
 
+/* Shared surfaces and palette-aware controls, with subtle depth. */
+.akta-panel {
+  border: 1px solid rgb(229 231 235 / .8);
+  border-radius: 1rem;
+  background: linear-gradient(145deg, #fff, #f9fafb);
+  box-shadow: 0 2px 8px rgb(15 23 42 / .045);
+}
+.dark .akta-panel {
+  border-color: rgb(51 65 85 / .72);
+  background: linear-gradient(145deg, #0f172a, #182438);
+  box-shadow: 0 2px 9px rgb(0 0 0 / .13);
+}
+.akta-badge--primary {
+  color: color-mix(in srgb, var(--accent-primary) 45%, #0f172a);
+  background: color-mix(in srgb, var(--accent-primary) 12%, white);
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 30%, white);
+}
+.dark .akta-badge--primary {
+  color: color-mix(in srgb, var(--accent-primary) 40%, white);
+  background: color-mix(in srgb, var(--accent-primary) 20%, #0f172a);
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 35%, #0f172a);
+}
+.akta-focus-timer {
+  background-image: linear-gradient(125deg,
+    color-mix(in srgb, var(--accent-primary) 60%, #0b1220),
+    color-mix(in srgb, var(--accent-secondary) 60%, #0b1220));
+}
+
 /* Focus clavier visible partout (les composants qui suppriment l'outline ont leur propre ring) */
 :where(button, a, [role="tab"], [role="option"], input[type="checkbox"], input[type="radio"], [tabindex]):focus-visible {
   outline: 2px solid var(--accent-primary);
